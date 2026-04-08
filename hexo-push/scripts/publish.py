@@ -302,6 +302,9 @@ def find_existing_posts(posts_dir: Path, title: str, source: str) -> tuple:
     
     matched_files = []
     
+    # 清理 title 中的 Unicode 特殊字符（如中文引号转英文引号），确保匹配一致性
+    title_cleaned = clean_unicode_chars(title)
+    
     # 遍历所有已发布的 md 文件（排除 Clippings 源目录）
     for md_file in posts_dir.rglob('*.md'):
         # 跳过 Clippings 目录及其子目录
@@ -316,12 +319,15 @@ def find_existing_posts(posts_dir: Path, title: str, source: str) -> tuple:
             old_title = old_meta.get('title', '').strip()
             old_source = old_meta.get('source', '').strip()
             
+            # 清理已发布文章的 title，确保比较时格式一致
+            old_title_cleaned = clean_unicode_chars(old_title)
+            
             is_match = False
             # 优先用 source URL 匹配（最精确）
             if source and old_source and source == old_source:
                 is_match = True
-            # 其次用 title 匹配
-            elif title and old_title and title == old_title:
+            # 其次用 title 匹配（使用清理后的 title）
+            elif title_cleaned and old_title_cleaned and title_cleaned == old_title_cleaned:
                 is_match = True
             
             if is_match:
