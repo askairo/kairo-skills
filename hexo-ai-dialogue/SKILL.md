@@ -20,7 +20,8 @@ description: 将 AI 对话记录提炼、重构为结构化的 Hexo 博客文章
    - 生成符合 Hexo 要求的 front matter
 6. **智能分类**：自动从已有分类中选择（`AI`、`工作`、`健康`、`杂谈`）
 7. **输出生成**：生成可直接发布的 Hexo Markdown 文件
-8. **自动发布**：支持自动 git push 和 hexo deploy
+
+> **注意**：本工具仅负责文章提炼和格式化输出，发布操作请使用 `hexo-push` skill 处理。
 
 ## 工作流程
 
@@ -62,11 +63,9 @@ description: 将 AI 对话记录提炼、重构为结构化的 Hexo 博客文章
 
 7. **输出文件**
    - 文件名格式：`yyyyMMdd.md`
-   - 输出目录：`source/_posts/yyyy/`
+   - 输出目录：`source/_posts/yyyy/` 或指定目录
 
-8. **Git & Hexo 操作**
-   - git add, commit, push
-   - hexo clean, deploy
+> 生成的文件可直接使用 `hexo-push` skill 进行发布。
 
 ## 输入格式要求
 
@@ -121,16 +120,18 @@ with open(dialogue_file, 'r', encoding='utf-8') as f:
 如果对话质量高、结构清晰，可直接生成：
 
 ```bash
-python scripts/dialogue_to_post.py <dialogue_file> [options]
+python scripts/dialogue_to_post.py <content_file> [options]
 ```
 
 参数说明：
-- `dialogue_file`: 对话记录文件路径
+- `content_file`: 提炼后的内容文件路径（包含 front matter 和正文）
 - `--title <title>`: 指定文章标题
 - `--category <cat>`: 指定分类
 - `--tags <tag1,tag2>`: 指定标签
-- `--output-dir <dir>`: 指定输出目录
-- `--auto-publish`: 自动生成并发布
+- `--summary <summary>`: 指定文章摘要
+- `--output-dir <dir>`: 指定输出目录（默认：source/_posts）
+
+> 生成的 Hexo 格式文件可使用 `hexo-push` skill 进行发布。
 
 ## 文章结构模板
 

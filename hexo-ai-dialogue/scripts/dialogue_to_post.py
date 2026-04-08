@@ -226,22 +226,6 @@ def get_output_filename(posts_path: Path, now: datetime = None) -> Tuple[Path, d
         current_date += timedelta(days=1)
 
 
-def run_command(cmd: list, cwd: str = None) -> Tuple[int, str, str]:
-    """执行命令并返回结果"""
-    try:
-        result = subprocess.run(
-            cmd,
-            cwd=cwd,
-            capture_output=True,
-            text=True,
-            encoding='utf-8',
-            shell=True
-        )
-        return result.returncode, result.stdout, result.stderr
-    except Exception as e:
-        return -1, '', str(e)
-
-
 def main():
     """主函数 - 用于接收已提炼好的内容并生成 Hexo 文章"""
     import argparse
@@ -253,7 +237,7 @@ def main():
     parser.add_argument('--tags', help='文章标签，逗号分隔')
     parser.add_argument('--summary', help='文章摘要')
     parser.add_argument('--output-dir', help='输出目录（默认：source/_posts）')
-    parser.add_argument('--no-deploy', action='store_true', help='不执行 hexo deploy')
+
     
     args = parser.parse_args()
     
@@ -314,7 +298,7 @@ def main():
         
         output_file, target_date = get_output_filename(posts_path)
         
-        print(f"\n[1/4] 生成 Hexo 文章...")
+        print(f"\n[1/2] 生成 Hexo 文章...")
         print(f"  标题: {title}")
         print(f"  分类: {category}")
         print(f"  标签: {', '.join(tags) if tags else '无'}")
@@ -328,52 +312,10 @@ def main():
         
         print(f"  [OK] 文章已生成: {output_file}")
         
-        # Git 操作
-        print(f"\n[2/4] 执行 Git 操作...")
-        blog_root = posts_path.parent.parent
-        
-        rc, out, err = run_command(['git', 'add', '.'], cwd=str(blog_root))
-        if rc != 0:
-            print(f"  [WARN] git add: {err}")
-        else:
-            print(f"  [OK] git add")
-        
-        commit_msg = f"add: {title[:50]}"
-        rc, out, err = run_command(['git', 'commit', '-m', commit_msg], cwd=str(blog_root))
-        if rc != 0:
-            if 'nothing to commit' in err.lower() or 'nothing to commit' in out.lower():
-                print(f"  [INFO] 无需提交")
-            else:
-                print(f"  [WARN] git commit: {err}")
-        else:
-            print(f"  [OK] git commit: {commit_msg}")
-        
-        rc, out, err = run_command(['git', 'push'], cwd=str(blog_root))
-        if rc != 0:
-            print(f"  [WARN] git push: {err}")
-        else:
-            print(f"  [OK] git push")
-        
-        # Hexo 部署
-        if not args.no_deploy:
-            print(f"\n[3/4] 执行 Hexo 部署...")
-            
-            rc, out, err = run_command(['hexo', 'clean'], cwd=str(blog_root))
-            if rc != 0:
-                print(f"  [WARN] hexo clean: {err}")
-            else:
-                print(f"  [OK] hexo clean")
-            
-            rc, out, err = run_command(['hexo', 'deploy'], cwd=str(blog_root))
-            if rc != 0:
-                print(f"  [FAIL] hexo deploy: {err}")
-                print(f"\n请手动执行: cd {blog_root} && hexo deploy")
-            else:
-                print(f"  [OK] hexo deploy")
-        
-        print(f"\n[4/4] 完成!")
-        print(f"  文章已发布: {output_file}")
+        print(f"\n[2/2] 完成!")
+        print(f"  输出文件: {output_file}")
         print(f"  标题: {title}")
+        print(f"\n提示: 生成的文件可使用 hexo-push skill 进行发布")
         
     except Exception as e:
         print(f"[ERROR] {e}")
