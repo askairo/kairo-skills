@@ -265,9 +265,16 @@ def generate_hexo_content(metadata: dict, target_date: datetime = None, category
     # 生成来源署名
     attribution = generate_attribution(source, author)
     
+    # 处理 title 中的引号，避免 YAML 解析问题
+    # 如果 title 包含双引号，使用单引号包裹；否则使用双引号
+    if '"' in title:
+        yaml_title = f"'{title}'"
+    else:
+        yaml_title = f'"{title}"'
+    
     # 构建 Hexo front matter
     hexo_content = f"""---
-title: "{title}"
+title: {yaml_title}
 date: {date_str}
 tags:
 {tags_yaml}
