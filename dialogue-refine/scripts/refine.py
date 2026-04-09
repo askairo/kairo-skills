@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Hexo AI 对话文章提炼工具
+Dialogue Refine - AI 对话文章提炼工具
 将 AI 对话记录转换为结构化的 Hexo 博客文章
 """
 
@@ -33,11 +33,15 @@ def get_default_dialogues_path() -> str:
         candidate = d / 'source' / '_posts' / 'Dialogues'
         if candidate.exists():
             return str(candidate)
-    return r"D:\private-vs-space\hexo-blog\source\_posts\Dialogues"
+        # 也检查 Clippings 目录
+        candidate = d / 'source' / '_posts' / 'Clippings'
+        if candidate.exists():
+            return str(candidate)
+    return ""
 
 
 def get_latest_dialogue(dialogues_dir: str) -> Path:
-    """获取 Dialogues 目录下最新修改的文件"""
+    """获取对话目录下最新修改的文件"""
     dialogues_path = Path(dialogues_dir)
     if not dialogues_path.exists():
         raise FileNotFoundError(f"目录不存在: {dialogues_dir}")
@@ -179,7 +183,7 @@ def generate_hexo_content(title: str, content: str, tags: List[str], category: s
     if tags:
         tags_yaml = '\n'.join([f'  - {tag}' for tag in tags])
     else:
-        tags_yaml = '  - ai-dialogue'
+        tags_yaml = '  - dialogue-refine'
     
     # 构建额外字段
     extra_fields = []
@@ -208,103 +212,122 @@ categories:
     return hexo_content
 
 
-def get_output_filename(posts_path: Path, now: datetime = None) -> Tuple[Path, datetime]:
-    """生成输出文件名，如果当天已存在则自动往后推一天"""
+def get_output_filename(input_file: Path, now: datetime = None) -> Path:
+    """生成输出文件名，在原文目录下生成 yyyyMMdd-refined.md"""
     if now is None:
         now = datetime.now()
-    current_date = now.date()
     
-    while True:
-        year_str = current_date.strftime('%Y')
-        output_dir = posts_path / year_str
-        output_dir.mkdir(exist_ok=True)
-        filename = current_date.strftime('%Y%m%d') + '.md'
-        output_path = output_dir / filename
-        if not output_path.exists():
-            target_datetime = datetime.combine(current_date, now.time())
-            return output_path, target_datetime
-        current_date += timedelta(days=1)
+    filename = now.strftime('%Y%m%d') + '-refined.md'
+    output_path = input_file.parent / filename
+    
+    # 如果文件已存在，添加序号
+    counter = 1
+    original_output = output_path
+    while output_path.exists():
+        filename = now.strftime('%Y%m%d') + f'-refined-{counter}.md'
+        output_path = input_file.parent / filename
+        counter += 1
+    
+    return output_path
 
 
 def main():
-    """主函数 - 用于接收已提炼好的内容并生成 Hexo 文章"""
+    """主函数"""
     import argparse
     
-    parser = argparse.ArgumentParser(description='将提炼后的 AI 对话内容转换为 Hexo 博客文章')
-    parser.add_argument('content_file', help='提炼后的内容文件路径')
+    parser = argparse.ArgumentParser(description='将 AI 对话内容提炼为 Hexo 博客文章')
+    parser.add_argument('dialogue_file', nargs='?', help='对话记录文件路径（可选，默认使用环境变量或最新文件）')
     parser.add_argument('--title', help='文章标题')
     parser.add_argument('--category', help='文章分类')
     parser.add_argument('--tags', help='文章标签，逗号分隔')
     parser.add_argument('--summary', help='文章摘要')
-    parser.add_argument('--output-dir', help='输出目录（默认：source/_posts）')
-
+    parser.add_argument('--output-dir', help='输出目录（默认：与原文同目录）')
     
     args = parser.parse_args()
     
     try:
-        # 读取提炼后的内容
-        content_path = Path(args.content_file)
-        if not content_path.exists():
-            print(f"[ERROR] 文件不存在: {content_path}")
-            sys.exit(1)
-        
-        with open(content_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        
-        # 解析 front matter（如果有）
-        metadata = {}
-        pattern = r'^---\s*\n(.*?)\n---\s*\n(.*)$'
-        match = re.match(pattern, content, re.DOTALL)
-        
-        if match:
-            front_matter = match.group(1)
-            body = match.group(2).strip()
-            
-            title_match = re.search(r'title:\s*["\']?(.*?)["\']?\s*$', front_matter, re.MULTILINE)
-            if title_match:
-                metadata['title'] = title_match.group(1).strip('"\'')
-            
-            summary_match = re.search(r'summary:\s*["\']?(.*?)["\']?\s*$', front_matter, re.MULTILINE)
-            if summary_match:
-                metadata['summary'] = summary_match.group(1).strip('"\'')
-            
-            category_match = re.search(r'category:\s*["\']?(.*?)["\']?\s*$', front_matter, re.MULTILINE)
-            if category_match:
-                metadata['category'] = category_match.group(1).strip('"\'')
-            
-            tags_match = re.search(r'tags:\s*\[?([^\]]*)\]?', front_matter)
-            if tags_match:
-                tags_str = tags_match.group(1)
-                metadata['tags'] = [t.strip().strip('"\'') for t in tags_str.split(',') if t.strip()]
+        # 确定输入文件
+        if args.dialogue_file:
+            input_path = Path(args.dialogue_file)
+            if not input_path.exists():
+                print(f"[ERROR] 文件不存在: {input_path}")
+                sys.exit(1)
         else:
-            body = content
+            # 尝试从环境变量获取目录
+            dialogues_dir = os.environ.get('HEXO_CLIPPINGS_DIR')
+            source = "environment variable HEXO_CLIPPINGS_DIR"
+            
+            if not dialogues_dir:
+                # 尝试自动推断
+                dialogues_dir = get_default_dialogues_path()
+                source = "auto-detected path"
+            
+            if not dialogues_dir:
+                print("\n[ERROR] 未指定对话文件，且无法自动确定目录")
+                print("\n请通过以下方式之一指定：")
+                print("  1. 设置环境变量: HEXO_CLIPPINGS_DIR=<your_dialogues_path>")
+                print("  2. 传递文件路径: python refine.py <dialogue_file>")
+                print("  3. 在 Hexo 博客根目录下运行此脚本")
+                sys.exit(1)
+            
+            if not Path(dialogues_dir).exists():
+                print(f"\n[ERROR] 目录不存在: {dialogues_dir}")
+                print(f"\n请检查环境变量 HEXO_CLIPPINGS_DIR 或使用 --dialogue-dir 指定")
+                sys.exit(1)
+            
+            print(f"Using path from {source}: {dialogues_dir}")
+            input_path = get_latest_dialogue(dialogues_dir)
         
-        # 使用命令行参数覆盖
-        title = args.title or metadata.get('title', 'Untitled')
-        summary = args.summary or metadata.get('summary', '')
-        category = args.category or metadata.get('category', '')
-        tags = args.tags.split(',') if args.tags else metadata.get('tags', [])
+        print(f"\n[1/3] 读取对话文件...")
+        print(f"  文件: {input_path}")
         
-        # 自动分类
+        # 读取并解析对话
+        with open(input_path, 'r', encoding='utf-8') as f:
+            raw_content = f.read()
+        
+        dialogue_meta = parse_dialogue(raw_content)
+        print(f"  解析完成，找到 {len(dialogue_meta['dialogue'])} 条对话")
+        
+        # 这里应该是 Agent 提炼后的内容
+        # 为了演示，我们直接使用原始内容（实际使用时，这里应该是提炼后的结构化内容）
+        
+        # 确定标题
+        title = args.title or dialogue_meta['title'] or input_path.stem
+        
+        # 确定分类
+        category = args.category or dialogue_meta['category']
         if not category:
-            category = classify_article(title, body, tags)
+            category = classify_article(title, raw_content, dialogue_meta['tags'])
         
-        # 确定输出路径
-        if args.output_dir:
-            posts_path = Path(args.output_dir)
-        else:
-            # 默认基于当前工作目录
-            posts_path = Path.cwd() / 'source' / '_posts'
+        # 确定标签
+        tags = args.tags.split(',') if args.tags else dialogue_meta['tags']
         
-        output_file, target_date = get_output_filename(posts_path)
+        # 确定摘要
+        summary = args.summary or ''
         
-        print(f"\n[1/2] 生成 Hexo 文章...")
+        print(f"\n[2/3] 生成 Hexo 文章...")
         print(f"  标题: {title}")
         print(f"  分类: {category}")
         print(f"  标签: {', '.join(tags) if tags else '无'}")
         
         # 生成 Hexo 内容
-        hexo_content = generate_hexo_content(title, body, tags, category, summary)
+        # 注意：这里应该使用提炼后的内容，而不是原始对话
+        # 实际使用时，Agent 应该先生成提炼后的内容，再调用此脚本
+        hexo_content = generate_hexo_content(
+            title, 
+            "# 请使用 Agent 提炼后的内容替换此部分\n\n原始对话内容已解析，请运行 Agent 进行提炼。",
+            tags, 
+            category, 
+            summary
+        )
+        
+        # 确定输出路径
+        if args.output_dir:
+            output_dir = Path(args.output_dir)
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output_file = output_dir / (datetime.now().strftime('%Y%m%d') + '-refined.md')
+        else:
+            output_file = get_output_filename(input_path)
         
         # 写入文件
         with open(output_file, 'w', encoding='utf-8') as f:
@@ -312,11 +335,16 @@ def main():
         
         print(f"  [OK] 文章已生成: {output_file}")
         
-        print(f"\n[2/2] 完成!")
+        print(f"\n[3/3] 完成!")
         print(f"  输出文件: {output_file}")
         print(f"  标题: {title}")
-        print(f"\n提示: 生成的文件可使用 hexo-push skill 进行发布")
+        print(f"\n提示:")
+        print(f"  1. 请使用 Agent 对原始对话进行提炼，替换生成的占位内容")
+        print(f"  2. 完成后使用 hexo-push skill 进行发布")
         
+    except FileNotFoundError as e:
+        print(f"[ERROR] {e}")
+        sys.exit(1)
     except Exception as e:
         print(f"[ERROR] {e}")
         import traceback

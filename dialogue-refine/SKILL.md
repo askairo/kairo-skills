@@ -1,9 +1,9 @@
 ---
-name: hexo-ai-dialogue
+name: dialogue-refine
 description: 将 AI 对话记录提炼、重构为结构化的 Hexo 博客文章。支持主题聚焦、内容筛选、结构重组、格式规范化，输出符合 Markdown 和 Hexo 格式要求的高质量文章。
 ---
 
-# Hexo AI 对话文章提炼工具
+# Dialogue Refine - AI 对话文章提炼工具
 
 将发散的 AI 对话记录转换为结构清晰、主题集中、格式规范的 Hexo 博客文章。
 
@@ -19,7 +19,7 @@ description: 将 AI 对话记录提炼、重构为结构化的 Hexo 博客文章
    - 优化代码块、列表、引用等格式
    - 生成符合 Hexo 要求的 front matter
 6. **智能分类**：自动从已有分类中选择（`AI`、`工作`、`健康`、`杂谈`）
-7. **输出生成**：生成可直接发布的 Hexo Markdown 文件
+7. **输出生成**：在原文目录下生成提炼后的 Hexo 格式副本
 
 > **注意**：本工具仅负责文章提炼和格式化输出，发布操作请使用 `hexo-push` skill 处理。
 
@@ -30,6 +30,7 @@ description: 将 AI 对话记录提炼、重构为结构化的 Hexo 博客文章
 1. **读取对话文件**
    - 获取最新的对话记录文件
    - 支持 `.md`、`.txt` 格式
+   - 默认从 `HEXO_CLIPPINGS_DIR` 环境变量指定的目录读取
 
 2. **分析对话内容**
    - 识别核心主题和讨论目标
@@ -62,8 +63,8 @@ description: 将 AI 对话记录提炼、重构为结构化的 Hexo 博客文章
    - 添加 `<!--more-->` 分隔符
 
 7. **输出文件**
-   - 文件名格式：`yyyyMMdd.md`
-   - 输出目录：`source/_posts/yyyy/` 或指定目录
+   - 文件名格式：`yyyyMMdd-refined.md`
+   - 输出目录：与原文相同的目录
 
 > 生成的文件可直接使用 `hexo-push` skill 进行发布。
 
@@ -98,40 +99,84 @@ Agent 先分析对话，与用户确认后再生成文章：
 
 ```python
 import sys
+import tempfile
 from pathlib import Path
 
-# 1. 读取对话文件
-dialogue_file = Path('source/_posts/Dialogues/20260408-ai-discussion.md')
-with open(dialogue_file, 'r', encoding='utf-8') as f:
-    content = f.read()
+# 加载 refine 模块
+sys.path.insert(0, str(Path.home() / '.config' / 'agents' / 'skills' / 'dialogue-refine' / 'scripts'))
+from refine import get_latest_dialogue, parse_dialogue
 
-# 2. Agent 分析对话，生成提炼方案
-# - 识别核心主题
-# - 设计文章结构
-# - 标记需要删除的内容
+# 1. 确定对话目录（优先级：环境变量 > 自动推断）
+import os
+dialogues_dir = os.environ.get('HEXO_CLIPPINGS_DIR')
+if not dialogues_dir:
+    # 自动基于当前工作目录推断
+    dialogues_dir = Path('source/_posts/Dialogues').resolve()
 
-# 3. 向用户展示提炼方案，等待确认
+# 2. 读取最新对话文件
+latest = get_latest_dialogue(str(dialogues_dir))
 
-# 4. 用户确认后，调用脚本生成文章
+# 3. 解析对话
+with open(latest, 'r', encoding='utf-8') as f:
+    meta = parse_dialogue(f.read())
+
+# 4. Agent 分析对话，提炼内容，生成结构化文章
+# ...
+
+# 5. 将提炼后的内容写入临时文件
+refined_content = """---
+title: "提炼后的标题"
+date: 2026-04-09 12:00:00
+tags:
+  - 标签1
+categories:
+  - 分类
+---
+
+摘要内容...
+
+<!--more-->
+
+正文内容...
+"""
+
+with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', suffix='.md', delete=False) as tmp:
+    tmp.write(refined_content)
+    tmp_file = tmp.name
+
+# 6. 调用脚本生成最终文件
+import subprocess
+subprocess.run([
+    sys.executable, 
+    str(Path.home() / '.config' / 'agents' / 'skills' / 'dialogue-refine' / 'scripts' / 'refine.py'),
+    tmp_file,
+    '--output-dir', str(Path(dialogues_dir))
+])
 ```
 
-### 方式二：直接生成
-
-如果对话质量高、结构清晰，可直接生成：
+### 方式二：命令行使用
 
 ```bash
-python scripts/dialogue_to_post.py <content_file> [options]
+# 使用环境变量指定的目录
+python scripts/refine.py
+
+# 或指定具体文件
+python scripts/refine.py <dialogue_file> [options]
 ```
 
 参数说明：
-- `content_file`: 提炼后的内容文件路径（包含 front matter 和正文）
+- `dialogue_file`: 对话记录文件路径（可选，默认使用环境变量或最新文件）
 - `--title <title>`: 指定文章标题
 - `--category <cat>`: 指定分类
 - `--tags <tag1,tag2>`: 指定标签
 - `--summary <summary>`: 指定文章摘要
-- `--output-dir <dir>`: 指定输出目录（默认：source/_posts）
+- `--output-dir <dir>`: 指定输出目录（默认：与原文同目录）
 
-> 生成的 Hexo 格式文件可使用 `hexo-push` skill 进行发布。
+### 环境变量
+
+- `HEXO_CLIPPINGS_DIR`: 指定对话记录目录路径
+  - 如果未设置，脚本会尝试自动推断（基于当前工作目录）
+  - 如果无法推断，会提示用户指定
 
 ## 文章结构模板
 
@@ -211,52 +256,19 @@ categories:
 4. **读者友好**：考虑目标读者的背景知识和阅读体验
 5. **引用标注**：如涉及外部资料，需添加引用来源
 
-## 示例
-
-### 输入（原始对话）
+## 完整使用流程示例
 
 ```
-用户：你好，我想讨论一下 VO 和 Entity 的区别
+1. 准备 AI 对话记录，保存到 HEXO_CLIPPINGS_DIR 目录
+   例如：D:\private-vs-space\hexo-blog\source\_posts\Dialogues\20260409-ai-chat.md
 
-AI：你好！VO 和 Entity 是软件开发中常见的概念...
+2. 运行 dialogue-refine skill
+   - 读取最新对话文件
+   - Agent 分析并提炼内容
+   - 生成结构化文章
+   - 输出：20260409-refined.md（在同目录下）
 
-用户：等等，我先问一下什么是 VO？
-
-AI：VO 是 View Object 的缩写...
-
-用户：哦明白了。那回到正题，VO 和 Entity 有什么区别？
-
-AI：主要区别在于...
-
-用户：这个和 DTO 有什么关系吗？
-
-AI：DTO 是另一种概念...
-
-用户：好的谢谢，我去吃饭了
-```
-
-### 输出（提炼后文章）
-
-```markdown
----
-title: "VO vs Entity：当"复用"遇到"语义"，该如何选择？"
-date: 2026-04-08 12:00:00
-tags:
-  - 架构设计
-  - 领域驱动设计
-categories:
-  - 工作
----
-
-本文深入探讨 VO（View Object）与 Entity 的本质区别...
-
-<!--more-->
-
-## 核心区别
-
-VO 和 Entity 在软件设计中服务于不同的目标...
-
-## 设计原则
-
-...
+3. 使用 hexo-push skill 发布
+   - 将 refined 文件复制到 Clippings 目录
+   - 运行 hexo-push 进行发布
 ```
