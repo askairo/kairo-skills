@@ -11,7 +11,7 @@ import shutil
 import argparse
 from pathlib import Path
 from datetime import datetime
-from typing import Set, Dict, Tuple, List
+from typing import Set, Dict, Tuple, List, Optional
 
 # Windows 终端中文输出修复
 try:
@@ -21,20 +21,123 @@ except AttributeError:
     pass
 
 
-def get_project_dir() -> str:
-    """获取项目目录路径"""
+def is_skills_project_dir(directory: str) -> bool:
+    """
+    检查指定目录是否是 skills 项目目录
+    条件：包含多个 skill 目录（每个都有 SKILL.md）
+    """
+    path = Path(directory)
+    if not path.exists() or not path.is_dir():
+        return False
+    
+    skills = [x for x in path.iterdir() if x.is_dir() and (x / 'SKILL.md').exists()]
+    return len(skills) >= 2
+
+
+def find_project_dir_from_cwd() -> Optional[str]:
+    """
+    从当前工作目录向上查找 skills 项目目录
+    返回项目目录路径，如果找不到则返回 None
+    """
+    cwd = Path.cwd()
+    
+    # 检查当前目录
+    if is_skills_project_dir(cwd):
+        return str(cwd)
+    
+    # 检查父目录
+    for parent in cwd.parents:
+        if is_skills_project_dir(parent):
+            return str(parent)
+    
+    return None
+
+
+def is_interactive() -> bool:
+    """检查是否在交互式环境中运行"""
+    return sys.stdin.isatty() and sys.stdout.isatty()
+
+
+def setup_project_env_var(project_dir: str) -> bool:
+    """
+    设置项目目录环境变量
+    1. 临时设置（当前进程）
+    2. 提示用户如何永久设置
+    返回用户是否确认继续
+    """
+    print(f"\n{'='*60}")
+    print("🔧 首次使用配置")
+    print(f"{'='*60}")
+    print(f"检测到 Skills 项目目录:")
+    print(f"  {project_dir}")
+    print(f"\n环境变量 SKILLS_PROJECT_DIR 未设置")
+    
+    # 检查是否在交互式环境
+    if not is_interactive():
+        print(f"\n⚠️  非交互式环境，自动使用检测到的目录")
+        print(f"   （临时设置环境变量）")
+        os.environ['SKILLS_PROJECT_DIR'] = project_dir
+        print(f"\n💡 建议永久设置环境变量，下次使用更顺畅:")
+        print(f'   setx SKILLS_PROJECT_DIR "{project_dir}"')
+        return True
+    
+    print(f"\n选项:")
+    print(f"  [Y] 是 - 临时使用此目录，并设置环境变量")
+    print(f"  [N] 否 - 退出，手动设置环境变量")
+    
+    while True:
+        try:
+            choice = input("\n请选择 [Y/N]: ").strip().upper()
+            if choice in ('Y', 'YES'):
+                # 临时设置环境变量（当前进程）
+                os.environ['SKILLS_PROJECT_DIR'] = project_dir
+                
+                print(f"\n✅ 已临时设置环境变量")
+                print(f"\n💡 建议永久设置环境变量，下次使用更顺畅:")
+                print(f"\n  PowerShell:")
+                print(f'    [Environment]::SetEnvironmentVariable("SKILLS_PROJECT_DIR", "{project_dir}", "User")')
+                print(f"\n  CMD:")
+                print(f'    setx SKILLS_PROJECT_DIR "{project_dir}"')
+                print(f"\n设置完成后，请重新打开终端使环境变量生效。")
+                input("\n按 Enter 键继续...")
+                return True
+            elif choice in ('N', 'NO'):
+                print(f"\n请手动设置环境变量后重试:")
+                print(f'  setx SKILLS_PROJECT_DIR "{project_dir}"')
+                return False
+            else:
+                print("请输入 Y 或 N")
+        except (EOFError, KeyboardInterrupt):
+            print("\n")
+            return False
+
+
+def get_project_dir() -> Optional[str]:
+    """
+    获取项目目录路径
+    优先级：
+    1. 环境变量 SKILLS_PROJECT_DIR（如果已设置）
+    2. 自动检测当前目录，并提示用户确认设置
+    """
+    # 1. 首先检查环境变量
     project_dir = os.environ.get('SKILLS_PROJECT_DIR')
-    if not project_dir:
-        # 尝试自动检测：查找包含 .git 的父目录
-        cwd = Path.cwd()
-        check_dirs = [cwd] + list(cwd.parents)
-        for d in check_dirs:
-            if (d / '.git').exists():
-                # 检查是否是 skills 项目（包含多个 skill 目录）
-                skills = [x for x in d.iterdir() if x.is_dir() and (x / 'SKILL.md').exists()]
-                if len(skills) >= 2:
-                    return str(d)
-    return project_dir
+    
+    if project_dir:
+        # 环境变量已设置，直接使用
+        return project_dir
+    
+    # 2. 环境变量未设置，尝试自动检测
+    detected_dir = find_project_dir_from_cwd()
+    
+    if detected_dir:
+        # 检测到项目目录，提示用户确认并设置
+        if setup_project_env_var(detected_dir):
+            return detected_dir
+        else:
+            return None
+    
+    # 3. 无法检测，返回 None
+    return None
 
 
 def get_user_dir() -> str:
@@ -327,18 +430,23 @@ def main():
     
     args = parser.parse_args()
     
-    # 获取目录
+    # 获取项目目录（包含环境变量检查和自动设置逻辑）
     project_dir = get_project_dir()
-    user_dir = get_user_dir()
     
     if not project_dir:
-        print("[ERROR] 无法确定项目目录")
-        print("请设置环境变量: SKILLS_PROJECT_DIR")
+        print("\n[ERROR] 无法确定项目目录")
+        print("\n解决方案:")
+        print("1. 在 Skills 项目目录中运行此脚本")
+        print("2. 手动设置环境变量 SKILLS_PROJECT_DIR")
+        print('   setx SKILLS_PROJECT_DIR "<你的项目目录路径>"')
         sys.exit(1)
     
     if not Path(project_dir).exists():
         print(f"[ERROR] 项目目录不存在: {project_dir}")
         sys.exit(1)
+    
+    # 获取用户目录
+    user_dir = get_user_dir()
     
     if not Path(user_dir).exists():
         print(f"[WARN] 用户目录不存在，将创建: {user_dir}")
