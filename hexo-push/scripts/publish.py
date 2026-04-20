@@ -183,6 +183,14 @@ def prompt_for_category() -> str:
             print("  [WARN] 请输入数字")
 
 
+def strip_summary_and_more(body: str) -> str:
+    """如果 body 中已经包含 <!--more--> 分隔符，只保留后面的正文部分"""
+    parts = body.split('<!--more-->', 1)
+    if len(parts) == 2:
+        return parts[1].strip()
+    return body
+
+
 def generate_summary(body: str, description: str = '', max_length: int = 200) -> str:
     """生成摘要
     优先使用传入的 description（可由 AI 生成），否则取 body 前 max_length 字符作为兜底
@@ -190,8 +198,11 @@ def generate_summary(body: str, description: str = '', max_length: int = 200) ->
     if description and len(description.strip()) > 10:
         return description.strip()
     
-    # 清理 body 中的 Markdown 标记
-    text = re.sub(r'[#*`\[\]\(\)!]', '', body)
+    # 先移除 body 中的 <!--more--> 及之后的内容，避免摘要包含正文
+    body_for_summary = body.split('<!--more-->', 1)[0] if '<!--more-->' in body else body
+    
+    # 清理 Markdown 标记
+    text = re.sub(r'[#*`\[\]\(\)!]', '', body_for_summary)
     text = text.replace('\n', ' ').strip()
     
     if len(text) > max_length:
@@ -230,6 +241,9 @@ def generate_hexo_content(metadata: dict, target_date: datetime = None, category
     source = metadata.get('source', '')
     author = metadata.get('author', '')
     created = metadata.get('created', '')
+    
+    # 如果 body 中已包含 <!--more-->，只保留正文部分，避免重复摘要
+    body = strip_summary_and_more(body)
     
     # 生成摘要（优先使用 metadata 中的 description，可能是命令行传入的 AI 生成摘要）
     summary = generate_summary(body, description)
