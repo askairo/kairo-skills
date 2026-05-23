@@ -10,6 +10,7 @@ import sys
 import re
 import subprocess
 import tempfile
+import json
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, Tuple, List
@@ -23,6 +24,37 @@ except AttributeError:
 
 
 ALLOWED_CATEGORIES = ["AI", "工作", "健康", "杂谈"]
+CONFIG_NAMES = (
+    "dialogue-refine.local.json",
+    ".dialogue-refine.json",
+)
+
+
+def read_json(path: Path) -> dict:
+    try:
+        return json.loads(path.read_text(encoding='utf-8'))
+    except FileNotFoundError:
+        return {}
+    except json.JSONDecodeError as exc:
+        print(f"[WARN] 配置文件解析失败 {path}: {exc}")
+        return {}
+
+
+def load_config() -> dict:
+    """读取本地配置。环境变量只作为最后兜底，不作为主配置来源。"""
+    config = {}
+    search_dirs = [
+        Path.cwd(),
+        Path(__file__).resolve().parents[1],
+        Path.home() / '.config' / 'skills',
+        Path.home() / '.codex',
+    ]
+    for directory in search_dirs:
+        for name in CONFIG_NAMES:
+            path = directory / name
+            if path.exists():
+                config.update(read_json(path))
+    return config
 
 
 def get_default_dialogues_path() -> str:
@@ -38,6 +70,26 @@ def get_default_dialogues_path() -> str:
         if candidate.exists():
             return str(candidate)
     return ""
+
+
+def resolve_dialogues_dir(args, config: dict) -> tuple[str, str]:
+    """确定对话目录：显式参数 > 配置文件 > 自动发现 > 环境变量兜底。"""
+    if args.dialogue_dir:
+        return args.dialogue_dir, "command line argument --dialogue-dir"
+
+    configured = config.get('dialoguesDir') or config.get('dialogues_dir')
+    if configured:
+        return configured, "config file"
+
+    detected = get_default_dialogues_path()
+    if detected:
+        return detected, "auto-detected path"
+
+    env_path = os.environ.get('HEXO_CLIPPINGS_DIR')
+    if env_path:
+        return env_path, "fallback environment variable HEXO_CLIPPINGS_DIR"
+
+    return "", ""
 
 
 def get_latest_dialogue(dialogues_dir: str) -> Path:
@@ -236,16 +288,19 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(description='将 AI 对话内容提炼为 Hexo 博客文章')
-    parser.add_argument('dialogue_file', nargs='?', help='对话记录文件路径（可选，默认使用环境变量或最新文件）')
+    parser.add_argument('dialogue_file', nargs='?', help='对话记录文件路径（可选，默认使用配置文件、自动发现或最新文件）')
     parser.add_argument('--title', help='文章标题')
     parser.add_argument('--category', help='文章分类')
     parser.add_argument('--tags', help='文章标签，逗号分隔')
     parser.add_argument('--summary', help='文章摘要')
     parser.add_argument('--output-dir', help='输出目录（默认：与原文同目录）')
+    parser.add_argument('--dialogue-dir', help='对话记录目录（优先于配置文件和自动发现）')
     
     args = parser.parse_args()
     
     try:
+        config = load_config()
+
         # 确定输入文件
         if args.dialogue_file:
             input_path = Path(args.dialogue_file)
@@ -253,26 +308,20 @@ def main():
                 print(f"[ERROR] 文件不存在: {input_path}")
                 sys.exit(1)
         else:
-            # 尝试从环境变量获取目录
-            dialogues_dir = os.environ.get('HEXO_CLIPPINGS_DIR')
-            source = "environment variable HEXO_CLIPPINGS_DIR"
-            
-            if not dialogues_dir:
-                # 尝试自动推断
-                dialogues_dir = get_default_dialogues_path()
-                source = "auto-detected path"
+            dialogues_dir, source = resolve_dialogues_dir(args, config)
             
             if not dialogues_dir:
                 print("\n[ERROR] 未指定对话文件，且无法自动确定目录")
                 print("\n请通过以下方式之一指定：")
-                print("  1. 设置环境变量: HEXO_CLIPPINGS_DIR=<your_dialogues_path>")
-                print("  2. 传递文件路径: python refine.py <dialogue_file>")
-                print("  3. 在 Hexo 博客根目录下运行此脚本")
+                print("  1. 传递文件路径: python refine.py <dialogue_file>")
+                print("  2. 传递目录: python refine.py --dialogue-dir <dialogues_dir>")
+                print("  3. 在配置文件 dialogue-refine.local.json 中配置 dialoguesDir")
+                print("  4. 在 Hexo 博客根目录下运行此脚本")
                 sys.exit(1)
             
             if not Path(dialogues_dir).exists():
                 print(f"\n[ERROR] 目录不存在: {dialogues_dir}")
-                print(f"\n请检查环境变量 HEXO_CLIPPINGS_DIR 或使用 --dialogue-dir 指定")
+                print(f"\n请检查配置文件或使用 --dialogue-dir 指定")
                 sys.exit(1)
             
             print(f"Using path from {source}: {dialogues_dir}")

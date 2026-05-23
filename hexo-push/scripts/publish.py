@@ -12,6 +12,7 @@ import sys
 import re
 import subprocess
 import time
+import json
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -23,6 +24,37 @@ except AttributeError:
 
 
 ALLOWED_CATEGORIES = ["AI", "工作", "健康", "杂谈"]
+CONFIG_NAMES = (
+    "hexo-push.local.json",
+    ".hexo-push.json",
+)
+
+
+def read_json(path: Path) -> dict:
+    try:
+        return json.loads(path.read_text(encoding='utf-8'))
+    except FileNotFoundError:
+        return {}
+    except json.JSONDecodeError as exc:
+        print(f"[WARN] Failed to parse config {path}: {exc}")
+        return {}
+
+
+def load_config() -> dict:
+    """Load stable local config. Environment variables are fallback only."""
+    config = {}
+    search_dirs = [
+        Path.cwd(),
+        Path(__file__).resolve().parents[1],
+        Path.home() / '.config' / 'skills',
+        Path.home() / '.codex',
+    ]
+    for directory in search_dirs:
+        for name in CONFIG_NAMES:
+            path = directory / name
+            if path.exists():
+                config.update(read_json(path))
+    return config
 
 
 def get_latest_file(clippings_dir: str) -> Path:
@@ -387,14 +419,34 @@ def run_command_with_retries(cmd: list[str], cwd: str | None = None, retries: in
     return last
 
 
-def get_default_clippings_path() -> str:
-    """智能推断默认 Clippings 路径。"""
+def get_auto_clippings_path() -> str:
+    """Auto-detect Clippings path from current Hexo root."""
     cwd = Path.cwd()
     for d in [cwd] + list(cwd.parents):
         candidate = d / 'source' / '_posts' / 'Clippings'
         if candidate.exists():
             return str(candidate)
-    return r"D:\private-vs-space\hexo-blog\source\_posts\Clippings"
+    return ""
+
+
+def resolve_clippings_dir(positional_args: list[str], config: dict) -> tuple[str, str]:
+    """Resolve Clippings path: explicit arg > config > auto-detect > env fallback > default."""
+    if positional_args:
+        return positional_args[0], 'command line argument'
+
+    configured = config.get('clippingsDir') or config.get('clippings_dir')
+    if configured:
+        return configured, 'config file'
+
+    detected = get_auto_clippings_path()
+    if detected:
+        return detected, 'auto-detected path'
+
+    env_path = os.environ.get('HEXO_CLIPPINGS_DIR')
+    if env_path:
+        return env_path, 'fallback environment variable HEXO_CLIPPINGS_DIR'
+
+    return r"D:\private-vs-space\hexo-blog\source\_posts\Clippings", 'default path'
 
 
 def read_optional_file(path: str) -> str:
@@ -515,17 +567,8 @@ def print_publish_summary(output_file: Path, metadata: dict, category: str, is_u
 
 def main():
     options, positional_args = parse_args(sys.argv[1:])
-    env_path = os.environ.get('HEXO_CLIPPINGS_DIR')
-
-    if positional_args:
-        clippings_dir = positional_args[0]
-        path_source = 'command line argument'
-    elif env_path:
-        clippings_dir = env_path
-        path_source = 'environment variable HEXO_CLIPPINGS_DIR'
-    else:
-        clippings_dir = get_default_clippings_path()
-        path_source = 'default path'
+    config = load_config()
+    clippings_dir, path_source = resolve_clippings_dir(positional_args, config)
 
     print(f"Using path from {path_source}: {clippings_dir}")
     if options['description']:

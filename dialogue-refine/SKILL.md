@@ -30,7 +30,7 @@ description: 将 AI 对话记录提炼、重构为结构化的 Hexo 博客文章
 1. **读取对话文件**
    - 获取最新的对话记录文件
    - 支持 `.md`、`.txt` 格式
-   - 默认从 `HEXO_CLIPPINGS_DIR` 环境变量指定的目录读取
+   - 路径优先级：自然语言/显式路径 > 本地配置文件 > 自动发现 > 环境变量兜底
 
 2. **分析对话内容**
    - 识别核心主题和讨论目标
@@ -106,12 +106,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path.home() / '.config' / 'agents' / 'skills' / 'dialogue-refine' / 'scripts'))
 from refine import get_latest_dialogue, parse_dialogue
 
-# 1. 确定对话目录（优先级：环境变量 > 自动推断）
-import os
-dialogues_dir = os.environ.get('HEXO_CLIPPINGS_DIR')
-if not dialogues_dir:
-    # 自动基于当前工作目录推断
-    dialogues_dir = Path('source/_posts/Dialogues').resolve()
+# 1. 确定对话目录（优先级：显式路径 > 配置文件 > 自动推断 > 环境变量兜底）
+dialogues_dir = Path('source/_posts/Dialogues').resolve()
 
 # 2. 读取最新对话文件
 latest = get_latest_dialogue(str(dialogues_dir))
@@ -157,26 +153,43 @@ subprocess.run([
 ### 方式二：命令行使用
 
 ```bash
-# 使用环境变量指定的目录
+# 使用配置文件或自动发现的目录
 python scripts/refine.py
 
 # 或指定具体文件
 python scripts/refine.py <dialogue_file> [options]
+
+# 或指定目录
+python scripts/refine.py --dialogue-dir <dialogues_dir>
 ```
 
 参数说明：
-- `dialogue_file`: 对话记录文件路径（可选，默认使用环境变量或最新文件）
+- `dialogue_file`: 对话记录文件路径（可选，默认使用配置文件、自动发现或最新文件）
+- `--dialogue-dir <dir>`: 指定对话记录目录
 - `--title <title>`: 指定文章标题
 - `--category <cat>`: 指定分类
 - `--tags <tag1,tag2>`: 指定标签
 - `--summary <summary>`: 指定文章摘要
 - `--output-dir <dir>`: 指定输出目录（默认：与原文同目录）
 
-### 环境变量
+### 配置文件
 
-- `HEXO_CLIPPINGS_DIR`: 指定对话记录目录路径
-  - 如果未设置，脚本会尝试自动推断（基于当前工作目录）
-  - 如果无法推断，会提示用户指定
+推荐使用配置文件，而不是环境变量。可选配置文件：
+
+- 当前工作目录：`dialogue-refine.local.json`
+- 当前 skill 目录：`dialogue-refine.local.json`
+- 用户配置目录：`~/.config/skills/.dialogue-refine.json`
+- Codex 用户目录：`~/.codex/.dialogue-refine.json`
+
+示例：
+
+```json
+{
+  "dialoguesDir": "D:\\private-vs-space\\hexo-blog\\source\\_posts\\Dialogues"
+}
+```
+
+环境变量 `HEXO_CLIPPINGS_DIR` 仅作为旧流程兜底兼容，不作为主推荐配置方式。
 
 ## 文章结构模板
 
@@ -259,7 +272,7 @@ categories:
 ## 完整使用流程示例
 
 ```
-1. 准备 AI 对话记录，保存到 HEXO_CLIPPINGS_DIR 目录
+1. 准备 AI 对话记录，保存到配置文件或显式路径指定的目录
    例如：D:\private-vs-space\hexo-blog\source\_posts\Dialogues\20260409-ai-chat.md
 
 2. 运行 dialogue-refine skill

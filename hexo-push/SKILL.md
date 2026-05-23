@@ -75,7 +75,24 @@ python C:\Users\admin\.codex\skills\hexo-push\scripts\publish.py <Clippings目�
 D:\private-vs-space\hexo-blog\source\_posts\Clippings
 ```
 
-路径优先级：命令行参数 > 环境变量 `HEXO_CLIPPINGS_DIR` > 自动推断当前 Hexo 根目录 > 默认路径。
+路径优先级：自然语言/命令行路径 > 本地配置文件 > 自动推断当前 Hexo 根目录 > 环境变量 `HEXO_CLIPPINGS_DIR` 兜底 > 默认路径。
+
+推荐使用配置文件，而不是环境变量。可选配置文件：
+
+- 当前工作目录：`hexo-push.local.json`
+- 当前 skill 目录：`hexo-push.local.json`
+- 用户配置目录：`~/.config/skills/.hexo-push.json`
+- Codex 用户目录：`~/.codex/.hexo-push.json`
+
+示例：
+
+```json
+{
+  "clippingsDir": "D:\\private-vs-space\\hexo-blog\\source\\_posts\\Clippings"
+}
+```
+
+环境变量 `HEXO_CLIPPINGS_DIR` 仅作为旧流程兜底兼容，不作为主推荐配置方式。
 
 ## Hexo 文档格式
 
