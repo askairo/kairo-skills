@@ -2,18 +2,19 @@
 # -*- coding: utf-8 -*-
 """
 Hexo Clipping 发布工具
-读取 Clippings 目录的最新文章，转换为 Hexo 博客格式并发布
+读取 Clippings 目录的最新文章，转换为 Hexo 博客格式并发布。
+
+Agent 负责内容理解、润色、分类和标签选择；脚本负责机械发布、去重、git 和 deploy。
 """
 
 import os
 import sys
 import re
 import subprocess
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
 
-# Windows 终端中文输出修复
 try:
     sys.stdout.reconfigure(encoding='utf-8')
     sys.stderr.reconfigure(encoding='utf-8')
@@ -21,83 +22,112 @@ except AttributeError:
     pass
 
 
+ALLOWED_CATEGORIES = ["AI", "工作", "健康", "杂谈"]
+
+
 def get_latest_file(clippings_dir: str) -> Path:
-    """获取 Clippings 目录下最新修改的文件"""
+    """获取 Clippings 目录下最新修改的 Markdown 文件。"""
     clips_path = Path(clippings_dir)
     if not clips_path.exists():
         raise FileNotFoundError(f"目录不存在: {clippings_dir}")
-    
+
     files = [f for f in clips_path.iterdir() if f.is_file() and f.suffix == '.md']
     if not files:
         raise FileNotFoundError(f"目录中没有 Markdown 文件: {clippings_dir}")
-    
-    # 按修改时间排序，取最新的
-    latest = max(files, key=lambda f: f.stat().st_mtime)
-    return latest
+
+    return max(files, key=lambda f: f.stat().st_mtime)
+
+
+def split_front_matter(content: str) -> tuple[str, str]:
+    """拆分 YAML front matter 和正文。"""
+    normalized = content.lstrip('\ufeff')
+    match = re.match(r'^---\s*\r?\n(.*?)\r?\n---\s*\r?\n?(.*)$', normalized, re.DOTALL)
+    if not match:
+        return '', content
+    return match.group(1), match.group(2).strip()
+
+
+def unquote_yaml_value(value: str) -> str:
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+        return value[1:-1]
+    return value
+
+
+def normalize_yaml_list_item(value: str) -> str:
+    return clean_wiki_links(unquote_yaml_value(value.strip()))
+
+
+def parse_simple_front_matter(front_matter: str) -> dict:
+    """解析常见 Hexo/Obsidian front matter，避免正则漏掉最后一个列表项。"""
+    data = {}
+    lines = front_matter.splitlines()
+    i = 0
+
+    while i < len(lines):
+        line = lines[i]
+        if not line.strip() or line.lstrip().startswith('#'):
+            i += 1
+            continue
+
+        match = re.match(r'^([A-Za-z0-9_-]+):\s*(.*)$', line)
+        if not match:
+            i += 1
+            continue
+
+        key, rest = match.group(1), match.group(2).strip()
+        if rest:
+            data[key] = unquote_yaml_value(rest)
+            i += 1
+            continue
+
+        items = []
+        i += 1
+        while i < len(lines):
+            child = lines[i]
+            if re.match(r'^[A-Za-z0-9_-]+:\s*', child):
+                break
+            item_match = re.match(r'^\s*-\s*(.*)$', child)
+            if item_match:
+                items.append(normalize_yaml_list_item(item_match.group(1)))
+            i += 1
+        data[key] = items
+
+    return data
+
+
+def first_list_value(value):
+    if isinstance(value, list):
+        return value[0] if value else ''
+    return value or ''
 
 
 def parse_front_matter(content: str) -> dict:
-    """解析文章的前置元数据"""
+    """解析文章元数据和正文。"""
+    front_matter, body = split_front_matter(content)
+    data = parse_simple_front_matter(front_matter) if front_matter else {}
+
     metadata = {
-        'title': '',
-        'source': '',
-        'author': '',
-        'description': '',
-        'tags': [],
-        'created': '',
-        'body': content
+        'title': str(data.get('title') or ''),
+        'source': str(data.get('source') or ''),
+        'author': first_list_value(data.get('author')),
+        'description': str(data.get('description') or ''),
+        'tags': [str(tag) for tag in data.get('tags', [])] if isinstance(data.get('tags'), list) else [],
+        'created': str(data.get('created') or ''),
+        'body': body or content,
     }
-    
-    # 匹配 YAML front matter
-    pattern = r'^---\s*\n(.*?)\n---\s*\n(.*)$'
-    match = re.match(pattern, content, re.DOTALL)
-    
-    if match:
-        front_matter = match.group(1)
-        metadata['body'] = match.group(2).strip()
-        
-        # 解析各个字段
-        title_match = re.search(r'title:\s*["\']?(.*?)["\']?\s*$', front_matter, re.MULTILINE)
-        if title_match:
-            metadata['title'] = title_match.group(1).strip('"\'')
-        
-        source_match = re.search(r'source:\s*["\']?(.*?)["\']?\s*$', front_matter, re.MULTILINE)
-        if source_match:
-            metadata['source'] = source_match.group(1).strip('"\'')
-        
-        author_match = re.search(r'author:\s*["\']?(.*?)["\']?\s*$', front_matter, re.MULTILINE)
-        if author_match:
-            author_val = author_match.group(1).strip('"\'')
-            # 处理 YAML 列表格式: "- [[Thariq]]"
-            if author_val.startswith('- '):
-                author_val = author_val[2:].strip('"\'')
-            metadata['author'] = author_val
-        
-        desc_match = re.search(r'description:\s*["\']?(.*?)["\']?\s*$', front_matter, re.MULTILINE)
-        if desc_match:
-            metadata['description'] = desc_match.group(1).strip('"\'')
-        
-        # 解析 tags
-        tags_match = re.search(r'tags:\s*\n((?:\s+-\s*.*?\n)*)', front_matter)
-        if tags_match:
-            tags_text = tags_match.group(1)
-            metadata['tags'] = re.findall(r'-\s*["\']?(.*?)["\']?\s*$', tags_text, re.MULTILINE)
-        
-        created_match = re.search(r'created:\s*(\d{4}-\d{2}-\d{2})', front_matter)
-        if created_match:
-            metadata['created'] = created_match.group(1)
-    else:
-        # 没有 front matter，使用第一行作为标题
+
+    if not metadata['title']:
         lines = content.strip().split('\n')
         if lines:
             metadata['title'] = lines[0].strip('# ')
             metadata['body'] = content
-    
+
     return metadata
 
 
 def clean_unicode_chars(text: str) -> str:
-    """清理 Unicode 特殊字符"""
+    """清理容易影响 YAML 或阅读体验的 Unicode 标点。"""
     replacements = {
         '\u2022': '-',
         '\u25cf': '-',
@@ -113,66 +143,59 @@ def clean_unicode_chars(text: str) -> str:
     return text
 
 
-ALLOWED_CATEGORIES = ["AI", "工作", "健康", "杂谈"]
-
-
-def classify_article(title: str, body: str, tags: list) -> str:
-    """根据文章内容自动分类，只允许使用已有的分类"""
+def classify_article(title: str, body: str, tags: list) -> str | None:
+    """兜底分类。优先让 Agent 从自然语言中确认分类；脚本分类只在未指定时使用。"""
     text = (title + " " + body + " " + " ".join(tags)).lower()
-    
-    # 定义关键词映射
     keywords = {
         "AI": [
             "人工智能", "机器学习", "深度学习", "llm", "大模型", "chatgpt", "gpt", "claude",
-            "神经网络", "算法", "nvidia", "gpu", "芯片", "半导体", "sambaNova", "intel",
-            "openai", "agi", "aigc", "生成式", "transformer", "模型训练", "推理",
-            "python", "tensorflow", "pytorch", "数据科学", "自动驾驶", "机器人"
+            "神经网络", "算法", "nvidia", "gpu", "芯片", "openai", "agi", "aigc", "生成式",
+            "transformer", "模型训练", "推理", "python", "tensorflow", "pytorch", "数据科学",
+            "自动驾驶", "机器人"
         ],
         "工作": [
-            "编程", "代码", "开发", "架构", "cleancode", "命名规范", "重构",
-            "职场", "面试", "管理", "效率", "工具", "git", "docker", "kubernetes",
-            "微服务", "前端", "后端", "全栈", "devops", "敏捷", "scrum", "项目管理",
-            "沟通", "汇报", "晋升", "简历", "offer", "薪资", "远程工作", "副业"
+            "编程", "代码", "开发", "架构", "cleancode", "命名规范", "重构", "职场", "面试",
+            "管理", "效率", "工具", "git", "docker", "kubernetes", "微服务", "前端", "后端",
+            "全栈", "devops", "敏捷", "scrum", "项目管理", "沟通", "汇报", "晋升",
+            "简历", "offer", "薪资", "远程工作", "副业"
         ],
         "健康": [
-            "健身", "运动", "跑步", "瑜伽", "游泳", "饮食", "营养", "减肥", "增肌",
-            "睡眠", "失眠", "心理", "焦虑", "抑郁", "冥想", "养生", "医疗", "疾病",
-            "体检", "疫苗", "免疫力", "慢性病", "颈椎", "腰椎", "眼睛", "视力"
+            "健身", "运动", "跑步", "瑜伽", "游泳", "饮食", "营养", "减肥", "增肌", "睡眠",
+            "失眠", "心理", "焦虑", "抑郁", "冥想", "养生", "医疗", "疾病", "体检", "疫苗",
+            "免疫力", "慢性病", "颈椎", "腰椎", "眼睛", "视力"
         ],
         "杂谈": [
-            "生活", "随笔", "感悟", "读书", "阅读", "书评", "电影", "影评", "音乐",
-            "旅行", "旅游", "摄影", "美食", "社会", "新闻", "评论", "热点", "八卦",
-            "历史", "文化", "哲学", "经济", "金融", "投资", "理财", "房产", "汽车"
-        ]
+            "生活", "随笔", "感悟", "读书", "阅读", "书评", "电影", "影评", "音乐", "旅行",
+            "旅游", "摄影", "美食", "社会", "新闻", "评论", "热点", "八卦", "历史", "文化",
+            "哲学", "经济", "金融", "投资", "理财", "房产", "汽车", "企业", "制造业", "制度"
+        ],
     }
-    
+
     scores = {}
     for cat, words in keywords.items():
         score = sum(1 for word in words if word.lower() in text)
         if score > 0:
             scores[cat] = score
-    
+
     if scores:
-        # 返回得分最高的分类
         return max(scores, key=scores.get)
-    
     return None
 
 
 def prompt_for_category() -> str:
-    """当自动分类无法确定时，交互式询问用户"""
+    """当自动分类无法确定时，交互式询问用户。"""
     print("\n  [INFO] 无法自动确定文章分类，请从以下分类中选择：")
     for i, cat in enumerate(ALLOWED_CATEGORIES, 1):
         print(f"    {i}. {cat}")
-    print(f"    0. 新增分类")
-    
+    print("    0. 新增分类")
+
     while True:
         try:
             choice = input("  请输入编号 (1-4 或 0): ").strip()
             idx = int(choice)
             if 1 <= idx <= len(ALLOWED_CATEGORIES):
                 return ALLOWED_CATEGORIES[idx - 1]
-            elif idx == 0:
+            if idx == 0:
                 new_cat = input("  请输入新分类名称: ").strip()
                 if new_cat:
                     return new_cat
@@ -184,7 +207,7 @@ def prompt_for_category() -> str:
 
 
 def strip_summary_and_more(body: str) -> str:
-    """如果 body 中已经包含 <!--more--> 分隔符，只保留后面的正文部分"""
+    """如果 body 中已经包含 <!--more--> 分隔符，只保留后面的正文部分。"""
     parts = body.split('<!--more-->', 1)
     if len(parts) == 2:
         return parts[1].strip()
@@ -192,103 +215,76 @@ def strip_summary_and_more(body: str) -> str:
 
 
 def generate_summary(body: str, description: str = '', max_length: int = 200) -> str:
-    """生成摘要
-    优先使用传入的 description（可由 AI 生成），否则取 body 前 max_length 字符作为兜底
-    """
+    """生成摘要：优先使用 Agent/原文 description，否则取正文前 max_length 字符。"""
     if description and len(description.strip()) > 10:
         return description.strip()
-    
-    # 先移除 body 中的 <!--more--> 及之后的内容，避免摘要包含正文
+
     body_for_summary = body.split('<!--more-->', 1)[0] if '<!--more-->' in body else body
-    
-    # 清理 Markdown 标记
     text = re.sub(r'[#*`\[\]\(\)!]', '', body_for_summary)
     text = text.replace('\n', ' ').strip()
-    
+
     if len(text) > max_length:
         return text[:max_length].strip() + '...'
     return text
 
 
 def clean_wiki_links(text: str) -> str:
-    """清理 Obsidian/维基百科风格的双括号链接 [[文本]] -> 文本"""
-    return re.sub(r'\[\[(.*?)\]\]', r'\1', text)
+    """清理 Obsidian/维基风格链接 [[文本]] -> 文本。"""
+    return re.sub(r'\[\[(.*?)\]\]', r'\1', str(text))
 
 
 def generate_attribution(source: str, author: str) -> str:
-    """生成来源署名"""
+    """生成来源署名。"""
     parts = []
     if source:
         parts.append(f"来源：{source}")
     if author:
-        author = clean_wiki_links(author)
-        parts.append(f"原作者：{author}")
-    
+        parts.append(f"原作者：{clean_wiki_links(author)}")
+
     if parts:
         return "\n\n---\n\n> " + " | ".join(parts)
     return ""
 
 
-def generate_hexo_content(metadata: dict, target_date: datetime = None, category: str = None) -> str:
-    """生成 Hexo 格式的 Markdown 内容"""
+def yaml_quote(value: str) -> str:
+    value = str(value).replace('\\', '\\\\').replace('"', '\\"')
+    return f'"{value}"'
+
+
+def generate_hexo_content(metadata: dict, target_date: datetime | None = None, category: str | None = None) -> str:
+    """生成 Hexo 格式的 Markdown 内容。"""
     if target_date is None:
         target_date = datetime.now()
     date_str = target_date.strftime('%Y-%m-%d %H:%M:%S')
-    
-    title = metadata.get('title', 'No Title')
-    body = metadata.get('body', '')
+
+    title = clean_unicode_chars(metadata.get('title', 'No Title'))
+    body = strip_summary_and_more(metadata.get('body', ''))
     description = metadata.get('description', '')
     source = metadata.get('source', '')
-    author = metadata.get('author', '')
+    author = clean_wiki_links(metadata.get('author', ''))
     created = metadata.get('created', '')
-    
-    # 如果 body 中已包含 <!--more-->，只保留正文部分，避免重复摘要
-    body = strip_summary_and_more(body)
-    
-    # 生成摘要（优先使用 metadata 中的 description，可能是命令行传入的 AI 生成摘要）
-    summary = generate_summary(body, description)
-    
-    # 清理 Unicode 字符
-    title = clean_unicode_chars(title)
-    summary = clean_unicode_chars(summary)
+
+    summary = clean_unicode_chars(generate_summary(body, description))
     body = clean_unicode_chars(body)
-    
-    # 处理 tags
-    tags_yaml = ''
-    if metadata.get('tags'):
-        tags_yaml = '\n'.join([f'  - {tag}' for tag in metadata['tags']])
-    else:
-        tags_yaml = '  - clippings'
-    
-    # 清理维基链接
-    author = clean_wiki_links(author)
-    
-    # 构建 front matter 中的额外字段
+
+    tags = [str(tag).strip() for tag in metadata.get('tags', []) if str(tag).strip()]
+    if not tags:
+        tags = ['clippings']
+    tags_yaml = '\n'.join([f'  - {tag}' for tag in tags])
+
     extra_fields = []
     if source:
-        extra_fields.append(f'source: "{source}"')
+        extra_fields.append(f'source: {yaml_quote(source)}')
     if author:
-        extra_fields.append(f'author: "{author}"')
+        extra_fields.append(f'author: {yaml_quote(author)}')
     if created:
-        extra_fields.append(f'created: "{created}"')
-    
-    extra_yaml = ''
-    if extra_fields:
-        extra_yaml = '\n' + '\n'.join(extra_fields)
-    
-    # 生成来源署名
+        extra_fields.append(f'created: {yaml_quote(created)}')
+    extra_yaml = '\n' + '\n'.join(extra_fields) if extra_fields else ''
+
     attribution = generate_attribution(source, author)
-    
-    # 处理 title 中的引号，避免 YAML 解析问题
-    # 如果 title 包含双引号，使用单引号包裹；否则使用双引号
-    if '"' in title:
-        yaml_title = f"'{title}'"
-    else:
-        yaml_title = f'"{title}"'
-    
-    # 构建 Hexo front matter
-    hexo_content = f"""---
-title: {yaml_title}
+
+    return f"""---
+title: {yaml_quote(title)}
 date: {date_str}
 tags:
 {tags_yaml}
@@ -302,88 +298,64 @@ categories:
 
 {body}{attribution}
 """
-    
-    return hexo_content
 
 
-def find_existing_posts(posts_dir: Path, title: str, source: str) -> tuple:
-    """
-    在已发布的文章中查找相同文章，优先匹配 source URL，其次匹配 title
-    返回: (最早的一篇, 其他重复的列表)
-    """
+def find_existing_posts(posts_dir: Path, title: str, source: str) -> tuple[Path | None, list[Path]]:
+    """查找相同文章，优先匹配 source URL，其次匹配 title。"""
     if not posts_dir.exists():
         return None, []
-    
+
     matched_files = []
-    
-    # 清理 title 中的 Unicode 特殊字符（如中文引号转英文引号），确保匹配一致性
     title_cleaned = clean_unicode_chars(title)
-    
-    # 遍历所有已发布的 md 文件（排除 Clippings 源目录）
+
     for md_file in posts_dir.rglob('*.md'):
-        # 跳过 Clippings 目录及其子目录
         if 'Clippings' in md_file.parts:
             continue
-        
+
         try:
-            with open(md_file, 'r', encoding='utf-8') as f:
-                content = f.read()
-            
+            content = md_file.read_text(encoding='utf-8')
             old_meta = parse_front_matter(content)
             old_title = old_meta.get('title', '').strip()
             old_source = old_meta.get('source', '').strip()
-            
-            # 清理已发布文章的 title，确保比较时格式一致
             old_title_cleaned = clean_unicode_chars(old_title)
-            
+
             is_match = False
-            # 优先用 source URL 匹配（最精确）
             if source and old_source and source == old_source:
                 is_match = True
-            # 其次用 title 匹配（使用清理后的 title）
             elif title_cleaned and old_title_cleaned and title_cleaned == old_title_cleaned:
                 is_match = True
-            
+
             if is_match:
-                # 获取文件创建/修改时间用于排序
-                stat = md_file.stat()
-                matched_files.append((md_file, stat.st_mtime))
-                
+                matched_files.append((md_file, md_file.stat().st_mtime))
         except Exception:
             continue
-    
+
     if not matched_files:
         return None, []
-    
-    # 按修改时间排序，最早的排在前面
+
     matched_files.sort(key=lambda x: x[1])
-    
     earliest = matched_files[0][0]
     duplicates = [f[0] for f in matched_files[1:]]
-    
     return earliest, duplicates
 
 
-def get_output_filename(posts_path: Path, now: datetime = None) -> tuple:
-    """生成输出文件名，如果当天已存在则自动往后推一天，同时返回对应的完整日期时间"""
+def get_output_filename(posts_path: Path, now: datetime | None = None) -> tuple[Path, datetime]:
+    """生成输出文件名，如果当天已存在则自动往后推一天。"""
     if now is None:
         now = datetime.now()
     current_date = now.date()
-    
+
     while True:
-        year_str = current_date.strftime('%Y')
-        output_dir = posts_path / year_str
+        output_dir = posts_path / current_date.strftime('%Y')
         output_dir.mkdir(exist_ok=True)
-        filename = current_date.strftime('%Y%m%d') + '.md'
-        output_path = output_dir / filename
+        output_path = output_dir / (current_date.strftime('%Y%m%d') + '.md')
         if not output_path.exists():
-            target_datetime = datetime.combine(current_date, now.time())
-            return output_path, target_datetime
+            return output_path, datetime.combine(current_date, now.time())
         current_date += timedelta(days=1)
 
 
-def run_command(cmd: list, cwd: str = None) -> tuple:
-    """执行命令并返回结果"""
+def run_command(cmd: list[str], cwd: str | None = None) -> tuple[int, str, str]:
+    """执行命令并返回结果。"""
     try:
         result = subprocess.run(
             cmd,
@@ -391,225 +363,305 @@ def run_command(cmd: list, cwd: str = None) -> tuple:
             capture_output=True,
             text=True,
             encoding='utf-8',
-            shell=True
+            shell=False,
         )
         return result.returncode, result.stdout, result.stderr
     except Exception as e:
         return -1, '', str(e)
 
 
+def run_command_with_retries(cmd: list[str], cwd: str | None = None, retries: int = 1, delay: int = 3) -> tuple[int, str, str]:
+    """对网络敏感命令做有限重试。"""
+    attempts = max(1, retries)
+    last = (1, '', '')
+    for attempt in range(1, attempts + 1):
+        last = run_command(cmd, cwd)
+        rc, out, err = last
+        if rc == 0:
+            return last
+        if attempt < attempts:
+            print(f"  [WARN] {' '.join(cmd)} failed, retrying ({attempt}/{attempts - 1})...")
+            if err:
+                print(f"    {err.strip()[:300]}")
+            time.sleep(delay)
+    return last
+
+
 def get_default_clippings_path() -> str:
-    """智能推断默认 Clippings 路径
-    若当前目录是 Hexo 博客根目录（包含 source/_posts），则自动拼接；
-    否则返回一个通用的硬编码默认值。
-    """
+    """智能推断默认 Clippings 路径。"""
     cwd = Path.cwd()
-    # 检查当前目录或其父目录是否包含 source/_posts
-    check_dirs = [cwd] + list(cwd.parents)
-    for d in check_dirs:
+    for d in [cwd] + list(cwd.parents):
         candidate = d / 'source' / '_posts' / 'Clippings'
         if candidate.exists():
             return str(candidate)
-    # 兜底：兼容旧用户的硬编码路径
     return r"D:\private-vs-space\hexo-blog\source\_posts\Clippings"
 
 
-def main():
-    # 获取 Clippings 目录路径（优先级：命令行参数 > 环境变量 > 自动推断默认值）
-    default_path = get_default_clippings_path()
-    env_path = os.environ.get("HEXO_CLIPPINGS_DIR")
-    
-    # 支持通过 --description 或 --description-file 参数传入 AI 生成的摘要
-    custom_description = ''
-    description_file = ''
-    argv = sys.argv[1:]
-    skip_indices = set()
+def read_optional_file(path: str) -> str:
+    return Path(path).read_text(encoding='utf-8').strip()
+
+
+def parse_tags_text(text: str) -> list[str]:
+    tags = []
+    for raw in re.split(r'[\n,，]', text):
+        tag = raw.strip().lstrip('-').strip().strip('"\'')
+        if tag:
+            tags.append(tag)
+    return tags
+
+
+def parse_args(argv: list[str]) -> tuple[dict, list[str]]:
+    options = {
+        'description': '',
+        'description_file': '',
+        'category': '',
+        'tags': [],
+        'tags_file': '',
+        'content_file': '',
+        'dry_run': False,
+        'deploy_retries': 2,
+        'skip_deploy': False,
+        'skip_git': False,
+    }
+    positional = []
+
     i = 0
     while i < len(argv):
-        if argv[i] == '--description' and i + 1 < len(argv):
-            custom_description = argv[i + 1]
-            skip_indices.update({i, i + 1})
+        arg = argv[i]
+        if arg == '--description' and i + 1 < len(argv):
+            options['description'] = argv[i + 1]
             i += 2
-        elif argv[i].startswith('--description='):
-            custom_description = argv[i].split('=', 1)[1]
-            skip_indices.add(i)
+        elif arg.startswith('--description='):
+            options['description'] = arg.split('=', 1)[1]
             i += 1
-        elif argv[i] == '--description-file' and i + 1 < len(argv):
-            description_file = argv[i + 1]
-            skip_indices.update({i, i + 1})
+        elif arg == '--description-file' and i + 1 < len(argv):
+            options['description_file'] = argv[i + 1]
             i += 2
-        elif argv[i].startswith('--description-file='):
-            description_file = argv[i].split('=', 1)[1]
-            skip_indices.add(i)
+        elif arg.startswith('--description-file='):
+            options['description_file'] = arg.split('=', 1)[1]
+            i += 1
+        elif arg == '--category' and i + 1 < len(argv):
+            options['category'] = argv[i + 1]
+            i += 2
+        elif arg.startswith('--category='):
+            options['category'] = arg.split('=', 1)[1]
+            i += 1
+        elif arg == '--tags' and i + 1 < len(argv):
+            options['tags'] = parse_tags_text(argv[i + 1])
+            i += 2
+        elif arg.startswith('--tags='):
+            options['tags'] = parse_tags_text(arg.split('=', 1)[1])
+            i += 1
+        elif arg == '--tags-file' and i + 1 < len(argv):
+            options['tags_file'] = argv[i + 1]
+            i += 2
+        elif arg.startswith('--tags-file='):
+            options['tags_file'] = arg.split('=', 1)[1]
+            i += 1
+        elif arg == '--content-file' and i + 1 < len(argv):
+            options['content_file'] = argv[i + 1]
+            i += 2
+        elif arg.startswith('--content-file='):
+            options['content_file'] = arg.split('=', 1)[1]
+            i += 1
+        elif arg == '--dry-run':
+            options['dry_run'] = True
+            i += 1
+        elif arg == '--skip-deploy':
+            options['skip_deploy'] = True
+            i += 1
+        elif arg == '--skip-git':
+            options['skip_git'] = True
+            i += 1
+        elif arg == '--deploy-retries' and i + 1 < len(argv):
+            options['deploy_retries'] = int(argv[i + 1])
+            i += 2
+        elif arg.startswith('--deploy-retries='):
+            options['deploy_retries'] = int(arg.split('=', 1)[1])
+            i += 1
+        elif arg.startswith('--'):
+            print(f"[WARN] Unknown option ignored: {arg}")
             i += 1
         else:
+            positional.append(arg)
             i += 1
-    
-    # 若指定了 description-file，从文件读取（推荐，避免 Windows 命令行中文截断）
-    if description_file and not custom_description:
+
+    if options['description_file'] and not options['description']:
         try:
-            with open(description_file, 'r', encoding='utf-8') as f:
-                custom_description = f.read().strip()
+            options['description'] = read_optional_file(options['description_file'])
         except Exception as e:
             print(f"[WARN] Failed to read description file: {e}")
-    
-    positional_args = [argv[i] for i in range(len(argv)) if i not in skip_indices and not argv[i].startswith('--')]
-    
+
+    if options['tags_file'] and not options['tags']:
+        try:
+            options['tags'] = parse_tags_text(read_optional_file(options['tags_file']))
+        except Exception as e:
+            print(f"[WARN] Failed to read tags file: {e}")
+
+    return options, positional
+
+
+def print_publish_summary(output_file: Path, metadata: dict, category: str, is_update: bool):
+    action = 'update' if is_update else 'create'
+    print("\n  Publish summary:")
+    print(f"    action: {action}")
+    print(f"    output: {output_file}")
+    print(f"    title: {metadata.get('title', '')}")
+    print(f"    category: {category}")
+    print(f"    tags: {', '.join(metadata.get('tags', []))}")
+    if metadata.get('source'):
+        print(f"    source: {metadata.get('source')}")
+
+
+def main():
+    options, positional_args = parse_args(sys.argv[1:])
+    env_path = os.environ.get('HEXO_CLIPPINGS_DIR')
+
     if positional_args:
         clippings_dir = positional_args[0]
-        source = "command line argument"
+        path_source = 'command line argument'
     elif env_path:
         clippings_dir = env_path
-        source = "environment variable HEXO_CLIPPINGS_DIR"
+        path_source = 'environment variable HEXO_CLIPPINGS_DIR'
     else:
-        clippings_dir = default_path
-        source = "default hardcoded path"
-    
-    print(f"Using path from {source}: {clippings_dir}")
-    if custom_description:
-        print(f"Using custom description ({len(custom_description)} chars)")
-    
-    # 校验目录是否存在
+        clippings_dir = get_default_clippings_path()
+        path_source = 'default path'
+
+    print(f"Using path from {path_source}: {clippings_dir}")
+    if options['description']:
+        print(f"Using custom description ({len(options['description'])} chars)")
+    if options['category']:
+        print(f"Using Agent-confirmed category: {options['category']}")
+    if options['tags']:
+        print(f"Using Agent-confirmed tags: {', '.join(options['tags'])}")
+
     if not Path(clippings_dir).exists():
         print(f"\n[ERROR] Clippings directory does not exist: {clippings_dir}")
-        print("\nPlease fix this by one of the following methods:")
-        print(f"  1. Set environment variable: HEXO_CLIPPINGS_DIR=<your_clippings_path>")
-        print(f"  2. Pass path as argument: python publish.py <your_clippings_path>")
-        print(f"  3. Create the directory: {clippings_dir}")
         sys.exit(1)
-    
+
     try:
-        # 1. 获取最新文件
         print(f"\n[1/7] Reading Clippings directory: {clippings_dir}")
         latest_file = get_latest_file(clippings_dir)
         print(f"  Latest file: {latest_file.name}")
-        
-        # 2. 读取并解析文件
-        print(f"\n[2/7] Parsing file...")
-        with open(latest_file, 'r', encoding='utf-8') as f:
-            content = f.read()
-        
+
+        print("\n[2/7] Parsing file...")
+        if options['content_file']:
+            content_path = Path(options['content_file'])
+            content = content_path.read_text(encoding='utf-8')
+            print(f"  Content override: {content_path}")
+        else:
+            content = latest_file.read_text(encoding='utf-8')
+
         metadata = parse_front_matter(content)
+        if options['description']:
+            metadata['description'] = options['description']
+        if options['tags']:
+            metadata['tags'] = options['tags']
+
         print(f"  Title: {metadata.get('title', 'No title')[:50]}")
         print(f"  Source: {metadata.get('source', 'N/A')}")
         print(f"  Author: {metadata.get('author', 'N/A')}")
         print(f"  Tags: {', '.join(metadata.get('tags', []))}")
-        
-        # 3. 确定输出路径和日期
-        print(f"\n[3/7] Determining output path...")
+
+        print("\n[3/7] Determining output path...")
         clips_path = Path(clippings_dir)
         posts_path = clips_path.parent
-        
-        # 查找是否已发布过相同文章（优先 source URL，其次 title）
         title = metadata.get('title', '')
         source = metadata.get('source', '')
         earliest_file, duplicate_files = find_existing_posts(posts_path, title, source)
-        
+
         is_update = False
         now = datetime.now()
         if earliest_file:
             output_file = earliest_file
             is_update = True
-            match_by = "source URL" if source else "title"
+            match_by = 'source URL' if source else 'title'
             print(f"  [INFO] Found existing post by {match_by}: {output_file.name}")
-            print(f"  [INFO] Will update existing file instead of creating new one")
-            
-            # 删除其他重复的文章
+            print("  [INFO] Will update existing file instead of creating new one")
             if duplicate_files:
                 print(f"  [INFO] Found {len(duplicate_files)} duplicate post(s), removing...")
                 for dup_file in duplicate_files:
                     try:
-                        dup_file.unlink()
+                        if not options['dry_run']:
+                            dup_file.unlink()
                         print(f"    [DELETED] {dup_file.name}")
                     except Exception as e:
                         print(f"    [WARN] Failed to delete {dup_file.name}: {e}")
-            
-            # 从文件名解析日期，时间用当前时间
-            file_stem = output_file.stem
-            file_date = datetime.strptime(file_stem, '%Y%m%d').date()
-            target_date = datetime.combine(file_date, now.time())
-            output_dir = output_file.parent
+            target_date = datetime.combine(datetime.strptime(output_file.stem, '%Y%m%d').date(), now.time())
         else:
             output_file, target_date = get_output_filename(posts_path, now)
-            output_dir = output_file.parent
-            print(f"  Output directory: {output_dir}")
+            print(f"  Output directory: {output_file.parent}")
             print(f"  Output file: {output_file.name}")
-        
-        # 4. 自动分类
-        print(f"\n[4/7] Classifying article...")
-        category = classify_article(
-            metadata.get('title', ''),
-            metadata.get('body', ''),
-            metadata.get('tags', [])
-        )
+
+        print("\n[4/7] Classifying article...")
+        category = options['category'].strip()
         if category:
-            print(f"  [OK] Auto-selected category: {category}")
+            print(f"  [OK] Agent-confirmed category: {category}")
         else:
-            category = prompt_for_category()
-            print(f"  [OK] User-selected category: {category}")
-        
-        # 5. 生成 Hexo 内容
-        print(f"\n[5/7] Generating Hexo document...")
-        if custom_description:
-            metadata['description'] = custom_description
-        hexo_content = generate_hexo_content(metadata, target_date, category)
-        
-        # 写入文件
-        with open(output_file, 'w', encoding='utf-8') as f:
-            f.write(hexo_content)
-        action = "updated" if is_update else "generated"
-        print(f"  [OK] File {action}")
-        
-        # 6. Git 操作
-        print(f"\n[6/7] Executing Git operations...")
-        blog_root = posts_path.parent.parent
-        print(f"  Blog root: {blog_root}")
-        
-        rc, out, err = run_command(['git', 'add', '.'], cwd=str(blog_root))
-        if rc != 0:
-            print(f"  [WARN] git add: {err}")
-        else:
-            print(f"  [OK] git add")
-        
-        title = metadata.get('title', 'New post')
-        commit_prefix = "update" if is_update else "add"
-        commit_msg = f"{commit_prefix}: {title[:50]}"
-        rc, out, err = run_command(['git', 'commit', '-m', commit_msg], cwd=str(blog_root))
-        if rc != 0:
-            if 'nothing to commit' in err.lower() or 'nothing to commit' in out.lower():
-                print(f"  [INFO] Nothing to commit")
+            category = classify_article(metadata.get('title', ''), metadata.get('body', ''), metadata.get('tags', []))
+            if category:
+                print(f"  [OK] Auto-selected fallback category: {category}")
             else:
-                print(f"  [WARN] git commit: {err}")
+                category = prompt_for_category()
+                print(f"  [OK] User-selected category: {category}")
+
+        print("\n[5/7] Generating Hexo document...")
+        hexo_content = generate_hexo_content(metadata, target_date, category)
+        print_publish_summary(output_file, metadata, category, is_update)
+
+        if options['dry_run']:
+            print("\n[DRY-RUN] Generated content follows. No file, git, or deploy action was performed.\n")
+            print(hexo_content)
+            return
+
+        output_file.write_text(hexo_content, encoding='utf-8', newline='\n')
+        print(f"  [OK] File {'updated' if is_update else 'generated'}")
+
+        blog_root = posts_path.parent.parent
+        if options['skip_git']:
+            print("\n[6/7] Skipping Git operations (--skip-git)")
         else:
-            print(f"  [OK] git commit: {commit_msg}")
-        
-        rc, out, err = run_command(['git', 'push'], cwd=str(blog_root))
-        if rc != 0:
-            print(f"  [WARN] git push: {err}")
+            print("\n[6/7] Executing Git operations...")
+            print(f"  Blog root: {blog_root}")
+            rc, out, err = run_command(['git', 'add', '.'], cwd=str(blog_root))
+            print("  [OK] git add" if rc == 0 else f"  [WARN] git add: {err}")
+
+            commit_prefix = 'update' if is_update else 'add'
+            commit_msg = f"{commit_prefix}: {metadata.get('title', 'New post')[:50]}"
+            rc, out, err = run_command(['git', 'commit', '-m', commit_msg], cwd=str(blog_root))
+            if rc != 0:
+                if 'nothing to commit' in err.lower() or 'nothing to commit' in out.lower():
+                    print("  [INFO] Nothing to commit")
+                else:
+                    print(f"  [WARN] git commit: {err}")
+            else:
+                print(f"  [OK] git commit: {commit_msg}")
+
+            rc, out, err = run_command(['git', 'push'], cwd=str(blog_root))
+            print("  [OK] git push" if rc == 0 else f"  [WARN] git push: {err}")
+
+        if options['skip_deploy']:
+            print("\n[7/7] Skipping Hexo deploy (--skip-deploy)")
         else:
-            print(f"  [OK] git push")
-        
-        # 7. Hexo 发布
-        print(f"\n[7/7] Executing Hexo deploy...")
-        
-        rc, out, err = run_command(['hexo', 'clean'], cwd=str(blog_root))
-        if rc != 0:
-            print(f"  [WARN] hexo clean: {err}")
-        else:
-            print(f"  [OK] hexo clean")
-        
-        rc, out, err = run_command(['hexo', 'deploy'], cwd=str(blog_root))
-        if rc != 0:
-            print(f"  [FAIL] hexo deploy: {err}")
-            print(f"\nPlease manually run: cd {blog_root} && hexo deploy")
-        else:
-            print(f"  [OK] hexo deploy")
-        
-        print(f"\nDone!")
-        action_str = "updated" if is_update else "published"
-        print(f"  Article {action_str}: {output_file}")
+            print("\n[7/7] Executing Hexo deploy...")
+            rc, out, err = run_command(['hexo', 'clean'], cwd=str(blog_root))
+            print("  [OK] hexo clean" if rc == 0 else f"  [WARN] hexo clean: {err}")
+
+            rc, out, err = run_command_with_retries(
+                ['hexo', 'deploy'],
+                cwd=str(blog_root),
+                retries=options['deploy_retries'],
+            )
+            if rc != 0:
+                print(f"  [FAIL] hexo deploy: {err}")
+                print(f"\nPlease manually run: cd {blog_root} && hexo deploy")
+            else:
+                print("  [OK] hexo deploy")
+
+        print("\nDone!")
+        print(f"  Article {'updated' if is_update else 'published'}: {output_file}")
         print(f"  Title: {metadata.get('title', 'No title')[:50]}")
-        
+
     except FileNotFoundError as e:
         print(f"[ERROR] {e}")
         sys.exit(1)
