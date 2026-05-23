@@ -1,0 +1,4 @@
+interface:
+  display_name: "周报写作"
+  short_description: "根据截图任务列表和历史周报格式归类生成并写入业务周报"
+  default_prompt: "根据我提供的任务截图，参考历史周报格式和功能领域，写入本周周报。"

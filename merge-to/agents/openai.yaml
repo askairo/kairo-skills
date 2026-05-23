@@ -1,0 +1,4 @@
+interface:
+  display_name: "Merge To"
+  short_description: "Merge current branch into dev or sit and return"
+  default_prompt: "Use $merge-to to merge my current branch into dev or sit, push it, and then switch back. If I do not specify a target, merge to both dev and sit."
