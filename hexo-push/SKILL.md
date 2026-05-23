@@ -12,7 +12,7 @@ description: 读取 Clippings 目录的最新文章，转换为 Hexo 博客文�
 - **Agent 负责内容理解**：阅读全文，判断是否需要翻译、润色、精简，生成自然的标题、摘要、分类和 tags。
 - **脚本负责机械发布**：读取 Markdown、生成 Hexo front matter、去重更新、写入文件、执行 git 和 Hexo deploy。
 - 用户不需要记脚本参数。用户用自然语言确认分类、标签和发布意图；Agent 将确认结果转换为脚本内部参数。
-- `D:\private-vs-space\kimi-skills\hexo-push` 是长期维护源；Codex/Kimi 等用户目录里的 skill 只是同步安装目标。
+- `D:\private-vs-space\kairo-skills\hexo-push` 是长期维护源；Codex/Kimi 等用户目录里的 skill 只是同步安装目标。
 
 ## 推荐交互流程
 

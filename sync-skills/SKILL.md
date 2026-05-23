@@ -14,7 +14,7 @@ description: 基于 GitHub 管理 skills 的安装、更新、发布和当前 Ag
 ## 核心原则
 
 - GitHub 是跨机器、跨 Agent 的分发源。
-- 本地源码仓库只用于开发和提交，例如 `D:\private-vs-space\kimi-skills`。
+- 本地源码仓库只用于开发和提交，例如 `D:\private-vs-space\kairo-skills`。
 - 当前 Agent 的 skills 目录只是运行时安装目标，例如 `C:\Users\admin\.codex\skills`。
 - 用户用自然语言表达意图，Agent 负责选择脚本命令。
 - 不依赖环境变量作为主要配置。优先级是：自然语言/显式参数 > 本地配置文件 > 已安装来源元数据 > 自动发现 > 环境变量兜底。
@@ -28,7 +28,7 @@ description: 基于 GitHub 管理 skills 的安装、更新、发布和当前 Ag
 1. 修改本地源码仓库中的 skill：
 
    ```text
-   D:\private-vs-space\kimi-skills\<skill-name>
+   D:\private-vs-space\kairo-skills\<skill-name>
    ```
 
 2. 验证：
@@ -105,7 +105,7 @@ python scripts/sync.py install --repo owner/repo --path path/to/skill --ref main
 {
   "defaultRepo": "askairo/kairo-skills",
   "defaultRef": "main",
-  "localRepoPath": "D:\\private-vs-space\\kimi-skills",
+  "localRepoPath": "D:\\private-vs-space\\kairo-skills",
   "agentSkillsDir": "C:\\Users\\admin\\.codex\\skills"
 }
 ```
@@ -113,7 +113,7 @@ python scripts/sync.py install --repo owner/repo --path path/to/skill --ref main
 可以用脚本生成本地配置：
 
 ```powershell
-python scripts/sync.py write-config --repo askairo/kairo-skills --local-repo D:\private-vs-space\kimi-skills --agent-dir C:\Users\admin\.codex\skills
+python scripts/sync.py write-config --repo askairo/kairo-skills --local-repo D:\private-vs-space\kairo-skills --agent-dir C:\Users\admin\.codex\skills
 ```
 
 ## 环境变量
