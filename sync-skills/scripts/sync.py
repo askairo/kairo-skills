@@ -1,465 +1,426 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Skills 同步工具
-同步项目目录与用户目录的 skills
+GitHub-centered skills manager.
+
+The stable flow is:
+  local skills repo -> GitHub -> current Agent skills directory
+
+Environment variables are supported only as a last-resort fallback. Prefer
+explicit arguments, local config files, installed-source metadata, and automatic
+Agent directory detection.
 """
 
-import os
-import sys
-import shutil
 import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import urllib.request
+import zipfile
+from datetime import datetime, timezone
 from pathlib import Path
-from datetime import datetime
-from typing import Set, Dict, Tuple, List, Optional
 
-# Windows 终端中文输出修复
 try:
-    sys.stdout.reconfigure(encoding='utf-8')
-    sys.stderr.reconfigure(encoding='utf-8')
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
 except AttributeError:
     pass
 
 
-def is_skills_project_dir(directory: str) -> bool:
-    """
-    检查指定目录是否是 skills 项目目录
-    条件：包含多个 skill 目录（每个都有 SKILL.md）
-    """
-    path = Path(directory)
-    if not path.exists() or not path.is_dir():
-        return False
-    
-    skills = [x for x in path.iterdir() if x.is_dir() and (x / 'SKILL.md').exists()]
-    return len(skills) >= 2
+DEFAULT_REPO = "askairo/kairo-skills"
+DEFAULT_REF = "main"
+SOURCE_META = ".skill-source.json"
+CONFIG_NAMES = ("sync-skills.local.json", ".sync-skills.json")
+EXCLUDE_DIRS = {".git", "__pycache__", ".venv", "node_modules"}
+EXCLUDE_SUFFIXES = {".pyc", ".pyo"}
 
 
-def find_project_dir_from_cwd() -> Optional[str]:
-    """
-    从当前工作目录向上查找 skills 项目目录
-    返回项目目录路径，如果找不到则返回 None
-    """
-    cwd = Path.cwd()
-    
-    # 检查当前目录
-    if is_skills_project_dir(cwd):
-        return str(cwd)
-    
-    # 检查父目录
-    for parent in cwd.parents:
-        if is_skills_project_dir(parent):
-            return str(parent)
-    
+def now_iso() -> str:
+    return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
+
+
+def script_skill_dir() -> Path:
+    return Path(__file__).resolve().parents[1]
+
+
+def script_agent_dir() -> Path:
+    # <agent-skills-dir>/sync-skills/scripts/sync.py
+    return Path(__file__).resolve().parents[2]
+
+
+def is_skill_dir(path: Path) -> bool:
+    return path.is_dir() and (path / "SKILL.md").exists()
+
+
+def is_skills_repo(path: Path) -> bool:
+    return path.is_dir() and any(is_skill_dir(child) for child in path.iterdir() if child.is_dir())
+
+
+def find_skills_repo_from_cwd() -> Path | None:
+    cwd = Path.cwd().resolve()
+    for candidate in [cwd] + list(cwd.parents):
+        if is_skills_repo(candidate):
+            return candidate
     return None
 
 
-def is_interactive() -> bool:
-    """检查是否在交互式环境中运行"""
-    return sys.stdin.isatty() and sys.stdout.isatty()
-
-
-def setup_project_env_var(project_dir: str) -> bool:
-    """
-    设置项目目录环境变量
-    1. 临时设置（当前进程）
-    2. 提示用户如何永久设置
-    返回用户是否确认继续
-    """
-    print(f"\n{'='*60}")
-    print("🔧 首次使用配置")
-    print(f"{'='*60}")
-    print(f"检测到 Skills 项目目录:")
-    print(f"  {project_dir}")
-    print(f"\n环境变量 SKILLS_PROJECT_DIR 未设置")
-    
-    # 检查是否在交互式环境
-    if not is_interactive():
-        print(f"\n⚠️  非交互式环境，自动使用检测到的目录")
-        print(f"   （临时设置环境变量）")
-        os.environ['SKILLS_PROJECT_DIR'] = project_dir
-        print(f"\n💡 建议永久设置环境变量，下次使用更顺畅:")
-        print(f'   setx SKILLS_PROJECT_DIR "{project_dir}"')
-        return True
-    
-    print(f"\n选项:")
-    print(f"  [Y] 是 - 临时使用此目录，并设置环境变量")
-    print(f"  [N] 否 - 退出，手动设置环境变量")
-    
-    while True:
-        try:
-            choice = input("\n请选择 [Y/N]: ").strip().upper()
-            if choice in ('Y', 'YES'):
-                # 临时设置环境变量（当前进程）
-                os.environ['SKILLS_PROJECT_DIR'] = project_dir
-                
-                print(f"\n✅ 已临时设置环境变量")
-                print(f"\n💡 建议永久设置环境变量，下次使用更顺畅:")
-                print(f"\n  PowerShell:")
-                print(f'    [Environment]::SetEnvironmentVariable("SKILLS_PROJECT_DIR", "{project_dir}", "User")')
-                print(f"\n  CMD:")
-                print(f'    setx SKILLS_PROJECT_DIR "{project_dir}"')
-                print(f"\n设置完成后，请重新打开终端使环境变量生效。")
-                input("\n按 Enter 键继续...")
-                return True
-            elif choice in ('N', 'NO'):
-                print(f"\n请手动设置环境变量后重试:")
-                print(f'  setx SKILLS_PROJECT_DIR "{project_dir}"')
-                return False
-            else:
-                print("请输入 Y 或 N")
-        except (EOFError, KeyboardInterrupt):
-            print("\n")
-            return False
-
-
-def get_project_dir() -> Optional[str]:
-    """
-    获取项目目录路径
-    优先级：
-    1. 环境变量 SKILLS_PROJECT_DIR（如果已设置）
-    2. 自动检测当前目录，并提示用户确认设置
-    """
-    # 1. 首先检查环境变量
-    project_dir = os.environ.get('SKILLS_PROJECT_DIR')
-    
-    if project_dir:
-        # 环境变量已设置，直接使用
-        return project_dir
-    
-    # 2. 环境变量未设置，尝试自动检测
-    detected_dir = find_project_dir_from_cwd()
-    
-    if detected_dir:
-        # 检测到项目目录，提示用户确认并设置
-        if setup_project_env_var(detected_dir):
-            return detected_dir
-        else:
-            return None
-    
-    # 3. 无法检测，返回 None
-    return None
-
-
-def get_user_dir() -> str:
-    """获取用户目录路径"""
-    user_dir = os.environ.get('SKILLS_USER_DIR')
-    if not user_dir:
-        # 默认使用 Kimi CLI 标准路径
-        home = Path.home()
-        user_dir = str(home / '.config' / 'agents' / 'skills')
-    return user_dir
-
-
-def get_skills_in_dir(directory: str) -> Set[str]:
-    """获取目录中的所有 skill 名称"""
-    path = Path(directory)
-    if not path.exists():
-        return set()
-    
-    skills = set()
-    for item in path.iterdir():
-        if item.is_dir() and (item / 'SKILL.md').exists():
-            skills.add(item.name)
-    return skills
-
-
-def compare_skill_content(skill_name: str, project_dir: str, user_dir: str) -> Tuple[bool, List[str]]:
-    """
-    对比两边 skill 的内容差异
-    返回: (是否相同, 差异文件列表)
-    """
-    project_path = Path(project_dir) / skill_name
-    user_path = Path(user_dir) / skill_name
-    
-    differences = []
-    
-    # 获取两边所有文件
-    project_files = set()
-    user_files = set()
-    
-    if project_path.exists():
-        for f in project_path.rglob('*'):
-            if f.is_file():
-                project_files.add(f.relative_to(project_path).as_posix())
-    
-    if user_path.exists():
-        for f in user_path.rglob('*'):
-            if f.is_file():
-                user_files.add(f.relative_to(user_path).as_posix())
-    
-    # 检查差异
-    all_files = project_files | user_files
-    for f in all_files:
-        project_file = project_path / f
-        user_file = user_path / f
-        
-        if f not in project_files:
-            differences.append(f"[用户独有] {f}")
-        elif f not in user_files:
-            differences.append(f"[项目独有] {f}")
-        else:
-            # 文件都存在，对比内容
-            try:
-                with open(project_file, 'rb') as pf, open(user_file, 'rb') as uf:
-                    if pf.read() != uf.read():
-                        differences.append(f"[内容不同] {f}")
-            except Exception:
-                differences.append(f"[无法对比] {f}")
-    
-    return len(differences) == 0, differences
-
-
-def backup_directory(directory: str) -> str:
-    """备份目录"""
-    path = Path(directory)
-    if not path.exists():
-        return None
-    
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    backup_path = Path(str(path) + f'.backup.{timestamp}')
-    
-    shutil.copytree(path, backup_path)
-    return str(backup_path)
-
-
-def sync_skill(skill_name: str, source_dir: str, target_dir: str, dry_run: bool = False) -> bool:
-    """
-    同步单个 skill
-    返回: 是否成功
-    """
-    source_path = Path(source_dir) / skill_name
-    target_path = Path(target_dir) / skill_name
-    
-    if dry_run:
-        return True
-    
+def read_json(path: Path) -> dict:
     try:
-        # 如果目标存在，先删除
-        if target_path.exists():
-            shutil.rmtree(target_path)
-        
-        # 复制
-        shutil.copytree(source_path, target_path)
-        return True
-    except Exception as e:
-        print(f"  [ERROR] 同步失败: {e}")
-        return False
+        return json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {}
 
 
-def check_mode(project_dir: str, user_dir: str):
-    """检查模式：显示差异"""
-    print(f"\n{'='*60}")
-    print("Skills 差异检查")
-    print(f"{'='*60}")
-    print(f"项目目录: {project_dir}")
-    print(f"用户目录: {user_dir}")
-    
-    project_skills = get_skills_in_dir(project_dir)
-    user_skills = get_skills_in_dir(user_dir)
-    
-    print(f"\n项目目录 skills ({len(project_skills)} 个):")
-    for s in sorted(project_skills):
-        print(f"  - {s}")
-    
-    print(f"\n用户目录 skills ({len(user_skills)} 个):")
-    for s in sorted(user_skills):
-        print(f"  - {s}")
-    
-    # 差异分析
-    only_in_project = project_skills - user_skills
-    only_in_user = user_skills - project_skills
-    in_both = project_skills & user_skills
-    
-    print(f"\n{'='*60}")
-    print("差异分析")
-    print(f"{'='*60}")
-    
-    if only_in_project:
-        print(f"\n📁 仅在项目目录 ({len(only_in_project)} 个):")
-        for s in sorted(only_in_project):
-            print(f"    + {s}  →  可 install 到用户目录")
-    
-    if only_in_user:
-        print(f"\n📁 仅在用户目录 ({len(only_in_user)} 个):")
-        for s in sorted(only_in_user):
-            print(f"    + {s}  →  可 dev 到项目目录")
-    
-    if in_both:
-        print(f"\n📁 两边都有 ({len(in_both)} 个):")
-        for s in sorted(in_both):
-            same, diffs = compare_skill_content(s, project_dir, user_dir)
-            if same:
-                print(f"    = {s}  (内容相同)")
-            else:
-                print(f"    ≠ {s}  (内容不同)")
-                for d in diffs[:3]:  # 只显示前3个差异
-                    print(f"      {d}")
-                if len(diffs) > 3:
-                    print(f"      ... 还有 {len(diffs)-3} 个差异")
-    
-    if not only_in_project and not only_in_user:
-        # 检查内容差异
-        has_diff = False
-        for s in in_both:
-            same, _ = compare_skill_content(s, project_dir, user_dir)
-            if not same:
-                has_diff = True
-                break
-        if not has_diff:
-            print("\n✅ 两边 skills 完全一致，无需同步")
-    
-    print(f"\n{'='*60}")
+def write_json(path: Path, data: dict):
+    path.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
 
 
-def install_mode(project_dir: str, user_dir: str, dry_run: bool = False):
-    """Install 模式：项目 → 用户"""
-    print(f"\n{'='*60}")
-    print("Install 模式: 项目 → 用户")
-    print(f"{'='*60}")
-    
-    project_skills = get_skills_in_dir(project_dir)
-    user_skills = get_skills_in_dir(user_dir)
-    
-    to_sync = project_skills - user_skills
-    to_update = project_skills & user_skills
-    
-    # 检查需要更新的
-    to_update_real = []
-    for s in to_update:
-        same, _ = compare_skill_content(s, project_dir, user_dir)
-        if not same:
-            to_update_real.append(s)
-    
-    if not to_sync and not to_update_real:
-        print("✅ 无需同步，用户目录已是最新")
-        return
-    
-    print(f"\n将执行以下操作:")
-    if to_sync:
-        print(f"  新增: {', '.join(sorted(to_sync))}")
-    if to_update_real:
-        print(f"  更新: {', '.join(sorted(to_update_real))}")
-    
+def load_config() -> dict:
+    """Load optional config files. Env vars are fallback only."""
+    config = {}
+    search_dirs = [
+        script_skill_dir(),
+        Path.home() / ".config" / "skills",
+        Path.home() / ".codex",
+    ]
+    cwd_repo = find_skills_repo_from_cwd()
+    if cwd_repo:
+        search_dirs.insert(0, cwd_repo)
+
+    for directory in search_dirs:
+        for name in CONFIG_NAMES:
+            path = directory / name
+            if path.exists():
+                config.update(read_json(path))
+
+    if "defaultRepo" not in config:
+        config["defaultRepo"] = os.environ.get("SKILLS_DEFAULT_REPO", DEFAULT_REPO)
+    if "defaultRef" not in config:
+        config["defaultRef"] = os.environ.get("SKILLS_DEFAULT_REF", DEFAULT_REF)
+    if "localRepoPath" not in config:
+        env_repo = os.environ.get("SKILLS_PROJECT_DIR")
+        detected = cwd_repo
+        if detected:
+            config["localRepoPath"] = str(detected)
+        elif env_repo:
+            config["localRepoPath"] = env_repo
+    if "agentSkillsDir" not in config:
+        env_agent = os.environ.get("SKILLS_USER_DIR")
+        if env_agent:
+            config["agentSkillsDir"] = env_agent
+
+    return config
+
+
+def resolve_agent_dir(args, config: dict) -> Path:
+    if args.agent_dir:
+        return Path(args.agent_dir).expanduser().resolve()
+    if config.get("agentSkillsDir"):
+        return Path(config["agentSkillsDir"]).expanduser().resolve()
+
+    detected = script_agent_dir()
+    if detected.name != "skills":
+        # Common Codex/Kimi defaults as fallback.
+        codex = Path.home() / ".codex" / "skills"
+        if codex.exists():
+            return codex.resolve()
+        kimi = Path.home() / ".config" / "agents" / "skills"
+        return kimi.resolve()
+    return detected
+
+
+def resolve_local_repo(args, config: dict) -> Path | None:
+    if args.local_repo:
+        return Path(args.local_repo).expanduser().resolve()
+    if config.get("localRepoPath"):
+        return Path(config["localRepoPath"]).expanduser().resolve()
+    return find_skills_repo_from_cwd()
+
+
+def run(cmd: list[str], cwd: Path | None = None) -> tuple[int, str, str]:
+    result = subprocess.run(
+        cmd,
+        cwd=str(cwd) if cwd else None,
+        text=True,
+        encoding="utf-8",
+        capture_output=True,
+        shell=False,
+    )
+    return result.returncode, result.stdout, result.stderr
+
+
+def require_success(cmd: list[str], cwd: Path | None = None):
+    rc, out, err = run(cmd, cwd)
+    if rc != 0:
+        raise RuntimeError(f"Command failed: {' '.join(cmd)}\n{err or out}")
+    return out
+
+
+def clean_skill_name(path: str) -> str:
+    return Path(path.replace("\\", "/").rstrip("/")).name
+
+
+def download_github_path(repo: str, ref: str, skill_path: str, target_dir: Path, dry_run: bool = False):
+    """Download one skill directory from a GitHub repo archive and overwrite target_dir."""
+    repo = repo.strip().removeprefix("https://github.com/").strip("/")
+    archive_url = f"https://github.com/{repo}/archive/refs/heads/{ref}.zip"
+    if len(ref) == 40:
+        archive_url = f"https://github.com/{repo}/archive/{ref}.zip"
+
+    print(f"  Source: GitHub {repo}/{skill_path}@{ref}")
+    print(f"  Target: {target_dir}")
     if dry_run:
-        print("\n[试运行模式，未实际执行]")
+        print("  [DRY-RUN] Would download and overwrite target skill directory.")
         return
-    
-    # 备份
-    print(f"\n正在备份用户目录...")
-    backup_path = backup_directory(user_dir)
-    if backup_path:
-        print(f"  备份路径: {backup_path}")
-    
-    # 执行同步
-    print(f"\n开始同步...")
-    success_count = 0
-    
-    for skill in sorted(to_sync | set(to_update_real)):
-        print(f"  同步 {skill}...", end=' ')
-        if sync_skill(skill, project_dir, user_dir):
-            print("✓")
-            success_count += 1
-        else:
-            print("✗")
-    
-    print(f"\n✅ 同步完成: {success_count}/{len(to_sync) + len(to_update_real)} 个 skill")
+
+    with tempfile.TemporaryDirectory(prefix="skill-update-") as tmp:
+        tmp_path = Path(tmp)
+        zip_path = tmp_path / "repo.zip"
+        try:
+            urllib.request.urlretrieve(archive_url, zip_path)
+        except Exception:
+            # Branch download may fail for tags/commits. Try generic archive path.
+            archive_url = f"https://github.com/{repo}/archive/{ref}.zip"
+            urllib.request.urlretrieve(archive_url, zip_path)
+
+        extract_dir = tmp_path / "repo"
+        with zipfile.ZipFile(zip_path) as zf:
+            zf.extractall(extract_dir)
+
+        roots = [p for p in extract_dir.iterdir() if p.is_dir()]
+        if not roots:
+            raise FileNotFoundError("GitHub archive did not contain a repository root")
+        source_dir = roots[0] / skill_path
+        if not is_skill_dir(source_dir):
+            raise FileNotFoundError(f"Skill path not found or missing SKILL.md: {skill_path}")
+
+        target_dir.parent.mkdir(parents=True, exist_ok=True)
+        if target_dir.exists():
+            backup = backup_dir(target_dir)
+            print(f"  Backup: {backup}")
+            shutil.rmtree(target_dir)
+        copy_tree(source_dir, target_dir)
 
 
-def dev_mode(project_dir: str, user_dir: str, dry_run: bool = False):
-    """Dev 模式：用户 → 项目"""
-    print(f"\n{'='*60}")
-    print("Dev 模式: 用户 → 项目")
-    print(f"{'='*60}")
-    
-    project_skills = get_skills_in_dir(project_dir)
-    user_skills = get_skills_in_dir(user_dir)
-    
-    to_sync = user_skills - project_skills
-    to_update = user_skills & project_skills
-    
-    # 检查需要更新的
-    to_update_real = []
-    for s in to_update:
-        same, _ = compare_skill_content(s, project_dir, user_dir)
-        if not same:
-            to_update_real.append(s)
-    
-    if not to_sync and not to_update_real:
-        print("✅ 无需同步，项目目录已是最新")
+def copy_tree(source: Path, target: Path):
+    def ignore(_dir, names):
+        ignored = []
+        for name in names:
+            path = Path(name)
+            if name in EXCLUDE_DIRS or path.suffix in EXCLUDE_SUFFIXES:
+                ignored.append(name)
+        return ignored
+
+    shutil.copytree(source, target, ignore=ignore)
+
+
+def backup_dir(path: Path) -> Path:
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup = path.with_name(f"{path.name}.backup.{stamp}")
+    shutil.copytree(path, backup)
+    return backup
+
+
+def source_meta(repo: str, skill_path: str, ref: str) -> dict:
+    return {
+        "sourceType": "github",
+        "repo": repo,
+        "path": skill_path,
+        "ref": ref,
+        "installedAt": now_iso(),
+    }
+
+
+def install_or_update(args, config: dict):
+    repo = args.repo or config.get("defaultRepo", DEFAULT_REPO)
+    ref = args.ref or config.get("defaultRef", DEFAULT_REF)
+    skill_path = args.path or args.skill
+    if not skill_path:
+        raise SystemExit("--skill or --path is required")
+
+    skill_name = args.name or clean_skill_name(skill_path)
+    agent_dir = resolve_agent_dir(args, config)
+    target = agent_dir / skill_name
+
+    download_github_path(repo, ref, skill_path, target, args.dry_run)
+    if not args.dry_run:
+        write_json(target / SOURCE_META, source_meta(repo, skill_path, ref))
+        print(f"  [OK] Installed/updated {skill_name}")
+        print("  Restart the Agent or open a new session to load updated skill metadata.")
+
+
+def update_installed(args, config: dict):
+    agent_dir = resolve_agent_dir(args, config)
+    skills = [args.skill] if args.skill else [
+        p.name for p in sorted(agent_dir.iterdir()) if is_skill_dir(p) and (p / SOURCE_META).exists()
+    ]
+    if not skills:
+        print("No installed skills with source metadata found.")
         return
-    
-    print(f"\n将执行以下操作:")
-    if to_sync:
-        print(f"  新增: {', '.join(sorted(to_sync))}")
-    if to_update_real:
-        print(f"  更新: {', '.join(sorted(to_update_real))}")
-    
-    if dry_run:
-        print("\n[试运行模式，未实际执行]")
+
+    for skill in skills:
+        target = agent_dir / skill
+        meta = read_json(target / SOURCE_META)
+        if not meta:
+            print(f"[SKIP] {skill}: no {SOURCE_META}")
+            continue
+        download_github_path(
+            meta["repo"],
+            args.ref or meta.get("ref", config.get("defaultRef", DEFAULT_REF)),
+            meta["path"],
+            target,
+            args.dry_run,
+        )
+        if not args.dry_run:
+            meta["installedAt"] = now_iso()
+            if args.ref:
+                meta["ref"] = args.ref
+            write_json(target / SOURCE_META, meta)
+            print(f"  [OK] Updated {skill}")
+
+
+def list_installed(args, config: dict):
+    agent_dir = resolve_agent_dir(args, config)
+    print(f"Agent skills dir: {agent_dir}")
+    if not agent_dir.exists():
+        print("  Directory does not exist.")
         return
-    
-    # 备份
-    print(f"\n正在备份项目目录...")
-    backup_path = backup_directory(project_dir)
-    if backup_path:
-        print(f"  备份路径: {backup_path}")
-    
-    # 执行同步
-    print(f"\n开始同步...")
-    success_count = 0
-    
-    for skill in sorted(to_sync | set(to_update_real)):
-        print(f"  同步 {skill}...", end=' ')
-        if sync_skill(skill, user_dir, project_dir):
-            print("✓")
-            success_count += 1
+
+    for skill_dir in sorted(p for p in agent_dir.iterdir() if is_skill_dir(p)):
+        meta = read_json(skill_dir / SOURCE_META)
+        if meta:
+            print(f"- {skill_dir.name}: {meta.get('repo')}/{meta.get('path')}@{meta.get('ref')}")
         else:
-            print("✗")
-    
-    print(f"\n✅ 同步完成: {success_count}/{len(to_sync) + len(to_update_real)} 个 skill")
-    print("\n⚠️  记得将新同步的 skills 提交到 Git!")
+            print(f"- {skill_dir.name}: source unknown")
+
+
+def validate_skill(skill_dir: Path):
+    if not is_skill_dir(skill_dir):
+        raise FileNotFoundError(f"Missing SKILL.md: {skill_dir}")
+
+    for py_file in skill_dir.rglob("*.py"):
+        if "__pycache__" in py_file.parts:
+            continue
+        require_success([sys.executable, "-m", "py_compile", str(py_file)])
+        print(f"  [OK] py_compile {py_file.relative_to(skill_dir)}")
+
+
+def publish(args, config: dict):
+    local_repo = resolve_local_repo(args, config)
+    if not local_repo:
+        raise SystemExit("Local skills repo not found. Pass --local-repo or run inside the repo.")
+    if not local_repo.exists():
+        raise FileNotFoundError(f"Local repo does not exist: {local_repo}")
+    if not args.skill:
+        raise SystemExit("--skill is required for publish")
+
+    skill_dir = local_repo / args.skill
+    print(f"Local repo: {local_repo}")
+    print(f"Skill: {skill_dir}")
+    validate_skill(skill_dir)
+
+    rc, out, err = run(["git", "status", "--short"], local_repo)
+    if rc != 0:
+        raise RuntimeError(err or out)
+    if not out.strip():
+        print("  [INFO] No git changes to publish.")
+    else:
+        print("\nChanged files:")
+        print(out.rstrip())
+        if args.dry_run:
+            print("\n[DRY-RUN] Would commit and push these changes.")
+            return
+        require_success(["git", "add", args.skill], local_repo)
+        if (local_repo / ".gitignore").exists():
+            require_success(["git", "add", ".gitignore"], local_repo)
+        message = args.message or f"chore: update {args.skill} skill"
+        require_success(["git", "commit", "-m", message], local_repo)
+        print(f"  [OK] git commit: {message}")
+
+    if not args.dry_run:
+        require_success(["git", "push"], local_repo)
+        print("  [OK] git push")
+
+
+def publish_and_update(args, config: dict):
+    publish(args, config)
+    install_args = argparse.Namespace(**vars(args))
+    install_args.path = args.path or args.skill
+    install_args.name = args.name or args.skill
+    install_args.dry_run = args.dry_run
+    install_or_update(install_args, config)
+
+
+def write_config(args, config: dict):
+    data = {
+        "defaultRepo": args.repo or config.get("defaultRepo", DEFAULT_REPO),
+        "defaultRef": args.ref or config.get("defaultRef", DEFAULT_REF),
+    }
+    if args.local_repo:
+        data["localRepoPath"] = str(Path(args.local_repo).expanduser().resolve())
+    if args.agent_dir:
+        data["agentSkillsDir"] = str(Path(args.agent_dir).expanduser().resolve())
+
+    path = script_skill_dir() / "sync-skills.local.json"
+    write_json(path, data)
+    print(f"Wrote config: {path}")
+
+
+def build_parser():
+    parser = argparse.ArgumentParser(description="GitHub-centered skills manager")
+    parser.add_argument("command", choices=[
+        "list",
+        "install",
+        "update",
+        "update-all",
+        "publish",
+        "publish-and-update",
+        "write-config",
+    ])
+    parser.add_argument("--skill", help="Skill name, for example hexo-push")
+    parser.add_argument("--repo", help="GitHub repo, for example askairo/kairo-skills")
+    parser.add_argument("--path", help="Path to skill inside repo. Defaults to --skill")
+    parser.add_argument("--ref", help="Git ref/branch/tag. Defaults to config or main")
+    parser.add_argument("--name", help="Installed skill directory name. Defaults to path basename")
+    parser.add_argument("--agent-dir", help="Current Agent skills directory")
+    parser.add_argument("--local-repo", help="Local writable skills source repository")
+    parser.add_argument("--message", help="Commit message for publish")
+    parser.add_argument("--dry-run", action="store_true", help="Print actions without writing")
+    return parser
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Skills 同步工具')
-    parser.add_argument('--mode', choices=['check', 'install', 'dev'], 
-                        default='check',
-                        help='同步模式: check=检查差异, install=项目→用户, dev=用户→项目')
-    parser.add_argument('--dry-run', action='store_true',
-                        help='试运行，不实际执行同步')
-    
+    parser = build_parser()
     args = parser.parse_args()
-    
-    # 获取项目目录（包含环境变量检查和自动设置逻辑）
-    project_dir = get_project_dir()
-    
-    if not project_dir:
-        print("\n[ERROR] 无法确定项目目录")
-        print("\n解决方案:")
-        print("1. 在 Skills 项目目录中运行此脚本")
-        print("2. 手动设置环境变量 SKILLS_PROJECT_DIR")
-        print('   setx SKILLS_PROJECT_DIR "<你的项目目录路径>"')
+    config = load_config()
+
+    try:
+        if args.command == "list":
+            list_installed(args, config)
+        elif args.command == "install":
+            install_or_update(args, config)
+        elif args.command == "update":
+            update_installed(args, config)
+        elif args.command == "update-all":
+            args.skill = None
+            update_installed(args, config)
+        elif args.command == "publish":
+            publish(args, config)
+        elif args.command == "publish-and-update":
+            publish_and_update(args, config)
+        elif args.command == "write-config":
+            write_config(args, config)
+    except Exception as exc:
+        print(f"[ERROR] {exc}")
         sys.exit(1)
-    
-    if not Path(project_dir).exists():
-        print(f"[ERROR] 项目目录不存在: {project_dir}")
-        sys.exit(1)
-    
-    # 获取用户目录
-    user_dir = get_user_dir()
-    
-    if not Path(user_dir).exists():
-        print(f"[WARN] 用户目录不存在，将创建: {user_dir}")
-        Path(user_dir).mkdir(parents=True, exist_ok=True)
-    
-    # 执行对应模式
-    if args.mode == 'check':
-        check_mode(project_dir, user_dir)
-    elif args.mode == 'install':
-        install_mode(project_dir, user_dir, args.dry_run)
-    elif args.mode == 'dev':
-        dev_mode(project_dir, user_dir, args.dry_run)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
