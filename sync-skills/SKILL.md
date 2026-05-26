@@ -78,6 +78,18 @@ python scripts/sync.py update --skill hexo-push
 python scripts/sync.py update-all
 ```
 
+清理安装/更新时自动生成的备份目录（`*.backup.YYYYmmdd_HHMMSS`）：
+
+```powershell
+python scripts/sync.py cleanup-backups
+```
+
+只清理某个 skill 的备份：
+
+```powershell
+python scripts/sync.py cleanup-backups --skill hexo-push
+```
+
 ### 4. 安装第三方 skill
 
 第三方 GitHub 仓库也可以使用同样流程：
@@ -193,6 +205,12 @@ python scripts/sync.py install --skill hexo-push --dry-run
 2. 如果没有来源元数据，要求用户提供 repo/path，或使用默认配置。
 3. 覆盖前备份旧目录。
 4. 更新后写回 `.skill-source.json`。
+
+当安装时报 `Skill path not found or missing SKILL.md` 时：
+
+1. 先检查本地源码仓库是否已有该 skill 目录。
+2. 若本地有但 GitHub 没有，说明漏推送：先 `publish`/`git push`，再执行 `install`。
+3. 不要把运行时目录手工复制当作长期修复；仍然走“本地源码仓库 -> GitHub -> 运行时目录”。
 
 ## 注意事项
 

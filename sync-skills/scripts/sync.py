@@ -14,6 +14,7 @@ Agent directory detection.
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -36,6 +37,7 @@ SOURCE_META = ".skill-source.json"
 CONFIG_NAMES = ("sync-skills.local.json", ".sync-skills.json")
 EXCLUDE_DIRS = {".git", "__pycache__", ".venv", "node_modules"}
 EXCLUDE_SUFFIXES = {".pyc", ".pyo"}
+BACKUP_PATTERN = re.compile(r"^(.+)\.backup\.\d{8}_\d{6}$")
 
 
 def now_iso() -> str:
@@ -199,7 +201,14 @@ def download_github_path(repo: str, ref: str, skill_path: str, target_dir: Path,
             raise FileNotFoundError("GitHub archive did not contain a repository root")
         source_dir = roots[0] / skill_path
         if not is_skill_dir(source_dir):
-            raise FileNotFoundError(f"Skill path not found or missing SKILL.md: {skill_path}")
+            hint = f"Skill path not found or missing SKILL.md: {skill_path}"
+            local_repo = find_skills_repo_from_cwd()
+            if local_repo and is_skill_dir(local_repo / skill_path):
+                hint += (
+                    " | Found locally but missing in GitHub archive. "
+                    "Publish/push local repo first, then install again."
+                )
+            raise FileNotFoundError(hint)
 
         target_dir.parent.mkdir(parents=True, exist_ok=True)
         if target_dir.exists():
@@ -301,6 +310,47 @@ def list_installed(args, config: dict):
             print(f"- {skill_dir.name}: source unknown")
 
 
+def list_backup_dirs(agent_dir: Path, skill: str | None = None) -> list[Path]:
+    backups: list[Path] = []
+    if not agent_dir.exists():
+        return backups
+
+    for path in agent_dir.iterdir():
+        if not path.is_dir():
+            continue
+        match = BACKUP_PATTERN.match(path.name)
+        if not match:
+            continue
+        base_name = match.group(1)
+        if skill and base_name != skill:
+            continue
+        backups.append(path)
+
+    return sorted(backups)
+
+
+def cleanup_backups(args, config: dict):
+    agent_dir = resolve_agent_dir(args, config)
+    backups = list_backup_dirs(agent_dir, args.skill)
+    if not backups:
+        print("No backup skill directories found.")
+        return
+
+    print(f"Agent skills dir: {agent_dir}")
+    for backup in backups:
+        print(f"- {backup.name}")
+
+    if args.dry_run:
+        print("[DRY-RUN] Would remove backup directories above.")
+        return
+
+    removed = 0
+    for backup in backups:
+        shutil.rmtree(backup)
+        removed += 1
+    print(f"[OK] Removed {removed} backup director{'y' if removed == 1 else 'ies'}.")
+
+
 def validate_skill(skill_dir: Path):
     if not is_skill_dir(skill_dir):
         raise FileNotFoundError(f"Missing SKILL.md: {skill_dir}")
@@ -380,6 +430,7 @@ def build_parser():
         "install",
         "update",
         "update-all",
+        "cleanup-backups",
         "publish",
         "publish-and-update",
         "write-config",
@@ -411,6 +462,8 @@ def main():
         elif args.command == "update-all":
             args.skill = None
             update_installed(args, config)
+        elif args.command == "cleanup-backups":
+            cleanup_backups(args, config)
         elif args.command == "publish":
             publish(args, config)
         elif args.command == "publish-and-update":
