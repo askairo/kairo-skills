@@ -30,6 +30,7 @@ Use this flow when task metadata implies a branch such as `task-1234`.
 
 5. If the task branch does not exist, create it from a baseline branch.
    - Prefer the baseline branch named by repository instructions.
+   - In `znder-erp` and `znder-erp-api`, use `master` as the default baseline unless the user explicitly requests another base.
    - If no instruction exists, infer from existing project practice.
    - Common baselines are `master`, `main`, and `dev`; do not assume one without checking what exists.
 
@@ -38,6 +39,10 @@ Use this flow when task metadata implies a branch such as `task-1234`.
    - Switch to the baseline branch.
    - Pull with a fast-forward-only strategy when possible.
    - Create the task branch from the updated baseline.
+
+7. Verify baseline alignment immediately after branch creation.
+   - Compare `rev-parse <baseline>` and `rev-parse <task-branch>`.
+   - If they differ before any task commit is made, stop and recreate the task branch from the correct baseline.
 
 ## Command Shape
 

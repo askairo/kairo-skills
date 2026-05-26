@@ -33,8 +33,10 @@ This skill stops after the finished development work is validated and committed 
    - Check the current branch and working tree before switching.
    - Avoid touching unrelated dirty changes.
    - Create the task branch only when needed; if it already exists, switch to it after confirming it is the intended branch.
-   - If the inferred task branch does not exist, create it from the repository's baseline branch. Prefer the baseline named by repo instructions; otherwise use the current project's established default such as `master`, `main`, or `dev`.
+   - If the inferred task branch does not exist, create it from the repository's baseline branch. Prefer the baseline named by repo instructions.
+   - For Znder ERP repositories (`znder-erp`, `znder-erp-api`), default to creating task branches from `master` unless the user explicitly requests another baseline.
    - Before creating a new branch from a baseline, update that baseline from the remote when safe to do so. Do not overwrite, delete, or recreate an existing task branch.
+   - After creating a task branch, verify the branch head equals the baseline head when no new commits were made yet. If not equal, stop and recreate from the correct baseline.
    - See `references/branch-prep.md` for the compatible branch preparation flow.
 
 5. Split the work into task cards.
