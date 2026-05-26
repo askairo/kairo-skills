@@ -44,6 +44,12 @@ infer the title from the link label and keep the original Markdown link for comm
 - If the task includes prototype or entity design work, use `$entity-design` for that analysis instead of duplicating its rules here.
 - If the task page has too much content, collect only the fields needed for implementation: goal, acceptance criteria, affected pages/APIs, data model impact, and edge cases.
 
+## Task Card Placement
+
+- If the workspace has a recognized requirement-notes directory (for example `03-req`), create `task-<id>.md` there before implementation starts.
+- The task card should include: source link, branch, baseline, commit block, scope checklist, and verification checklist.
+- Keep the file updated when user interventions change branch baseline or execution plan.
+
 ## Commit Message Shaping
 
 When task metadata is available, generate a concise message:

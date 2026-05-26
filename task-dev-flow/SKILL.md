@@ -41,6 +41,7 @@ This skill stops after the finished development work is validated and committed 
 
 5. Split the work into task cards.
    - Produce a short checklist from the requirement before implementation.
+   - If the workspace has a dedicated requirements directory (for example `03-req`), create `task-<id>.md` there before editing business code.
    - Keep cards outcome-oriented, such as API contract, persistence change, assembler mapping, operation log, validation, and tests.
    - Update the checklist as work completes.
    - When writing a `task.md` or equivalent task card, follow `references/task-template.md`.
@@ -71,6 +72,13 @@ feat(scope): [Task title](Task URL) (task-1234)
    - Summarize what changed and what was verified.
    - Leave merge, release, or deployment decisions to the user unless explicitly requested later.
    - If the user later asks to merge the committed branch, use the appropriate merge workflow then.
+
+## Interruption And Recovery Rules
+
+- If the user corrects baseline selection (for example asks to use `master` instead of `dev`), stop implementation immediately, fix branch baseline first, and only then continue coding.
+- After creating a new task branch, always verify baseline alignment hash before reading or editing business files.
+- For privileged git actions (add/commit/push), if approval times out, retry once. If it times out again, pause and ask the user for a one-line go-ahead, then resume the same command.
+- Do not continue feature implementation while branch-baseline disputes are unresolved.
 
 ## Coordination With Other Skills
 

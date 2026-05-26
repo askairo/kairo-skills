@@ -44,6 +44,10 @@ Use this flow when task metadata implies a branch such as `task-1234`.
    - Compare `rev-parse <baseline>` and `rev-parse <task-branch>`.
    - If they differ before any task commit is made, stop and recreate the task branch from the correct baseline.
 
+8. Handle user correction and command-interruption quickly.
+   - If the user says the baseline is wrong, pause code changes and fix branch baseline first.
+   - If privileged git commands time out on approval review, retry once, then request explicit user go-ahead and continue with the same command.
+
 ## Command Shape
 
 Use repo-native Git commands. Typical shape:
