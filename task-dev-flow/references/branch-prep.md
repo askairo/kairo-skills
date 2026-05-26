@@ -30,7 +30,7 @@ Use this flow when task metadata implies a branch such as `task-1234`.
 
 5. If the task branch does not exist, create it from a baseline branch.
    - Prefer the baseline branch named by repository instructions.
-   - In `znder-erp` and `znder-erp-api`, use `master` as the default baseline unless the user explicitly requests another base.
+   - In `znder-erp` and `znder-erp-api`, baseline priority is `master`, then `main`, then repository instruction baseline. If the user explicitly requests another base, follow that request.
    - If no instruction exists, infer from existing project practice.
    - Common baselines are `master`, `main`, and `dev`; do not assume one without checking what exists.
 
