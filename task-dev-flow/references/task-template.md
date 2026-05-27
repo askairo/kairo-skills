@@ -68,3 +68,13 @@ Avoid:
 ```
 
 The inline form is harder to copy cleanly from rendered Markdown.
+
+## Workspace Requirement Doc Artifact
+
+When the workspace has a known task-requirement directory convention (for example `03-req/`), also create:
+
+```text
+03-req/task-<id>.md
+```
+
+Keep the metadata and the `commit` code block consistent with the main task card.

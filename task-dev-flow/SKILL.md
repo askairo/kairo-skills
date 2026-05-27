@@ -41,10 +41,10 @@ This skill stops after the finished development work is validated and committed 
 
 5. Split the work into task cards.
    - Produce a short checklist from the requirement before implementation.
-   - If the workspace has a dedicated requirements directory (for example `03-req`), create `task-<id>.md` there before editing business code.
    - Keep cards outcome-oriented, such as API contract, persistence change, assembler mapping, operation log, validation, and tests.
    - Update the checklist as work completes.
    - When writing a `task.md` or equivalent task card, follow `references/task-template.md`.
+   - If the workspace has a requirement-doc convention directory (for example `03-req/`), create or update `task-<id>.md` there as part of this step.
 
 6. Implement according to the repository shape.
    - Start from existing code paths and patterns.
@@ -61,6 +61,8 @@ This skill stops after the finished development work is validated and committed 
    - Stage only files related to the task.
    - Generate a task-aware commit message when task metadata is available.
    - If a `task.md` or task card contains a `commit` code block, use that exact message for `git commit`.
+   - Once the `commit` message is generated in the task card, treat it as immutable for this task. Reuse the exact same text for all task commits.
+   - Do not create ad-hoc commit messages later unless the user explicitly asks to change the commit wording.
    - Commit only after implementation is complete and validation has passed, or after clearly reporting any validation that could not be run.
    - Example format:
 
@@ -69,16 +71,13 @@ feat(scope): [Task title](Task URL) (task-1234)
 ```
 
 9. Stop after committing the task branch.
+   - Run a quick consistency check before finishing:
+     - task branch exists and is correct (`task-<id>` when applicable)
+     - commit message(s) use the exact task-card `commit` text
+     - required task doc artifact exists (for example `03-req/task-<id>.md` when that convention is present)
    - Summarize what changed and what was verified.
    - Leave merge, release, or deployment decisions to the user unless explicitly requested later.
    - If the user later asks to merge the committed branch, use the appropriate merge workflow then.
-
-## Interruption And Recovery Rules
-
-- If the user corrects baseline selection (for example asks to use `master` instead of `dev`), stop implementation immediately, fix branch baseline first, and only then continue coding.
-- After creating a new task branch, always verify baseline alignment hash before reading or editing business files.
-- For privileged git actions (add/commit/push), if approval times out, retry once. If it times out again, pause and ask the user for a one-line go-ahead, then resume the same command.
-- Do not continue feature implementation while branch-baseline disputes are unresolved.
 
 ## Coordination With Other Skills
 

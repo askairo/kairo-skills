@@ -44,12 +44,6 @@ infer the title from the link label and keep the original Markdown link for comm
 - If the task includes prototype or entity design work, use `$entity-design` for that analysis instead of duplicating its rules here.
 - If the task page has too much content, collect only the fields needed for implementation: goal, acceptance criteria, affected pages/APIs, data model impact, and edge cases.
 
-## Task Card Placement
-
-- If the workspace has a recognized requirement-notes directory (for example `03-req`), create `task-<id>.md` there before implementation starts.
-- The task card should include: source link, branch, baseline, commit block, scope checklist, and verification checklist.
-- Keep the file updated when user interventions change branch baseline or execution plan.
-
 ## Commit Message Shaping
 
 When task metadata is available, generate a concise message:
@@ -61,5 +55,7 @@ feat(scope): [Task title](Task URL) (task-1234)
 When placing the message in a `task.md` file, put it in a fenced code block under `commit:`. See `task-template.md`.
 
 After the task is implemented and verified, use this message exactly for `git commit`. Do not treat it as merely a suggestion when the user has asked the skill to complete the development workflow.
+
+If multiple commits are required for the same task, reuse the exact same commit text unless the user explicitly asks for different wording.
 
 Adjust `type` and `scope` to the repository convention. If the repository has no scope convention, infer one from the touched module or ask only when inference would be misleading.
