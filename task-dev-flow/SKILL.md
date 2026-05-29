@@ -48,8 +48,9 @@ This skill stops after the finished development work is validated and committed 
    - Update the checklist as work completes.
    - When writing a `task.md` or equivalent task card, follow `references/task-template.md`.
    - Create or update a requirement task doc during this step, where filename is always `<prefix>-<id>.md` and `prefix` is `feat` or `fix`.
-   - Resolve the doc directory dynamically from the current project:
-     - Prefer `03-req/<repo-name>/` when it exists.
+   - Resolve the doc directory with this priority:
+     - For `znder-erp` and `znder-erp-api`, always write to `D:\znder\Obsidian\business\03-req/<repo-name>/`.
+     - Otherwise, prefer `03-req/<repo-name>/` when it exists.
      - Else use `03-req/` when it exists.
      - Else create `03-req/<repo-name>/` and place the doc there.
    - Only skip this artifact when the user explicitly asks not to create docs.
@@ -88,7 +89,7 @@ fix(scope): [Bug title](Bug URL) (fix-6076)
    - Run a quick consistency check before finishing:
      - work-item branch exists and is correct (`feat-<id>` or `fix-<id>` when applicable)
      - commit message(s) use the exact task-card `commit` text
-     - required task doc artifact exists at the resolved project path (for example `03-req/<repo-name>/feat-<id>.md` or `03-req/<repo-name>/fix-<id>.md`)
+     - required task doc artifact exists at the resolved path (for example `D:\znder\Obsidian\business\03-req/znder-erp/fix-<id>.md` for znder repos, or `03-req/<repo-name>/fix-<id>.md` for general repos)
    - Summarize what changed and what was verified.
    - Leave merge, release, or deployment decisions to the user unless explicitly requested later.
    - If the user later asks to merge the committed branch, use the appropriate merge workflow then.

@@ -16,6 +16,7 @@ Extract these fields when available:
 - `platform`: source system if obvious, such as ZenTao, Jira, GitHub, Axhub, or internal docs.
 - `repo`: target repository when stated by the user or implied by cwd.
 - `branch`: prefer `<prefix>-<task_id>` when a numeric ID exists, where `<prefix>` is `feat` for task/story and `fix` for bug.
+- `task_doc_path`: resolved doc location; for `znder-erp` and `znder-erp-api`, use `D:\znder\Obsidian\business\03-req/<repo-name>/<prefix>-<task_id>.md`.
 
 For ZenTao-style URLs such as:
 

@@ -71,12 +71,13 @@ The inline form is harder to copy cleanly from rendered Markdown.
 
 ## Workspace Requirement Doc Artifact
 
-Always create a requirement task doc artifact and resolve the directory dynamically:
+Always create a requirement task doc artifact and resolve the directory with this priority:
 
 ```text
-1. 03-req/<repo-name>/<feat|fix>-<id>.md      (if this repo-specific directory exists)
-2. 03-req/<feat|fix>-<id>.md                  (if flat 03-req exists)
-3. create 03-req/<repo-name>/ then write <feat|fix>-<id>.md there
+1. D:\znder\Obsidian\business\03-req/<repo-name>/<feat|fix>-<id>.md  (for znder-erp / znder-erp-api)
+2. 03-req/<repo-name>/<feat|fix>-<id>.md                              (if this repo-specific directory exists)
+3. 03-req/<feat|fix>-<id>.md                                          (if flat 03-req exists)
+4. create 03-req/<repo-name>/ then write <feat|fix>-<id>.md there
 ```
 
 Keep the metadata and the `commit` code block consistent with the main task card.
