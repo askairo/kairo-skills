@@ -1,0 +1,4 @@
+name: excel2sql
+display_name: Excel To SQL
+short_description: Read Excel and generate insert SQL by entity mapping.
+default_prompt: Generate insert SQL from an Excel file using a Java entity class and set audit fields to 1/admin/super admin.
