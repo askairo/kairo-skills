@@ -15,7 +15,7 @@ Extract these fields when available:
 - `source_url`: original requirement URL.
 - `platform`: source system if obvious, such as ZenTao, Jira, GitHub, Axhub, or internal docs.
 - `repo`: target repository when stated by the user or implied by cwd.
-- `branch`: prefer `task-<task_id>` when a numeric ID exists.
+- `branch`: prefer `<prefix>-<task_id>` when a numeric ID exists, where `<prefix>` is `feat` for task/story and `fix` for bug.
 
 For ZenTao-style URLs such as:
 
@@ -27,7 +27,7 @@ infer:
 
 ```text
 task_id: 1336
-branch: task-1336
+branch: feat-1336
 ```
 
 If the link text is Markdown:
@@ -49,7 +49,7 @@ infer the title from the link label and keep the original Markdown link for comm
 When task metadata is available, generate a concise message:
 
 ```text
-feat(scope): [Task title](Task URL) (task-1234)
+feat(scope): [Task title](Task URL) (feat-1234)
 ```
 
 When placing the message in a `task.md` file, put it in a fenced code block under `commit:`. See `task-template.md`.

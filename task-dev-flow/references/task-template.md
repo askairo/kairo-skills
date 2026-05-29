@@ -5,15 +5,15 @@ Use this structure when the user asks for a `task.md`, task card, or implementat
 ## Template
 
 ````markdown
-# <task-id> <task-title>
+# <workitem-prefix>-<id> <workitem-title>
 
-- source: [<task-title>](<task-url>)
-- branch: `task-<id>`
+- source: [<workitem-title>](<workitem-url>)
+- branch: `<feat|fix>-<id>`
 - baseline: `<master|main|dev|repo-specific>`
 - commit:
 
 ```text
-<type>(<scope>): [<task-title>](<task-url>) (task-<id>)
+<type>(<scope>): [<workitem-title>](<workitem-url>) (<feat|fix>-<id>)
 ```
 
 ## Background
@@ -57,24 +57,26 @@ Good:
 - commit:
 
 ```text
-feat(srm): [【采购计划】详情页改版 后端](https://chandao.bidaapp.club/zentao/task-view-1336.html) (task-1336)
+feat(srm): [【采购计划】详情页改版 后端](https://chandao.bidaapp.club/zentao/task-view-1336.html) (feat-1336)
 ```
 ````
 
 Avoid:
 
 ```markdown
-- commit: `feat(srm): [【采购计划】详情页改版 后端](https://chandao.bidaapp.club/zentao/task-view-1336.html) (task-1336)`
+- commit: `feat(srm): [【采购计划】详情页改版 后端](https://chandao.bidaapp.club/zentao/task-view-1336.html) (feat-1336)`
 ```
 
 The inline form is harder to copy cleanly from rendered Markdown.
 
 ## Workspace Requirement Doc Artifact
 
-When the workspace has a known task-requirement directory convention (for example `03-req/`), also create:
+Always create a requirement task doc artifact and resolve the directory dynamically:
 
 ```text
-03-req/task-<id>.md
+1. 03-req/<repo-name>/<feat|fix>-<id>.md      (if this repo-specific directory exists)
+2. 03-req/<feat|fix>-<id>.md                  (if flat 03-req exists)
+3. create 03-req/<repo-name>/ then write <feat|fix>-<id>.md there
 ```
 
 Keep the metadata and the `commit` code block consistent with the main task card.

@@ -16,7 +16,10 @@ This skill stops after the finished development work is validated and committed 
 1. Capture the task input.
    - Accept task links, issue IDs, pasted titles, screenshots, prototype links, or natural-language descriptions.
    - Extract stable metadata when present: task title, task ID, source URL, product area, repository, and target branch name.
-   - Prefer branch names like `task-<id>` when a numeric task ID is available.
+   - Detect work-item type from the source when possible and map to a unified prefix:
+     - Task links such as `task-view-1336` -> use `feat-1336`
+     - Bug links such as `bug-view-6076` -> use `fix-6076`
+   - Keep branch name, task-card filename, and commit suffix aligned with the same work-item prefix (`feat` or `fix`).
 
 2. Inspect the requirement source.
    - If the requirement is already open in Chrome and the user asks to use browser MCP, inspect it there.
@@ -29,14 +32,14 @@ This skill stops after the finished development work is validated and committed 
    - If the repo defines an instruction order, follow that order literally.
    - Let repository rules decide layering, naming, validation style, SQL location, and commit conventions.
 
-4. Create or select the task branch.
+4. Create or select the work-item branch.
    - Check the current branch and working tree before switching.
    - Avoid touching unrelated dirty changes.
-   - Create the task branch only when needed; if it already exists, switch to it after confirming it is the intended branch.
-   - If the inferred task branch does not exist, create it from the repository's baseline branch. Prefer the baseline named by repo instructions.
+   - Create the work-item branch only when needed; if it already exists, switch to it after confirming it is the intended branch.
+   - If the inferred work-item branch does not exist, create it from the repository's baseline branch. Prefer the baseline named by repo instructions.
    - For Znder ERP repositories (`znder-erp`, `znder-erp-api`), default baseline order is: `master` -> `main` -> repository instruction baseline. If the user explicitly requests another baseline, follow the user request.
-   - Before creating a new branch from a baseline, update that baseline from the remote when safe to do so. Do not overwrite, delete, or recreate an existing task branch.
-   - After creating a task branch, verify the branch head equals the baseline head when no new commits were made yet. If not equal, stop and recreate from the correct baseline.
+   - Before creating a new branch from a baseline, update that baseline from the remote when safe to do so. Do not overwrite, delete, or recreate an existing work-item branch.
+   - After creating a work-item branch, verify the branch head equals the baseline head when no new commits were made yet. If not equal, stop and recreate from the correct baseline.
    - See `references/branch-prep.md` for the compatible branch preparation flow.
 
 5. Split the work into task cards.
@@ -44,7 +47,13 @@ This skill stops after the finished development work is validated and committed 
    - Keep cards outcome-oriented, such as API contract, persistence change, assembler mapping, operation log, validation, and tests.
    - Update the checklist as work completes.
    - When writing a `task.md` or equivalent task card, follow `references/task-template.md`.
-   - If the workspace has a requirement-doc convention directory (for example `03-req/`), create or update `task-<id>.md` there as part of this step.
+   - Create or update a requirement task doc during this step, where filename is always `<prefix>-<id>.md` and `prefix` is `feat` or `fix`.
+   - Resolve the doc directory dynamically from the current project:
+     - Prefer `03-req/<repo-name>/` when it exists.
+     - Else use `03-req/` when it exists.
+     - Else create `03-req/<repo-name>/` and place the doc there.
+   - Only skip this artifact when the user explicitly asks not to create docs.
+   - Keep the task doc metadata (`source`, `branch`, `baseline`, `commit`) synchronized with the actual branch and commit text used later.
 
 6. Implement according to the repository shape.
    - Start from existing code paths and patterns.
@@ -66,15 +75,20 @@ This skill stops after the finished development work is validated and committed 
    - Commit only after implementation is complete and validation has passed, or after clearly reporting any validation that could not be run.
    - Example format:
 
+Task item:
 ```text
-feat(scope): [Task title](Task URL) (task-1234)
+feat(scope): [Task title](Task URL) (feat-1234)
+```
+Bug item:
+```text
+fix(scope): [Bug title](Bug URL) (fix-6076)
 ```
 
-9. Stop after committing the task branch.
+9. Stop after committing the work-item branch.
    - Run a quick consistency check before finishing:
-     - task branch exists and is correct (`task-<id>` when applicable)
+     - work-item branch exists and is correct (`feat-<id>` or `fix-<id>` when applicable)
      - commit message(s) use the exact task-card `commit` text
-     - required task doc artifact exists (for example `03-req/task-<id>.md` when that convention is present)
+     - required task doc artifact exists at the resolved project path (for example `03-req/<repo-name>/feat-<id>.md` or `03-req/<repo-name>/fix-<id>.md`)
    - Summarize what changed and what was verified.
    - Leave merge, release, or deployment decisions to the user unless explicitly requested later.
    - If the user later asks to merge the committed branch, use the appropriate merge workflow then.
