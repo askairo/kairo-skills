@@ -43,6 +43,21 @@ Use this skill when the user asks to clean Windows disk space, especially `C:`. 
 4. Final verification:
    - Report free space delta (GB), remaining major consumers, and any skipped items.
 
+## Mode Switch
+
+### `safe` (default)
+
+- Execute the full "Default Workflow (Safe Mode)" only.
+- No personal-data deletion.
+- No hibernation change.
+- No developer cache purge unless user asks.
+
+### `aggressive` (explicit user request only)
+
+- Includes all `safe` actions, plus optional actions below after clear confirmation.
+- User must explicitly ask for aggressive mode (for example: "run win-clean aggressive").
+- If request is ambiguous, stay in `safe`.
+
 ## Optional Actions (Explicit Confirmation Required)
 
 - Disable hibernation to remove `hiberfil.sys`:
