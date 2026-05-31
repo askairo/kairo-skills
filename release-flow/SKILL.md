@@ -104,18 +104,21 @@ description: 通用发布流水线技能。按“版本->构建->产物校验->�
 ```json
 {
   "homebrewTap": {
-    "enabled": false,
-    "repo": "askairo/homebrew-tap",
-    "caskPath": "Casks/clicky.rb",
-    "assetForMac": "src-tauri/target/release/bundle/dmg/*.dmg"
+    "enabled": true,
+    "repo": "askairo/homebrew-clicky",
+    "formulaName": "clicky",
+    "macArtifactPattern": "_aarch64.dmg",
+    "appName": "Clicky",
+    "desc": "Cross-platform environment profile switcher for Spring Boot",
+    "homepage": "https://github.com/askairo/Clicky"
   }
 }
 ```
 
 - 启用后流程追加：
-  1. 读取新版本与 mac 资产 URL
+  1. 读取新版本与 mac 资产 URL（推荐基于 GitHub Release）
   2. 计算 `sha256`
-  3. 更新 cask 版本、URL、校验值
+  3. 生成/更新 `Formula/clicky.rb`（版本、URL、`sha256`）
   4. 提交并推送 tap 仓库
 
 ## 输出要求
