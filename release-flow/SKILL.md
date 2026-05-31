@@ -55,6 +55,15 @@ description: 通用发布流水线技能。按“版本->构建->产物校验->�
   - `src-tauri/target/release/*.exe`（绿色版）
 - 绿色版重命名建议：`<Product>_<version>_x64.exe`。
 
+### Tauri 跨平台产物（P18 推荐）
+
+- CI 校验矩阵：`windows-latest` + `macos-latest`。
+- Release 产物矩阵：至少包含 Windows 安装包（`nsis/msi`）和 macOS 安装包（`dmg`）。
+- 推荐把“校验流水线”和“发布流水线”分离：
+  - `ci.yml`：`npm ci`、`npm run build`、`cargo check`
+  - `release.yml`：tag/手动触发，执行 `tauri build` 并上传资产
+- 资产命名统一包含版本号，例如 `Clicky_v0.1.4_x64-setup.exe`、`Clicky_v0.1.4.dmg`。
+
 ## 最小可选配置（仅在需要时）
 
 可在仓库根目录放置 `.release-flow.json` 覆盖默认行为，例如：
@@ -71,6 +80,43 @@ description: 通用发布流水线技能。按“版本->构建->产物校验->�
   "removeUnversionedAssets": true
 }
 ```
+
+### Clicky 示例（Win + Mac）
+
+```json
+{
+  "releaseProvider": "github",
+  "versionStrategy": "patch",
+  "assetPatterns": [
+    "src-tauri/target/release/bundle/nsis/*-setup.exe",
+    "src-tauri/target/release/bundle/msi/*.msi",
+    "src-tauri/target/release/bundle/dmg/*.dmg"
+  ],
+  "removeUnversionedAssets": true
+}
+```
+
+## Homebrew Tap 兼容（阶段二）
+
+- 该技能应预留 tap 发布能力，但默认关闭，避免影响常规发布。
+- 建议新增可选配置字段（仅在用户明确启用时生效）：
+
+```json
+{
+  "homebrewTap": {
+    "enabled": false,
+    "repo": "askairo/homebrew-tap",
+    "caskPath": "Casks/clicky.rb",
+    "assetForMac": "src-tauri/target/release/bundle/dmg/*.dmg"
+  }
+}
+```
+
+- 启用后流程追加：
+  1. 读取新版本与 mac 资产 URL
+  2. 计算 `sha256`
+  3. 更新 cask 版本、URL、校验值
+  4. 提交并推送 tap 仓库
 
 ## 输出要求
 
