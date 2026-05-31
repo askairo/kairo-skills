@@ -29,6 +29,7 @@ https://github.com/askairo/kairo-skills
 | `merge-to` | 开发流程 | 将当前分支合并到 `dev` / `sit` 并推送 |
 | `weekly-report` | 业务文档 | 根据截图或任务列表生成周报 |
 | `entity-design` | 业务设计 | 根据原型和业务流程设计领域实体 |
+| `mac-clean` | 系统维护 | 在 macOS 上按安全优先策略清理存储空间 |
 
 ## 安装或更新
 
@@ -60,6 +61,7 @@ kairo-skills/
 ├── dialogue-refine/
 ├── entity-design/
 ├── hexo-push/
+├── mac-clean/
 ├── merge-to/
 ├── skills-loop/
 ├── upgrade-kimi-cli/
@@ -77,6 +79,7 @@ kairo-skills/
 ## 更新日志
 
 - 2026-05-23: 合并 Codex runtime 中的 `entity-design`、`merge-to`、`weekly-report`
+- 2026-05-31: 新增 `mac-clean`，沉淀 macOS 安全清理与分级回收流程
 - 2026-05-29: 将 `sync-skills` 升级并重命名为 `skills-loop`，支持在任意工作目录触发闭环同步
 - 2026-05-23: 将 `sync-skills` 重构为 GitHub 驱动的 skills 管理工具
 - 2026-05-23: 优化 `hexo-push` 发布前预览、分类标签确认和 deploy 重试流程
