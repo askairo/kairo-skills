@@ -1,4 +1,4 @@
-﻿---
+---
 name: release-flow
 description: 通用发布流水线技能。按“版本->构建->产物校验->提交->打Tag->Release->上传资产”执行，默认零配置自动识别项目类型；仅在歧义时使用最小配置覆盖。
 ---
@@ -22,6 +22,7 @@ description: 通用发布流水线技能。按“版本->构建->产物校验->�
 - 最小交互：无法可靠判断时，再向用户确认关键选项。
 - 失败可恢复：每一步都产出明确状态，支持从中断点继续。
 - 命名规范：发布资产默认带版本号，避免无版本文件名。
+- 跨平台明确：构建机平台与目标资产不一致时，提前预警并给出替代路径。
 
 ## 识别顺序
 
@@ -45,6 +46,41 @@ description: 通用发布流水线技能。按“版本->构建->产物校验->�
 8. 上传资产；若存在无版本旧资产，按策略清理。
 9. 输出发布结果：版本、commit、tag、release 链接、资产清单。
 
+## 发布前强制预检（新增）
+
+每次执行前，必须先做以下预检并在输出中写明结果：
+
+1. 分支模型预检
+   - 优先读取远端默认分支（`origin/HEAD`）和本地现有分支。
+   - 若仓库无 `develop`，不得强行要求 GitFlow；默认采用当前仓库分支策略。
+   - 若工具硬编码要求 `develop`，先提示风险，再提供替代执行路径（手动分步）。
+
+2. CLI 兼容预检
+   - 检测 `release-flow` CLI 是否存在 Windows 下 `git commit -m '...` 单引号兼容问题。
+   - 一旦命中该风险，直接切换“手动安全流程”：
+     - 升版
+     - 构建
+     - `git commit -m "Release vX.Y.Z"`
+     - `git tag vX.Y.Z`
+     - 创建/上传 Release
+
+3. 平台产物预检
+   - 根据当前 OS 判断可构建产物：
+     - Windows: `exe/msi/nsis`
+     - macOS: `dmg/app`
+   - 若配置要求包含异平台资产（如 Windows 上要求 `dmg`），必须提前提示“本机无法生成”，并给出：
+     - CI 矩阵（`windows-latest + macos-latest`）
+     - 或在对应平台补构建后再补传 Release。
+
+## 中断恢复流程（新增）
+
+当流程中断（例如已切 `release/x.y.z` 但 commit 失败）时，必须进入恢复模式而不是从头重跑：
+
+1. 检查当前分支、工作区、版本文件是否已变更。
+2. 检查 tag 是否已创建。
+3. 检查 Release 是否已存在。
+4. 从最近未完成步骤继续执行，并在最终输出明确“恢复执行”。
+
 ## Tauri 默认策略（内置适配）
 
 - 版本文件：`package.json`、`src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml`（必要时含 `Cargo.lock`）。
@@ -52,6 +88,7 @@ description: 通用发布流水线技能。按“版本->构建->产物校验->�
 - 常见产物：
   - `src-tauri/target/release/bundle/nsis/*-setup.exe`
   - `src-tauri/target/release/bundle/msi/*.msi`
+  - `src-tauri/target/release/bundle/dmg/*.dmg`
   - `src-tauri/target/release/*.exe`（绿色版）
 - 绿色版重命名建议：`<Product>_<version>_x64.exe`。
 
@@ -62,26 +99,11 @@ description: 通用发布流水线技能。按“版本->构建->产物校验->�
 - 推荐把“校验流水线”和“发布流水线”分离：
   - `ci.yml`：`npm ci`、`npm run build`、`cargo check`
   - `release.yml`：tag/手动触发，执行 `tauri build` 并上传资产
-- 资产命名统一包含版本号，例如 `Clicky_v0.1.4_x64-setup.exe`、`Clicky_v0.1.4.dmg`。
+- 资产命名统一包含版本号，例如 `Clicky_v0.1.4_x64-setup.exe`、`Clicky_v0.1.4_aarch64.dmg`。
 
 ## 最小可选配置（仅在需要时）
 
 可在仓库根目录放置 `.release-flow.json` 覆盖默认行为，例如：
-
-```json
-{
-  "releaseProvider": "github",
-  "versionStrategy": "patch",
-  "assetPatterns": [
-    "src-tauri/target/release/bundle/nsis/*-setup.exe",
-    "src-tauri/target/release/bundle/msi/*.msi",
-    "src-tauri/target/release/Clicky_*_x64.exe"
-  ],
-  "removeUnversionedAssets": true
-}
-```
-
-### Clicky 示例（Win + Mac）
 
 ```json
 {
@@ -130,3 +152,4 @@ description: 通用发布流水线技能。按“版本->构建->产物校验->�
   - release 链接
   - 资产列表（文件名 + 大小）
 - 若某步未执行（如网络失败），明确标注阻塞点和下一步命令。
+- 若受平台限制导致部分资产缺失，必须显式列出“缺失资产及原因”。
