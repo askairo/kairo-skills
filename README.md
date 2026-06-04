@@ -1,63 +1,68 @@
 # Kairo Skills
 
-个人 Agent/Codex/Kimi skills 仓库。远程仓库：
+English | [中文](README_ZH.md)
+
+Personal skills repository for Agent, Codex, and Kimi workflows.
+
+Remote repository:
 
 ```text
 https://github.com/askairo/kairo-skills
 ```
 
-## 维护模型
+## Maintenance Model
 
-本仓库是 skills 的长期源码仓库；各 Agent 的用户目录只是运行时安装目标。
+This repository is the long-term source repository for skills. Agent user directories are runtime installation targets only.
 
-推荐流程：
+Recommended flow:
 
 ```text
-本地源码仓库 -> GitHub -> 当前 Agent skills 运行目录
+local source repository -> GitHub -> current Agent skills runtime directory
 ```
 
-也就是说，修改 skill 时先改本仓库，验证后提交并推送，再通过 `skills-loop` 从 GitHub 拉取并覆盖当前 Agent 的已安装 skill。
+In other words, update a skill in this repository first, validate it, commit and push it, then use `skills-loop` to pull it back from GitHub and overwrite the installed runtime copy.
 
-## Skills 列表
+## Skills
 
-| Skill | 分组 | 描述 |
+| Skill | Group | Description |
 | --- | --- | --- |
-| `hexo-push` | 博客发布 | 将 Clippings 文章转换为 Hexo 文档并发布 |
-| `dialogue-refine` | 博客发布 | 将 AI 对话记录提炼为结构化 Hexo 文章 |
-| `skills-loop` | Skills 管理 | 基于 GitHub 的 skills 迭代闭环：发布、同步、回装、校验 |
-| `upgrade-kimi-cli` | 工具维护 | 自动检测并升级 Kimi CLI |
-| `merge-to` | 开发流程 | 将当前分支合并到 `dev` / `sit` 并推送 |
-| `weekly-report` | 业务文档 | 根据截图或任务列表生成周报 |
-| `entity-design` | 业务设计 | 根据原型和业务流程设计领域实体 |
-| `mac-clean` | 系统维护 | 在 macOS 上提供双模式：安全清理空间 + 零风险整理文件秩序 |
+| `hexo-push` | Blog publishing | Convert Clippings articles into Hexo posts and publish them |
+| `dialogue-refine` | Blog publishing | Refine AI conversations into structured Hexo posts |
+| `skills-loop` | Skills management | GitHub-based skill iteration loop: publish, sync, reinstall, verify |
+| `upgrade-kimi-cli` | Tool maintenance | Detect and upgrade Kimi CLI automatically |
+| `merge-to` | Development flow | Merge the current branch into `dev` / `sit` and push |
+| `weekly-report` | Business documents | Generate weekly reports from screenshots or task lists |
+| `entity-design` | Domain design | Design domain entities from prototypes and business workflows |
+| `mac-clean` | System maintenance | Safe macOS cleanup and low-risk file organization |
 
-## 安装或更新
+## Install or Update
 
-推荐使用 `skills-loop`：
+Recommended with `skills-loop`:
 
 ```powershell
 python skills-loop\scripts\sync.py install --repo askairo/kairo-skills --path hexo-push --agent-dir C:\Users\admin\.codex\skills
 ```
 
-更新已记录来源的 skill：
+Update a skill with recorded source metadata:
 
 ```powershell
 python skills-loop\scripts\sync.py update --skill hexo-push --agent-dir C:\Users\admin\.codex\skills
 ```
 
-发布本地修改并更新当前 Agent：
+Publish local changes and update the current Agent:
 
 ```powershell
 python skills-loop\scripts\sync.py publish-and-update --skill hexo-push --message "feat: improve hexo push"
 ```
 
-## 目录结构
+## Repository Layout
 
-当前保持“根目录一个 skill 一个文件夹”，便于 GitHub path 安装：
+The repository currently keeps one skill per root-level directory, which makes GitHub path-based installation straightforward:
 
 ```text
 kairo-skills/
 ├── README.md
+├── README_ZH.md
 ├── dialogue-refine/
 ├── entity-design/
 ├── hexo-push/
@@ -68,19 +73,19 @@ kairo-skills/
 └── weekly-report/
 ```
 
-暂不按物理目录拆分为 `blog/`、`work/` 等分类；分组先维护在 README 表格中。等 skills 数量明显增多后，再考虑目录分组，并同步升级 `skills-loop` 对嵌套路径的默认支持。
+Physical grouping such as `blog/` or `work/` is intentionally deferred. Grouping is maintained in the README table for now. Once the number of skills grows significantly, the directory structure and `skills-loop` defaults can be upgraded together.
 
-## 配置约定
+## Conventions
 
-- 优先使用自然语言/显式参数、配置文件和自动发现。
-- 环境变量只作为兜底兼容，不作为主推荐配置方式。
-- 运行时目录中的 skill 如果来自 GitHub，应包含 `.skill-source.json` 来源元数据。
+- Prefer natural language, explicit parameters, config files, and auto-discovery.
+- Use environment variables only as fallback compatibility, not as the recommended configuration path.
+- Runtime skills installed from GitHub should include `.skill-source.json` source metadata.
 
-## 更新日志
+## Changelog
 
-- 2026-05-23: 合并 Codex runtime 中的 `entity-design`、`merge-to`、`weekly-report`
-- 2026-05-31: 升级 `mac-clean` 为双模式：`safe/aggressive` 空间清理 + `organize-safe` 文件整理
-- 2026-05-29: 将 `sync-skills` 升级并重命名为 `skills-loop`，支持在任意工作目录触发闭环同步
-- 2026-05-23: 将 `sync-skills` 重构为 GitHub 驱动的 skills 管理工具
-- 2026-05-23: 优化 `hexo-push` 发布前预览、分类标签确认和 deploy 重试流程
-- 2026-04-07: 初始化仓库，添加 `hexo-push` 和 `upgrade-kimi-cli`
+- 2026-05-23: Merged `entity-design`, `merge-to`, and `weekly-report` from the Codex runtime
+- 2026-05-31: Upgraded `mac-clean` with safe/aggressive cleanup and `organize-safe`
+- 2026-05-29: Renamed and upgraded `sync-skills` to `skills-loop`
+- 2026-05-23: Refactored `sync-skills` into a GitHub-driven skills management workflow
+- 2026-05-23: Improved `hexo-push` previews, category/tag confirmation, and deploy retries
+- 2026-04-07: Initialized the repository with `hexo-push` and `upgrade-kimi-cli`
