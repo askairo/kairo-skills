@@ -46,7 +46,10 @@ If the user explicitly says to follow their pasted analysis, screenshots, or des
 ## Requirement Inspection
 
 - If the source is authenticated and already open in Chrome, prefer browser MCP over unauthenticated web requests.
-- Before asking the user for credentials, check whether the local-only auth config exists at `C:\Users\admin\.codex\local-config\task-dev-flow\auth-sites.yaml`.
+- Before asking the user for credentials, resolve the local-only auth config path in this order:
+  1. an explicit path the user provides for this task or their local setup
+  2. `<CODEX_HOME>/local-config/task-dev-flow/auth-sites.yaml`
+  3. `<HOME>/.codex/local-config/task-dev-flow/auth-sites.yaml`
 - Treat that file as private machine state. Never write it into a project repo, the skills source repo, task docs, or commit messages.
 - Match credentials by domain first, then narrow by optional path prefixes when present.
 - If the config contains matching credentials and the task requires requirement-page access, use those credentials for the current run without re-asking for them.
@@ -58,10 +61,12 @@ If the user explicitly says to follow their pasted analysis, screenshots, or des
 
 ### Local Auth Config Shape
 
-Recommended path:
+Preferred path order:
 
 ```text
-C:\Users\admin\.codex\local-config\task-dev-flow\auth-sites.yaml
+1. explicit user-provided path
+2. <CODEX_HOME>/local-config/task-dev-flow/auth-sites.yaml
+3. <HOME>/.codex/local-config/task-dev-flow/auth-sites.yaml
 ```
 
 Recommended shape:

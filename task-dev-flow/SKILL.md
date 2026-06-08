@@ -26,13 +26,15 @@ This skill stops after the finished development work is validated and handed off
 
 2. Inspect the requirement source.
    - If the requirement is already open in Chrome and the user asks to use browser MCP, inspect it there.
-   - If credentials are needed, first check the local-only auth config at `C:\Users\admin\.codex\local-config\task-dev-flow\auth-sites.yaml` when it exists. Treat this config as private machine state: do not write it into any project repo or skills repo.
+   - If credentials are needed, first check the local-only auth config using this resolution order: explicit user-provided path -> `<CODEX_HOME>/local-config/task-dev-flow/auth-sites.yaml` -> `<HOME>/.codex/local-config/task-dev-flow/auth-sites.yaml`. Treat this config as private machine state: do not write it into any project repo or skills repo.
    - If credentials are needed and the user provides them during the conversation, use them for the current task and, with explicit user confirmation, add or update the matching local auth config entry for future runs.
    - If the task points to prototypes or entity/table design, use `$entity-design` for that focused analysis and bring its results back into this workflow.
    - See `references/task-intake.md` for task-link parsing and requirement intake details.
 
 3. Read repository rules before editing.
-   - Inspect the target repository's local instructions first, especially `AGENTS.md`, `CLAUDE.md`, README files, and other root-level docs that define code conventions, architecture, layering, SQL rules, or workflow expectations.
+   - Inspect the target repository's primary local instruction files first, especially `AGENTS.md`, `CLAUDE.md`, and the root README when present.
+   - If those entry files reference additional architecture, SQL, workflow, or module docs, read only the parts that are directly relevant to the current task.
+   - Avoid broad doc sweeps. Prefer the smallest set of repository docs that can safely constrain the implementation.
    - If the repo defines an instruction order, follow that order literally.
    - Let repository rules decide layering, naming, validation style, SQL location, and commit conventions.
 
