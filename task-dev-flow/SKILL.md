@@ -16,6 +16,8 @@ This skill stops after the finished development work is validated and handed off
 1. Capture the task input.
    - Accept task links, issue IDs, pasted titles, screenshots, prototype links, or natural-language descriptions.
    - Extract stable metadata when present: task title, task ID, source URL, product area, repository, and target branch name.
+   - If the visible task reference, pasted text, and URL contain conflicting work-item IDs, resolve the canonical ID before creating the branch, task doc, or commit text.
+   - If the user explicitly says to follow their pasted analysis, screenshots, or description instead of the linked task page, treat the external link as metadata only and implement from the user-provided analysis unless the user later asks to inspect the source.
    - Detect work-item type from the source when possible and map to a unified prefix:
      - Task links such as `task-view-1336` -> use `feat-1336`
      - Bug links such as `bug-view-6076` -> use `fix-6076`
@@ -24,12 +26,13 @@ This skill stops after the finished development work is validated and handed off
 
 2. Inspect the requirement source.
    - If the requirement is already open in Chrome and the user asks to use browser MCP, inspect it there.
-   - If credentials are needed and the user provides them, use them only for the current task.
+   - If credentials are needed, first check the local-only auth config at `C:\Users\admin\.codex\local-config\task-dev-flow\auth-sites.yaml` when it exists. Treat this config as private machine state: do not write it into any project repo or skills repo.
+   - If credentials are needed and the user provides them during the conversation, use them for the current task and, with explicit user confirmation, add or update the matching local auth config entry for future runs.
    - If the task points to prototypes or entity/table design, use `$entity-design` for that focused analysis and bring its results back into this workflow.
    - See `references/task-intake.md` for task-link parsing and requirement intake details.
 
 3. Read repository rules before editing.
-   - Inspect the target repository's local instructions first, especially `AGENTS.md`, `CLAUDE.md`, README files, and existing module patterns.
+   - Inspect the target repository's local instructions first, especially `AGENTS.md`, `CLAUDE.md`, README files, and other root-level docs that define code conventions, architecture, layering, SQL rules, or workflow expectations.
    - If the repo defines an instruction order, follow that order literally.
    - Let repository rules decide layering, naming, validation style, SQL location, and commit conventions.
 
