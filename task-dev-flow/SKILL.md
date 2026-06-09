@@ -11,6 +11,27 @@ Use this skill to run a task-driven development loop from an external work item 
 
 This skill stops after the finished development work is validated and handed off. Do not automatically commit, push, or merge branches unless the user explicitly asks in a separate request.
 
+## Local Config
+
+Use local machine config for stable, user-specific destinations and auth data. Keep these files outside project repos and treat them as private state.
+
+- Auth config: `<CODEX_HOME>/local-config/task-dev-flow/auth-sites.yaml`
+- Path config: `<CODEX_HOME>/local-config/task-dev-flow/paths.yaml`
+
+Recommended path config shape:
+
+```yaml
+version: 1
+
+obsidian:
+  base_root: D:\znder\Obsidian\business
+  doc_dir_template: "{base_root}\\03-req\\{repo_name}"
+```
+
+- `base_root` is the user-specific Obsidian or notes root.
+- `doc_dir_template` controls the final task-doc directory.
+- `doc_dir_template` may reference `{base_root}` and `{repo_name}`.
+
 ## Workflow
 
 1. Capture the task input.
@@ -28,6 +49,9 @@ This skill stops after the finished development work is validated and handed off
    - If the requirement is already open in Chrome and the user asks to use browser MCP, inspect it there.
    - If credentials are needed, first check the local-only auth config using this resolution order: explicit user-provided path -> `<CODEX_HOME>/local-config/task-dev-flow/auth-sites.yaml` -> `<HOME>/.codex/local-config/task-dev-flow/auth-sites.yaml`. Treat this config as private machine state: do not write it into any project repo or skills repo.
    - If credentials are needed and the user provides them during the conversation, use them for the current task and, with explicit user confirmation, add or update the matching local auth config entry for future runs.
+   - If the task needs a stable external document root or workspace-specific outbound path, first check the local path config using this resolution order: explicit user-provided path -> `<CODEX_HOME>/local-config/task-dev-flow/paths.yaml` -> `<HOME>/.codex/local-config/task-dev-flow/paths.yaml`. Treat this config as private machine state: do not write it into any project repo or skills repo.
+   - Prefer storing durable external destinations in the local path config instead of re-deriving them from memory during each run.
+   - In this skill, `<repo-name>` means the repository's canonical folder name, usually the basename of the local repo path or the task's repo slug such as `znder-erp` or `znder-erp-api`.
    - If the task points to prototypes or entity/table design, use `$entity-design` for that focused analysis and bring its results back into this workflow.
    - See `references/task-intake.md` for task-link parsing and requirement intake details.
 
@@ -55,10 +79,10 @@ This skill stops after the finished development work is validated and handed off
    - When writing a `task.md` or equivalent task card, follow `references/task-template.md`.
    - Create or update a requirement task doc during this step, where filename is always `<prefix>-<id>.md` and `prefix` is `feat`, `fix`, or `perf` when the repo convention supports it.
    - Resolve the doc directory with this priority:
-     - For `znder-erp` and `znder-erp-api`, always write to `D:\znder\Obsidian\business\03-req/<repo-name>/`.
-     - Otherwise, prefer `03-req/<repo-name>/` when it exists.
-     - Else use `03-req/` when it exists.
-     - Else create `03-req/<repo-name>/` and place the doc there.
+     - Prefer the configured Obsidian root and repo template from `<CODEX_HOME>/local-config/task-dev-flow/paths.yaml` (or the HOME fallback) when available. Treat `base_root` and `doc_dir_template` as the primary knobs.
+     - Otherwise, fall back to a repo-specific default path.
+     - If no explicit template is configured, derive the final doc directory by appending `<repo-name>` to the configured Obsidian base root.
+     - `doc_dir_template` may reference `{base_root}` and `{repo_name}` placeholders.
    - Only skip this artifact when the user explicitly asks not to create docs.
    - Keep the task doc metadata (`source`, `branch`, `baseline`, `commit`) synchronized with the actual branch and commit text used later.
 
