@@ -23,14 +23,13 @@ Recommended path config shape:
 ```yaml
 version: 1
 
-obsidian:
-  base_root: D:\znder\Obsidian\business
-  doc_dir_template: "{base_root}\\03-req\\{repo_name}"
+docs:
+  root: <absolute-task-docs-root>
 ```
 
-- `base_root` is the user-specific Obsidian or notes root.
-- `doc_dir_template` controls the final task-doc directory.
-- `doc_dir_template` may reference `{base_root}` and `{repo_name}`.
+- `docs.root` is the user-specific root that contains all task document folders, such as an Obsidian `03-req` directory.
+- The skill owns the internal structure under `docs.root`: create `<docs.root>/<repo-name>/<prefix>-<id>.md`.
+- If no config exists and the user did not provide a docs root, ask the user for the docs root. After the user provides it, create or update the local path config before generating task docs.
 
 ## Workflow
 
@@ -79,10 +78,11 @@ obsidian:
    - When writing a `task.md` or equivalent task card, follow `references/task-template.md`.
    - Create or update a requirement task doc during this step, where filename is always `<prefix>-<id>.md` and `prefix` is `feat`, `fix`, or `perf` when the repo convention supports it.
    - Resolve the doc directory with this priority:
-     - Prefer the configured Obsidian root and repo template from `<CODEX_HOME>/local-config/task-dev-flow/paths.yaml` (or the HOME fallback) when available. Treat `base_root` and `doc_dir_template` as the primary knobs.
-     - Otherwise, fall back to a repo-specific default path.
-     - If no explicit template is configured, derive the final doc directory by appending `<repo-name>` to the configured Obsidian base root.
-     - `doc_dir_template` may reference `{base_root}` and `{repo_name}` placeholders.
+     - Explicit user-provided docs root for the current task.
+     - Configured docs root from `<CODEX_HOME>/local-config/task-dev-flow/paths.yaml`.
+     - Configured docs root from `<HOME>/.codex/local-config/task-dev-flow/paths.yaml`.
+   - If the docs root cannot be resolved, pause and ask the user for it; then write it to the local path config.
+   - Create or use the skill-defined directory `<docs.root>/<repo-name>/`.
    - Only skip this artifact when the user explicitly asks not to create docs.
    - Keep the task doc metadata (`source`, `branch`, `baseline`, `commit`) synchronized with the actual branch and commit text used later.
 
@@ -122,7 +122,7 @@ perf(scope): [Task title](Task URL) (perf-1234)
 9. Stop after validation and explicit user handoff.
    - Run a quick consistency check before finishing:
      - work-item branch exists and is correct (`feat-<id>` or `fix-<id>` when applicable)
-     - required task doc artifact exists at the resolved path (for example `D:\znder\Obsidian\business\03-req/znder-erp/fix-<id>.md` for znder repos, or `03-req/<repo-name>/fix-<id>.md` for general repos)
+     - required task doc artifact exists at `<docs.root>/<repo-name>/<prefix>-<id>.md`
    - Summarize what changed and what was verified.
    - Leave commit, merge, release, or deployment decisions to the user unless explicitly requested later.
    - If the user later asks to commit, push, or merge the branch, use the appropriate workflow then.
