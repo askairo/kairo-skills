@@ -1,6 +1,6 @@
 ---
 name: task-dev-flow
-description: Turn an external task, ticket, issue, requirement link, prototype link, or pasted task description into a complete development workflow. Use when Codex needs to understand task metadata, inspect linked requirements, create or use a task branch, split work into implementation cards, follow repository rules, implement changes, and validate them. Do not use this skill for pure entity/table design; use entity-design for that focused analysis.
+description: Turn an external task, ticket, issue, requirement link, prototype link, or pasted task description into a complete development workflow. Use when the agent needs to understand task metadata, inspect linked requirements, create or use a task branch, split work into implementation cards, follow repository rules, implement changes, and validate them. Do not use this skill for pure entity/table design; use entity-design for that focused analysis.
 ---
 
 # Task Dev Flow
@@ -15,8 +15,26 @@ This skill stops after the finished development work is validated and handed off
 
 Use local machine config for stable, user-specific destinations and auth data. Keep these files outside project repos and treat them as private state.
 
-- Auth config: `<CODEX_HOME>/local-config/task-dev-flow/auth-sites.yaml`
-- Path config: `<CODEX_HOME>/local-config/task-dev-flow/paths.yaml`
+### Agent Home Resolution
+
+`<AGENT_HOME>` is the **current agent's** configuration home directory. The agent must resolve it **before** reading or writing any local config, and must **never** read config files from another agent's home directory.
+
+Resolution order (stop at the first match):
+
+1. Check the working directory path: if it contains `.qoderworkcn`, use `~/.qoderworkcn/` (QoderWork).
+2. Check the working directory path: if it contains `.codex`, use `~/.codex/` (Codex / OpenAI).
+3. If `~/.qoderworkcn/` exists, use it.
+4. If `~/.codex/` exists, use it.
+5. Fallback: `~/.config/skills/`.
+
+After resolving, verify the chosen directory actually exists. If none exists, ask the user which agent home to use and create it.
+
+**Hard rule:** Once `<AGENT_HOME>` is resolved, only read and write config under that directory. Do not fall through to other agent directories (e.g., a QoderWork session must never read `~/.codex/`, and vice versa).
+
+### Config Paths
+
+- Auth config: `<AGENT_HOME>/local-config/task-dev-flow/auth-sites.yaml`
+- Path config: `<AGENT_HOME>/local-config/task-dev-flow/paths.yaml`
 
 Recommended path config shape:
 
@@ -46,9 +64,9 @@ docs:
 
 2. Inspect the requirement source.
    - If the requirement is already open in Chrome and the user asks to use browser MCP, inspect it there.
-   - If credentials are needed, first check the local-only auth config using this resolution order: explicit user-provided path -> `<CODEX_HOME>/local-config/task-dev-flow/auth-sites.yaml` -> `<HOME>/.codex/local-config/task-dev-flow/auth-sites.yaml`. Treat this config as private machine state: do not write it into any project repo or skills repo.
+   - If credentials are needed, first check the local-only auth config using this resolution order: explicit user-provided path -> `<AGENT_HOME>/local-config/task-dev-flow/auth-sites.yaml`. Treat this config as private machine state: do not write it into any project repo or skills repo.
    - If credentials are needed and the user provides them during the conversation, use them for the current task and, with explicit user confirmation, add or update the matching local auth config entry for future runs.
-   - If the task needs a stable external document root or workspace-specific outbound path, first check the local path config using this resolution order: explicit user-provided path -> `<CODEX_HOME>/local-config/task-dev-flow/paths.yaml` -> `<HOME>/.codex/local-config/task-dev-flow/paths.yaml`. Treat this config as private machine state: do not write it into any project repo or skills repo.
+   - If the task needs a stable external document root or workspace-specific outbound path, first check the local path config using this resolution order: explicit user-provided path -> `<AGENT_HOME>/local-config/task-dev-flow/paths.yaml`. Treat this config as private machine state: do not write it into any project repo or skills repo.
    - Prefer storing durable external destinations in the local path config instead of re-deriving them from memory during each run.
    - In this skill, `<repo-name>` means the repository's canonical folder name, usually the basename of the local repo path or the task's repo slug such as `znder-erp` or `znder-erp-api`.
    - If the task points to prototypes or entity/table design, use `$entity-design` for that focused analysis and bring its results back into this workflow.
@@ -79,8 +97,7 @@ docs:
    - Create or update a requirement task doc during this step, where filename is always `<prefix>-<id>.md` and `prefix` is `feat`, `fix`, or `perf` when the repo convention supports it.
    - Resolve the doc directory with this priority:
      - Explicit user-provided docs root for the current task.
-     - Configured docs root from `<CODEX_HOME>/local-config/task-dev-flow/paths.yaml`.
-     - Configured docs root from `<HOME>/.codex/local-config/task-dev-flow/paths.yaml`.
+     - Configured docs root from `<AGENT_HOME>/local-config/task-dev-flow/paths.yaml`.
    - If the docs root cannot be resolved, pause and ask the user for it; then write it to the local path config.
    - Create or use the skill-defined directory `<docs.root>/<repo-name>/`.
    - Only skip this artifact when the user explicitly asks not to create docs.
