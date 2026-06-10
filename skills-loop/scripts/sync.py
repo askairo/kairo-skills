@@ -44,6 +44,28 @@ EXCLUDE_DIRS = {".git", "__pycache__", ".venv", "node_modules"}
 EXCLUDE_SUFFIXES = {".pyc", ".pyo"}
 BACKUP_PATTERN = re.compile(r"^(.+)\.backup\.\d{8}_\d{6}$")
 
+# Known agent home directories, checked in priority order.
+# Each entry is (directory_name, agent_label).
+KNOWN_AGENT_HOMES = [
+    (".qoderworkcn", "QoderWork"),
+    (".codex", "Codex"),
+    (".config/agents", "Agents"),
+]
+
+
+def detect_agent_home() -> Path | None:
+    """Detect the current agent's home directory by checking known paths.
+
+    Returns the first existing known agent home, or None if none found.
+    Priority order: QoderWork (.qoderworkcn) > Codex (.codex) > generic (.config/agents).
+    """
+    home = Path.home()
+    for dirname, _label in KNOWN_AGENT_HOMES:
+        candidate = home / dirname
+        if candidate.exists():
+            return candidate
+    return None
+
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
@@ -95,8 +117,10 @@ def load_config() -> dict:
     search_dirs = [
         script_skill_dir(),
         Path.home() / ".config" / "skills",
-        Path.home() / ".codex",
     ]
+    agent_home = detect_agent_home()
+    if agent_home:
+        search_dirs.append(agent_home)
     cwd_repo = find_skills_repo_from_cwd()
     if cwd_repo:
         search_dirs.insert(0, cwd_repo)
@@ -134,12 +158,12 @@ def resolve_agent_dir(args, config: dict) -> Path:
 
     detected = script_agent_dir()
     if detected.name != "skills":
-        # Common Codex/Kimi defaults as fallback.
-        codex = Path.home() / ".codex" / "skills"
-        if codex.exists():
-            return codex.resolve()
-        kimi = Path.home() / ".config" / "agents" / "skills"
-        return kimi.resolve()
+        # Try known agent home directories in priority order.
+        agent_home = detect_agent_home()
+        if agent_home:
+            return (agent_home / "skills").resolve()
+        # Last resort: generic XDG-style path.
+        return (Path.home() / ".config" / "agents" / "skills").resolve()
     return detected
 
 
@@ -460,7 +484,15 @@ def write_config(args, config: dict):
     elif config.get("agentSkillsDir"):
         data["agentSkillsDir"] = config["agentSkillsDir"]
 
-    path = Path.home() / ".codex" / ".skills-loop.json"
+    config_dir = None
+    if args.config_dir:
+        config_dir = Path(args.config_dir).expanduser().resolve()
+    else:
+        config_dir = detect_agent_home()
+    if not config_dir:
+        config_dir = Path.home() / ".config" / "skills"
+
+    path = config_dir / ".skills-loop.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     write_json(path, data)
     print(f"Wrote config: {path}")
@@ -485,6 +517,7 @@ def build_parser():
     parser.add_argument("--name", help="Installed skill directory name. Defaults to path basename")
     parser.add_argument("--agent-dir", help="Current Agent skills directory")
     parser.add_argument("--local-repo", help="Local writable skills source repository")
+    parser.add_argument("--config-dir", help="Agent home directory for config files (auto-detected if omitted)")
     parser.add_argument("--message", help="Commit message for publish")
     parser.add_argument("--dry-run", action="store_true", help="Print actions without writing")
     return parser

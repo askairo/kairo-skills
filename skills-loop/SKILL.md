@@ -165,7 +165,7 @@ python scripts/sync.py install --repo owner/repo --path path/to/skill --ref main
 - 当前 skills 源码仓库：`.skills-loop.json`（兼容 `.sync-skills.json`）
 - 当前 `skills-loop` skill 目录：`skills-loop.local.json`（兼容 `sync-skills.local.json`）
 - 用户配置目录：`~/.config/skills/.skills-loop.json`（兼容 `.sync-skills.json`）
-- Codex 用户目录：`~/.codex/.skills-loop.json`（兼容 `.sync-skills.json`）
+- 当前 Agent 的用户目录（自动检测，按优先级）：`~/.qoderworkcn/.skills-loop.json`、`~/.codex/.skills-loop.json`、`~/.config/agents/.skills-loop.json`（均兼容 `.sync-skills.json`）
 
 示例：
 
