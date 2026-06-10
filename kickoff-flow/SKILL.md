@@ -1,6 +1,6 @@
 ---
 name: kickoff-flow
-description: Standardize personal new-project kickoff from idea to executable local workspace. Use when Codex should create/rename a GitHub repository, clone locally, establish naming conventions, and generate project-management docs under 03-req with reusable overview/roadmap templates.
+description: Standardize personal new-project kickoff from idea to executable local workspace. Use when Codex should create/rename a GitHub repository, clone locally, establish naming conventions, resolve a configured external docs directory, and generate project-management docs with reusable overview/roadmap templates.
 ---
 
 # Kickoff Flow
@@ -10,15 +10,38 @@ description: Standardize personal new-project kickoff from idea to executable lo
 Use this skill to bootstrap a new personal project in a repeatable way, separating:
 
 - code workspace (repo)
-- project-management docs (`03-req/<project-name>/`)
+- project-management docs (resolved from local config or explicit user input)
 
 This workflow is for project initialization, not feature implementation.
+
+## Local Config
+
+Use local machine config for stable, user-specific documentation destinations. Keep these files outside project repos and treat them as private state.
+
+- Path config: `<CODEX_HOME>/local-config/kickoff-flow/paths.yaml`
+- Fallback path config: `<HOME>/.codex/local-config/kickoff-flow/paths.yaml`
+
+Recommended path config shape:
+
+```yaml
+version: 1
+
+obsidian:
+  base_root: <absolute-notes-root>
+  doc_dir_template: "{base_root}\\03-req\\{project_name}"
+```
+
+- `base_root` is the user-specific Obsidian or notes root.
+- `doc_dir_template` controls the final project-doc directory.
+- `doc_dir_template` may reference `{base_root}`, `{project_name}`, and `{repo_name}`.
+- Prefer configured paths over deriving a docs directory from memory.
+- If no config exists and the user did not provide a docs directory, ask the user for the docs root or template. After the user provides it, create or update the local path config before generating docs.
 
 ## Workflow
 
 1. Capture kickoff input.
    - Required: project name, one-line objective.
-   - Optional: GitHub visibility (`public`/`private`), local base directory, tech stack.
+   - Optional: GitHub visibility (`public`/`private`), local base directory, tech stack, docs root/template.
 
 2. Normalize naming.
    - Prefer short lowercase kebab-case names (example: `envflow`).
@@ -32,8 +55,13 @@ This workflow is for project initialization, not feature implementation.
    - Clone repo under user-selected base directory.
    - Verify git remote and default branch.
 
-5. Create project-management docs under `03-req`.
-   - Create directory: `03-req/<project-name>/`
+5. Create project-management docs under the resolved docs directory.
+   - Resolve the doc directory with this priority:
+     - Explicit user-provided docs directory or template for the current request.
+     - Local path config from `<CODEX_HOME>/local-config/kickoff-flow/paths.yaml`.
+     - Local path config from `<HOME>/.codex/local-config/kickoff-flow/paths.yaml`.
+   - If the directory cannot be resolved, pause and ask the user for the docs root or template; then write it to the local path config.
+   - Create directory: `<resolved-doc-dir>`
    - Create:
      - `00-overview.md` (project definition)
      - `10-roadmap.md` (execution plan and verification tracking)
@@ -45,8 +73,8 @@ This workflow is for project initialization, not feature implementation.
 7. Confirm kickoff completeness.
    - GitHub repo exists with correct name.
    - Local directory exists with correct name.
-   - `03-req/<project-name>/00-overview.md` exists.
-   - `03-req/<project-name>/10-roadmap.md` exists.
+   - `<resolved-doc-dir>/00-overview.md` exists.
+   - `<resolved-doc-dir>/10-roadmap.md` exists.
 
 ## Templates
 
@@ -67,9 +95,13 @@ pwsh -File scripts/init_project_docs.ps1 \
   -ProjectName envflow \
   -Objective "Build a lightweight desktop environment switch tool" \
   -RepoUrl "https://github.com/askairo/envflow" \
-  -LocalRepoPath "D:\private-vs-space\envflow"
+  -LocalRepoPath "<absolute-local-repo-path>" \
+  -DocsRoot "<absolute-docs-root>" \
+  -SaveConfig
 ```
 
 It creates/updates:
-- `03-req/<project>/00-overview.md`
-- `03-req/<project>/10-roadmap.md`
+- `<resolved-doc-dir>/00-overview.md`
+- `<resolved-doc-dir>/10-roadmap.md`
+
+If neither local config nor explicit docs parameters are available, the script fails with a clear message instead of using a hard-coded docs path.

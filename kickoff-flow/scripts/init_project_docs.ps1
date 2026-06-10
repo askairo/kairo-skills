@@ -4,14 +4,155 @@ param(
   [Parameter(Mandatory=$true)][string]$RepoUrl,
   [Parameter(Mandatory=$true)][string]$LocalRepoPath,
   [Parameter(Mandatory=$false)][string]$Owner = "askairo",
-  [Parameter(Mandatory=$false)][string]$DocsRoot = "D:\znder\Obsidian\business\03-req"
+  [Parameter(Mandatory=$false)][string]$DocsRoot = "",
+  [Parameter(Mandatory=$false)][string]$DocsDirTemplate = "",
+  [Parameter(Mandatory=$false)][string]$ConfigPath = "",
+  [Parameter(Mandatory=$false)][switch]$SaveConfig
 )
 
+function Get-DefaultConfigPath {
+  if ($env:CODEX_HOME) {
+    return (Join-Path $env:CODEX_HOME "local-config\kickoff-flow\paths.yaml")
+  }
+  if ($HOME) {
+    return (Join-Path $HOME ".codex\local-config\kickoff-flow\paths.yaml")
+  }
+
+  throw "Unable to resolve a local config path. Provide -ConfigPath explicitly."
+}
+
+function Resolve-ExistingConfigPath {
+  param([string]$ExplicitPath)
+
+  if ($ExplicitPath -and (Test-Path -LiteralPath $ExplicitPath)) {
+    return $ExplicitPath
+  }
+
+  $candidates = @()
+  if ($env:CODEX_HOME) {
+    $candidates += (Join-Path $env:CODEX_HOME "local-config\kickoff-flow\paths.yaml")
+  }
+  if ($HOME) {
+    $candidates += (Join-Path $HOME ".codex\local-config\kickoff-flow\paths.yaml")
+  }
+
+  foreach ($candidate in $candidates) {
+    if ($candidate -and (Test-Path -LiteralPath $candidate)) {
+      return $candidate
+    }
+  }
+
+  return ""
+}
+
+function Get-ConfigValue {
+  param(
+    [Parameter(Mandatory=$true)][string]$Path,
+    [Parameter(Mandatory=$true)][string]$Key
+  )
+
+  if (-not (Test-Path -LiteralPath $Path)) {
+    return ""
+  }
+
+  $pattern = "^\s*$([regex]::Escape($Key))\s*:\s*(.+?)\s*$"
+  foreach ($line in Get-Content -LiteralPath $Path) {
+    if ($line -match $pattern) {
+      return $Matches[1].Trim().Trim('"').Trim("'")
+    }
+  }
+
+  return ""
+}
+
+function Write-PathConfig {
+  param(
+    [Parameter(Mandatory=$true)][string]$Path,
+    [Parameter(Mandatory=$true)][string]$BaseRoot,
+    [Parameter(Mandatory=$true)][string]$Template
+  )
+
+  $configDir = Split-Path -Parent $Path
+  New-Item -ItemType Directory -Force -Path $configDir | Out-Null
+
+  $content = @"
+version: 1
+
+obsidian:
+  base_root: $BaseRoot
+  doc_dir_template: "$Template"
+"@
+
+  Set-Content -Path $Path -Value $content -Encoding UTF8
+}
+
+function Resolve-DocsDirectory {
+  param(
+    [string]$ProjectName,
+    [string]$LocalRepoPath,
+    [string]$DocsRoot,
+    [string]$DocsDirTemplate,
+    [string]$ConfigPath
+  )
+
+  $repoName = Split-Path -Leaf $LocalRepoPath
+  $resolvedConfigPath = Resolve-ExistingConfigPath -ExplicitPath $ConfigPath
+  $configuredBaseRoot = ""
+  $configuredTemplate = ""
+
+  if ($resolvedConfigPath) {
+    $configuredBaseRoot = Get-ConfigValue -Path $resolvedConfigPath -Key "base_root"
+    $configuredTemplate = Get-ConfigValue -Path $resolvedConfigPath -Key "doc_dir_template"
+  }
+
+  $effectiveBaseRoot = if ($DocsRoot) { $DocsRoot } elseif ($configuredBaseRoot) { $configuredBaseRoot } else { "" }
+  $effectiveTemplate = if ($DocsDirTemplate) { $DocsDirTemplate } elseif ($configuredTemplate) { $configuredTemplate } else { "" }
+
+  if (-not $effectiveBaseRoot -and -not $effectiveTemplate) {
+    throw "Docs directory is not configured. Provide -DocsRoot or -DocsDirTemplate, then rerun with -SaveConfig to persist it."
+  }
+
+  if ($effectiveTemplate) {
+    if (-not $effectiveBaseRoot -and $effectiveTemplate.Contains("{base_root}")) {
+      throw "DocsDirTemplate references {base_root}, but no base_root is configured. Provide -DocsRoot."
+    }
+
+    return $effectiveTemplate.
+      Replace("{base_root}", $effectiveBaseRoot).
+      Replace("{project_name}", $ProjectName).
+      Replace("{repo_name}", $repoName)
+  }
+
+  return (Join-Path $effectiveBaseRoot $ProjectName)
+}
+
+if ($SaveConfig) {
+  $targetConfigPath = if ($ConfigPath) { $ConfigPath } else { Get-DefaultConfigPath }
+  $baseRootForConfig = $DocsRoot
+  $templateForConfig = $DocsDirTemplate
+
+  if (-not $baseRootForConfig -and -not $templateForConfig) {
+    throw "Cannot save config without -DocsRoot or -DocsDirTemplate."
+  }
+
+  if (-not $templateForConfig) {
+    $templateForConfig = "{base_root}\\{project_name}"
+  }
+
+  Write-PathConfig -Path $targetConfigPath -BaseRoot $baseRootForConfig -Template $templateForConfig
+  Write-Host "Saved config: $targetConfigPath"
+}
+
 $today = Get-Date -Format "yyyy-MM-dd"
-$projectDir = Join-Path $DocsRoot $ProjectName
+$projectDir = Resolve-DocsDirectory `
+  -ProjectName $ProjectName `
+  -LocalRepoPath $LocalRepoPath `
+  -DocsRoot $DocsRoot `
+  -DocsDirTemplate $DocsDirTemplate `
+  -ConfigPath $ConfigPath
 New-Item -ItemType Directory -Force -Path $projectDir | Out-Null
 
-\$overviewPath = Join-Path $projectDir "00-overview.md"
+$overviewPath = Join-Path $projectDir "00-overview.md"
 $roadmapPath = Join-Path $projectDir "10-roadmap.md"
 
 $overview = @"
@@ -75,7 +216,7 @@ $roadmap = @"
 ## Risks and Decisions
 
 - Risk: environment drift across shells/processes
-- Decision: keep docs outside repo under `03-req/<project>/`
+- Decision: keep project-management docs outside the code repo.
 
 ## Next Actions
 
