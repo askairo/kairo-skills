@@ -32,7 +32,6 @@ except AttributeError:
     pass
 
 
-DEFAULT_REPO = "askairo/kairo-skills"
 DEFAULT_REF = "main"
 SOURCE_META = ".skill-source.json"
 CONFIG_NAMES = (
@@ -108,8 +107,8 @@ def load_config() -> dict:
             if path.exists():
                 config.update(read_json(path))
 
-    if "defaultRepo" not in config:
-        config["defaultRepo"] = os.environ.get("SKILLS_DEFAULT_REPO", DEFAULT_REPO)
+    if "defaultRepo" not in config and os.environ.get("SKILLS_DEFAULT_REPO"):
+        config["defaultRepo"] = os.environ["SKILLS_DEFAULT_REPO"]
     if "defaultRef" not in config:
         config["defaultRef"] = os.environ.get("SKILLS_DEFAULT_REF", DEFAULT_REF)
     if "localRepoPath" not in config:
@@ -155,19 +154,29 @@ def resolve_local_repo(args, config: dict) -> Path | None:
     if detected_from_cwd:
         return detected_from_cwd
 
-    # If triggered outside the skills repo, try predictable source-repo locations.
-    default_repo = config.get("defaultRepo", DEFAULT_REPO)
-    repo_name = default_repo.strip("/").split("/")[-1]
     candidates = [
-        Path.cwd() / repo_name,
-        Path.home() / "private-vs-space" / repo_name,
-        Path("D:/private-vs-space") / repo_name,
         script_skill_dir().parents[0] if len(script_skill_dir().parents) >= 1 else None,
     ]
     for candidate in candidates:
         if candidate and is_skills_repo(candidate.expanduser().resolve()):
             return candidate.expanduser().resolve()
     return None
+
+
+def resolve_repo(args, config: dict, skill: str | None = None) -> str:
+    if args.repo:
+        return args.repo
+    if config.get("defaultRepo"):
+        return config["defaultRepo"]
+    if skill:
+        try:
+            agent_dir = resolve_agent_dir(args, config)
+            meta = read_json(agent_dir / clean_skill_name(skill) / SOURCE_META)
+            if meta.get("repo"):
+                return meta["repo"]
+        except Exception:
+            pass
+    raise SystemExit("GitHub repo is not configured. Pass --repo or set defaultRepo in local skills-loop config.")
 
 
 def run(cmd: list[str], cwd: Path | None = None) -> tuple[int, str, str]:
@@ -272,7 +281,7 @@ def source_meta(repo: str, skill_path: str, ref: str) -> dict:
 
 
 def install_or_update(args, config: dict):
-    repo = args.repo or config.get("defaultRepo", DEFAULT_REPO)
+    repo = resolve_repo(args, config, args.path or args.skill)
     ref = args.ref or config.get("defaultRef", DEFAULT_REF)
     skill_path = args.path or args.skill
     if not skill_path:
@@ -438,16 +447,21 @@ def publish_and_update(args, config: dict):
 
 
 def write_config(args, config: dict):
-    data = {
-        "defaultRepo": args.repo or config.get("defaultRepo", DEFAULT_REPO),
-        "defaultRef": args.ref or config.get("defaultRef", DEFAULT_REF),
-    }
+    data = {}
+    if args.repo or config.get("defaultRepo"):
+        data["defaultRepo"] = args.repo or config.get("defaultRepo")
+    data["defaultRef"] = args.ref or config.get("defaultRef", DEFAULT_REF)
     if args.local_repo:
         data["localRepoPath"] = str(Path(args.local_repo).expanduser().resolve())
+    elif config.get("localRepoPath"):
+        data["localRepoPath"] = config["localRepoPath"]
     if args.agent_dir:
         data["agentSkillsDir"] = str(Path(args.agent_dir).expanduser().resolve())
+    elif config.get("agentSkillsDir"):
+        data["agentSkillsDir"] = config["agentSkillsDir"]
 
-    path = script_skill_dir() / "skills-loop.local.json"
+    path = Path.home() / ".codex" / ".skills-loop.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
     write_json(path, data)
     print(f"Wrote config: {path}")
 
@@ -465,7 +479,7 @@ def build_parser():
         "write-config",
     ])
     parser.add_argument("--skill", help="Skill name, for example hexo-push")
-    parser.add_argument("--repo", help="GitHub repo, for example askairo/kairo-skills")
+    parser.add_argument("--repo", help="GitHub repo, for example owner/repo")
     parser.add_argument("--path", help="Path to skill inside repo. Defaults to --skill")
     parser.add_argument("--ref", help="Git ref/branch/tag. Defaults to config or main")
     parser.add_argument("--name", help="Installed skill directory name. Defaults to path basename")
