@@ -1,6 +1,6 @@
 ---
 name: kickoff-flow
-description: Standardize personal new-project kickoff from idea to executable local workspace. Use when Codex should create/rename a GitHub repository, clone locally, establish naming conventions, resolve a configured external docs directory, and generate project-management docs with reusable overview/roadmap templates.
+description: Standardize personal new-project kickoff from idea to executable local workspace. Use when Codex should create/rename a GitHub repository, clone locally, establish naming conventions, resolve a configured project-docs root directory, and generate the skill-defined kickoff document set.
 ---
 
 # Kickoff Flow
@@ -10,7 +10,7 @@ description: Standardize personal new-project kickoff from idea to executable lo
 Use this skill to bootstrap a new personal project in a repeatable way, separating:
 
 - code workspace (repo)
-- project-management docs (resolved from local config or explicit user input)
+- project-management docs under a configured root directory
 
 This workflow is for project initialization, not feature implementation.
 
@@ -26,22 +26,20 @@ Recommended path config shape:
 ```yaml
 version: 1
 
-obsidian:
-  base_root: <absolute-notes-root>
-  doc_dir_template: "{base_root}\\03-req\\{project_name}"
+docs:
+  root: <absolute-project-docs-root>
 ```
 
-- `base_root` is the user-specific Obsidian or notes root.
-- `doc_dir_template` controls the final project-doc directory.
-- `doc_dir_template` may reference `{base_root}`, `{project_name}`, and `{repo_name}`.
-- Prefer configured paths over deriving a docs directory from memory.
-- If no config exists and the user did not provide a docs directory, ask the user for the docs root or template. After the user provides it, create or update the local path config before generating docs.
+- `docs.root` is the user-specific root that contains all kickoff project document folders, such as an Obsidian `03-req` directory.
+- The skill owns the internal structure under `docs.root`: create `<docs.root>/<project_name>/00-overview.md` and `<docs.root>/<project_name>/10-roadmap.md`.
+- Prefer configured paths over deriving a docs root from memory.
+- If no config exists and the user did not provide a docs root, ask the user for the docs root. After the user provides it, create or update the local path config before generating docs.
 
 ## Workflow
 
 1. Capture kickoff input.
    - Required: project name, one-line objective.
-   - Optional: GitHub visibility (`public`/`private`), local base directory, tech stack, docs root/template.
+   - Optional: GitHub visibility (`public`/`private`), local base directory, tech stack, docs root.
 
 2. Normalize naming.
    - Prefer short lowercase kebab-case names (example: `envflow`).
@@ -56,12 +54,12 @@ obsidian:
    - Verify git remote and default branch.
 
 5. Create project-management docs under the resolved docs directory.
-   - Resolve the doc directory with this priority:
-     - Explicit user-provided docs directory or template for the current request.
+   - Resolve the docs root with this priority:
+     - Explicit user-provided docs root for the current request.
      - Local path config from `<CODEX_HOME>/local-config/kickoff-flow/paths.yaml`.
      - Local path config from `<HOME>/.codex/local-config/kickoff-flow/paths.yaml`.
-   - If the directory cannot be resolved, pause and ask the user for the docs root or template; then write it to the local path config.
-   - Create directory: `<resolved-doc-dir>`
+   - If the docs root cannot be resolved, pause and ask the user for it; then write it to the local path config.
+   - Create directory: `<docs-root>/<project-name>`
    - Create:
      - `00-overview.md` (project definition)
      - `10-roadmap.md` (execution plan and verification tracking)
@@ -73,8 +71,8 @@ obsidian:
 7. Confirm kickoff completeness.
    - GitHub repo exists with correct name.
    - Local directory exists with correct name.
-   - `<resolved-doc-dir>/00-overview.md` exists.
-   - `<resolved-doc-dir>/10-roadmap.md` exists.
+   - `<docs-root>/<project-name>/00-overview.md` exists.
+   - `<docs-root>/<project-name>/10-roadmap.md` exists.
 
 ## Templates
 
@@ -101,7 +99,7 @@ pwsh -File scripts/init_project_docs.ps1 \
 ```
 
 It creates/updates:
-- `<resolved-doc-dir>/00-overview.md`
-- `<resolved-doc-dir>/10-roadmap.md`
+- `<docs-root>/<project-name>/00-overview.md`
+- `<docs-root>/<project-name>/10-roadmap.md`
 
-If neither local config nor explicit docs parameters are available, the script fails with a clear message instead of using a hard-coded docs path.
+If neither local config nor explicit docs root is available, the script fails with a clear message instead of using a hard-coded docs path.

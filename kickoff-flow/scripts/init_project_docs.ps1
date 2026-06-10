@@ -5,7 +5,6 @@ param(
   [Parameter(Mandatory=$true)][string]$LocalRepoPath,
   [Parameter(Mandatory=$false)][string]$Owner = "askairo",
   [Parameter(Mandatory=$false)][string]$DocsRoot = "",
-  [Parameter(Mandatory=$false)][string]$DocsDirTemplate = "",
   [Parameter(Mandatory=$false)][string]$ConfigPath = "",
   [Parameter(Mandatory=$false)][switch]$SaveConfig
 )
@@ -68,8 +67,7 @@ function Get-ConfigValue {
 function Write-PathConfig {
   param(
     [Parameter(Mandatory=$true)][string]$Path,
-    [Parameter(Mandatory=$true)][string]$BaseRoot,
-    [Parameter(Mandatory=$true)][string]$Template
+    [Parameter(Mandatory=$true)][string]$DocsRoot
   )
 
   $configDir = Split-Path -Parent $Path
@@ -78,9 +76,8 @@ function Write-PathConfig {
   $content = @"
 version: 1
 
-obsidian:
-  base_root: $BaseRoot
-  doc_dir_template: "$Template"
+docs:
+  root: $DocsRoot
 "@
 
   Set-Content -Path $Path -Value $content -Encoding UTF8
@@ -89,66 +86,41 @@ obsidian:
 function Resolve-DocsDirectory {
   param(
     [string]$ProjectName,
-    [string]$LocalRepoPath,
     [string]$DocsRoot,
-    [string]$DocsDirTemplate,
     [string]$ConfigPath
   )
 
-  $repoName = Split-Path -Leaf $LocalRepoPath
   $resolvedConfigPath = Resolve-ExistingConfigPath -ExplicitPath $ConfigPath
-  $configuredBaseRoot = ""
-  $configuredTemplate = ""
+  $configuredDocsRoot = ""
 
   if ($resolvedConfigPath) {
-    $configuredBaseRoot = Get-ConfigValue -Path $resolvedConfigPath -Key "base_root"
-    $configuredTemplate = Get-ConfigValue -Path $resolvedConfigPath -Key "doc_dir_template"
+    $configuredDocsRoot = Get-ConfigValue -Path $resolvedConfigPath -Key "root"
   }
 
-  $effectiveBaseRoot = if ($DocsRoot) { $DocsRoot } elseif ($configuredBaseRoot) { $configuredBaseRoot } else { "" }
-  $effectiveTemplate = if ($DocsDirTemplate) { $DocsDirTemplate } elseif ($configuredTemplate) { $configuredTemplate } else { "" }
+  $effectiveDocsRoot = if ($DocsRoot) { $DocsRoot } elseif ($configuredDocsRoot) { $configuredDocsRoot } else { "" }
 
-  if (-not $effectiveBaseRoot -and -not $effectiveTemplate) {
-    throw "Docs directory is not configured. Provide -DocsRoot or -DocsDirTemplate, then rerun with -SaveConfig to persist it."
+  if (-not $effectiveDocsRoot) {
+    throw "Docs root is not configured. Provide -DocsRoot, then rerun with -SaveConfig to persist it."
   }
 
-  if ($effectiveTemplate) {
-    if (-not $effectiveBaseRoot -and $effectiveTemplate.Contains("{base_root}")) {
-      throw "DocsDirTemplate references {base_root}, but no base_root is configured. Provide -DocsRoot."
-    }
-
-    return $effectiveTemplate.
-      Replace("{base_root}", $effectiveBaseRoot).
-      Replace("{project_name}", $ProjectName).
-      Replace("{repo_name}", $repoName)
-  }
-
-  return (Join-Path $effectiveBaseRoot $ProjectName)
+  return (Join-Path $effectiveDocsRoot $ProjectName)
 }
 
 if ($SaveConfig) {
   $targetConfigPath = if ($ConfigPath) { $ConfigPath } else { Get-DefaultConfigPath }
-  $baseRootForConfig = $DocsRoot
-  $templateForConfig = $DocsDirTemplate
 
-  if (-not $baseRootForConfig -and -not $templateForConfig) {
-    throw "Cannot save config without -DocsRoot or -DocsDirTemplate."
+  if (-not $DocsRoot) {
+    throw "Cannot save config without -DocsRoot."
   }
 
-  if (-not $templateForConfig) {
-    $templateForConfig = "{base_root}\\{project_name}"
-  }
-
-  Write-PathConfig -Path $targetConfigPath -BaseRoot $baseRootForConfig -Template $templateForConfig
+  Write-PathConfig -Path $targetConfigPath -DocsRoot $DocsRoot
   Write-Host "Saved config: $targetConfigPath"
 }
 
 $today = Get-Date -Format "yyyy-MM-dd"
 $projectDir = Resolve-DocsDirectory `
   -ProjectName $ProjectName `
-  -LocalRepoPath $LocalRepoPath `
   -DocsRoot $DocsRoot `
-  -DocsDirTemplate $DocsDirTemplate `
   -ConfigPath $ConfigPath
 New-Item -ItemType Directory -Force -Path $projectDir | Out-Null
 
