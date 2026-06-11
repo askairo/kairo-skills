@@ -9,6 +9,8 @@ description: Turn an external task, ticket, issue, requirement link, prototype l
 
 Use this skill to run a task-driven development loop from an external work item to a verified local implementation. Keep the workflow platform-neutral: ZenTao, Jira, GitHub issues, Axhub, internal docs, screenshots, or pasted task text are all valid inputs.
 
+If the project is still exploratory, the architecture is unstable, or the project-level docs are missing, use `new-order` first to establish the project doc set and execution structure before returning here.
+
 This skill stops after the finished development work is validated and handed off. Do not automatically commit, push, or merge branches unless the user explicitly asks in a separate request.
 
 ## Local Config
@@ -45,8 +47,12 @@ docs:
   root: <absolute-task-docs-root>
 ```
 
-- `docs.root` is the user-specific root that contains all task document folders, such as an Obsidian `03-req` directory.
-- The skill owns the internal structure under `docs.root`: create `<docs.root>/<repo-name>/<prefix>-<id>.md`.
+- `docs.root` is the user-specific root that contains all project document folders, such as an Obsidian `03-req` directory.
+- The skill owns the internal structure under `docs.root`:
+  - project-level docs live in `<docs.root>/<repo-name>/`
+  - execution plans live in `<docs.root>/<repo-name>/plans/`
+  - task work-item docs live in `<docs.root>/<repo-name>/tasks/`
+- For existing repos that already use a flat legacy layout, the skill should keep supporting that convention when the project already has task docs there. New projects should prefer the `tasks/` subdirectory.
 - If no config exists and the user did not provide a docs root, ask the user for the docs root. After the user provides it, create or update the local path config before generating task docs.
 
 ## Workflow
@@ -78,6 +84,7 @@ docs:
    - Avoid broad doc sweeps. Prefer the smallest set of repository docs that can safely constrain the implementation.
    - If the repo defines an instruction order, follow that order literally.
    - Let repository rules decide layering, naming, validation style, SQL location, and commit conventions.
+   - For projects with a project-level doc folder, review the active `00-overview`, `10-roadmap`, `11-architecture`, `12-interfaces-and-schema`, `20-references`, and any relevant docs under `plans/` before editing task docs.
 
 4. Create or select the work-item branch.
    - Check the current branch and working tree before switching.
@@ -99,7 +106,7 @@ docs:
      - Explicit user-provided docs root for the current task.
      - Configured docs root from `<AGENT_HOME>/local-config/task-dev-flow/paths.yaml`.
    - If the docs root cannot be resolved, pause and ask the user for it; then write it to the local path config.
-   - Create or use the skill-defined directory `<docs.root>/<repo-name>/`.
+   - Create or use the skill-defined directory `<docs.root>/<repo-name>/tasks/` for task work-items, and keep project-level planning docs in `<docs.root>/<repo-name>/plans/`.
    - Only skip this artifact when the user explicitly asks not to create docs.
    - Keep the task doc metadata (`source`, `branch`, `baseline`, `commit`) synchronized with the actual branch and commit text used later.
 
@@ -139,7 +146,7 @@ perf(scope): [Task title](Task URL) (perf-1234)
 9. Stop after validation and explicit user handoff.
    - Run a quick consistency check before finishing:
      - work-item branch exists and is correct (`feat-<id>` or `fix-<id>` when applicable)
-     - required task doc artifact exists at `<docs.root>/<repo-name>/<prefix>-<id>.md`
+     - required task doc artifact exists at `<docs.root>/<repo-name>/tasks/<prefix>-<id>.md` when the project uses the new layout, or at the legacy flat path when the repository already uses that convention
    - Summarize what changed and what was verified.
    - Leave commit, merge, release, or deployment decisions to the user unless explicitly requested later.
    - If the user later asks to commit, push, or merge the branch, use the appropriate workflow then.
@@ -147,6 +154,7 @@ perf(scope): [Task title](Task URL) (perf-1234)
 ## Coordination With Other Skills
 
 - Use `$entity-design` when the task is primarily about deriving entities, tables, main/detail relationships, lifecycle states, fields, or snapshots from prototypes and requirements.
+- Use `new-order` when the task is a new project, a project with missing or fragmented docs, or any work that needs project-level architecture, scope, and plan documents before task decomposition.
 - Use browser automation when the requirement source must be inspected from an already-open browser tab or an authenticated web app.
 - Do not fold merge behavior into this workflow by default. Branch integration can be handled manually or by a dedicated merge workflow after the task branch has been committed.
 

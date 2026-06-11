@@ -74,7 +74,7 @@ The inline form is harder to copy cleanly from rendered Markdown.
 Always create a requirement task doc artifact using the configured docs root and the skill-defined internal structure:
 
 ```text
-<docs.root>/<repo-name>/<feat|fix|perf>-<id>.md
+<docs.root>/<repo-name>/tasks/<feat|fix|perf>-<id>.md
 ```
 
 If `docs.root` is not configured and the user has not provided it, ask for the docs root before creating the artifact and then save it to the local path config.

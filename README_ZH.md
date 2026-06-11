@@ -29,6 +29,7 @@ https://github.com/askairo/kairo-skills
 | `hexo-push` | 博客发布 | 将 Clippings 文章转换为 Hexo 文档并发布 |
 | `dialogue-refine` | 博客发布 | 将 AI 对话记录提炼为结构化 Hexo 文章 |
 | `skills-loop` | Skills 管理 | 基于 GitHub 的 skills 迭代闭环：发布、同步、回装、校验 |
+| `new-order` | 项目探索 | 将新项目整理成有秩序的文档、架构边界和执行计划 |
 | `upgrade-kimi-cli` | 工具维护 | 自动检测并升级 Kimi CLI |
 | `merge-to` | 开发流程 | 将当前分支合并到 `dev` / `sit` 并推送 |
 | `weekly-report` | 业务文档 | 根据截图或任务列表生成周报 |
@@ -68,12 +69,13 @@ kairo-skills/
 ├── hexo-push/
 ├── mac-clean/
 ├── merge-to/
+├── new-order/
 ├── skills-loop/
 ├── upgrade-kimi-cli/
 └── weekly-report/
 ```
 
-暂不按物理目录拆分为 `blog/`、`work/` 等分类；分组先维护在 README 表格中。等 skills 数量明显增多后，再考虑目录分组，并同步升级 `skills-loop` 对嵌套路径的默认支持。
+暂不按物理目录拆分为 `blog/`、`work/` 等分类；分组先维护在 README 表格中。等 skills 数量明显增多后，再考虑目录分组，并同步升级 `skills-loop` 对嵌套路径的默认支持。像 `new-order` 这类项目探索型技能仍然可以在自身规则里定义项目级文档目录，以及 `plans/`、`tasks/` 这样的子目录，而不影响根目录的 skill 布局。
 
 ## 配置约定
 

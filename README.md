@@ -29,6 +29,7 @@ In other words, update a skill in this repository first, validate it, commit and
 | `hexo-push` | Blog publishing | Convert Clippings articles into Hexo posts and publish them |
 | `dialogue-refine` | Blog publishing | Refine AI conversations into structured Hexo posts |
 | `skills-loop` | Skills management | GitHub-based skill iteration loop: publish, sync, reinstall, verify |
+| `new-order` | Project discovery | Turn a new project into ordered docs, architecture boundaries, and execution plans |
 | `upgrade-kimi-cli` | Tool maintenance | Detect and upgrade Kimi CLI automatically |
 | `merge-to` | Development flow | Merge the current branch into `dev` / `sit` and push |
 | `weekly-report` | Business documents | Generate weekly reports from screenshots or task lists |
@@ -68,12 +69,13 @@ kairo-skills/
 ├── hexo-push/
 ├── mac-clean/
 ├── merge-to/
+├── new-order/
 ├── skills-loop/
 ├── upgrade-kimi-cli/
 └── weekly-report/
 ```
 
-Physical grouping such as `blog/` or `work/` is intentionally deferred. Grouping is maintained in the README table for now. Once the number of skills grows significantly, the directory structure and `skills-loop` defaults can be upgraded together.
+Physical grouping such as `blog/` or `work/` is intentionally deferred. Grouping is maintained in the README table for now. Once the number of skills grows significantly, the directory structure and `skills-loop` defaults can be upgraded together. Project-discovery skills such as `new-order` can still define their own project-level document folders and subfolders such as `plans/` and `tasks/` without affecting the root skill layout.
 
 ## Conventions
 
