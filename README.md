@@ -1,6 +1,9 @@
 # Kairo Skills
 
-English | [中文](README_ZH.md)
+<p align="center">
+  <a href="./README.md"><img src="https://img.shields.io/badge/README-English-2f80ed?style=for-the-badge" alt="English README"></a>
+  <a href="./README_ZH.md"><img src="https://img.shields.io/badge/README-中文-00a67d?style=for-the-badge" alt="中文 README"></a>
+</p>
 
 Personal skills repository for Agent, Codex, and Kimi workflows.
 

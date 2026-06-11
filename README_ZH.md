@@ -1,6 +1,9 @@
 # Kairo Skills
 
-[English](README.md) | 中文
+<p align="center">
+  <a href="./README.md"><img src="https://img.shields.io/badge/README-English-2f80ed?style=for-the-badge" alt="English README"></a>
+  <a href="./README_ZH.md"><img src="https://img.shields.io/badge/README-中文-00a67d?style=for-the-badge" alt="中文 README"></a>
+</p>
 
 个人 Agent/Codex/Kimi skills 仓库。
 
