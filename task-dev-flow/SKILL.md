@@ -73,7 +73,7 @@ docs:
 3. 读取仓库规则。
    - 先看仓库里的 `AGENTS.md`、`CLAUDE.md`、根 README。
    - 若还有架构、SQL、模块或流程文档，只读与当前任务直接相关的部分。
-   - 项目有项目级文档时，先看 `00-overview`、`10-roadmap`、`11-architecture`、`12-interfaces-and-schema`、`20-references`，再看相关 `plans/`。
+   - 项目有项目级文档时，先看 `00-overview`、`10-roadmap`、`11-cloudflare-storage-plan`、`12-interfaces-and-schema`、`13-reading-experience-plan`、`20-references`、`30-decisions`、`31-open-questions`、`32-risk-log`，再看相关 `plans/` 和 `tasks/`。
 
 4. 创建或选择任务分支。
    - 先看当前分支和工作区状态。
@@ -87,6 +87,7 @@ docs:
    - 写任务文档时遵循 `references/task-template.md`。
    - 任务文档命名固定为 `<prefix>-<id>.md`，前缀通常是 `feat`、`fix` 或 `perf`。
    - 文档目录优先写入 `<docs.root>/<repo-name>/tasks/`；项目级规划放在 `plans/`。
+   - 如果项目采用 `new-order` 的丰富文档层级，要同步维护 `30-decisions`、`31-open-questions` 和 `32-risk-log`。
    - 文档里的 `source`、`branch`、`baseline`、`commit` 要和真实状态同步。
 
 6. 按仓库结构实现。
