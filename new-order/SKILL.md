@@ -1,139 +1,45 @@
 ---
 name: new-order
-description: Turn an unclear new project into an ordered project-level document set, architecture boundaries, and execution plans before task-driven development. Use when starting a new project or when existing docs are fragmented and need to be consolidated before task-dev-flow.
+description: 将新项目整理成有秩序的项目级文档、架构边界和执行计划。适用于新项目启动或已有文档碎片化，需要先理顺结构再进入 task-dev-flow 的场景。
 ---
 
 # New Order
 
-## Overview
+用于在任务开发前，先把项目级文档、架构边界和推进顺序理清楚。
 
-Use this skill to bring order to a new project before task execution begins. It focuses on project goals, scope, architecture boundaries, documentation structure, and the point at which the project is ready to hand off to `task-dev-flow`.
+## 适用场景
 
-This skill does not create `feat-***` / `fix-***` task docs. It prepares the project so task-driven development can work cleanly.
+- 新项目刚开始，没有稳定的文档结构。
+- 旧项目文档散乱、重复、过时。
+- 需要先明确整体架构，再进入任务拆解和实现。
 
-## When to Use
+## 输出目录
 
-- A brand-new project needs its first stable documentation set.
-- Existing project docs are fragmented, duplicated, or out of date.
-- The project needs architecture docs before implementation can proceed.
-- The project needs a clear decision on whether it is ready for `task-dev-flow`.
+新项目推荐按项目目录组织文档，例如：
 
-## Local Config
+- `00-overview.md`：项目概述
+- `10-roadmap.md`：路线图和阶段计划
+- `11-architecture.md`：整体架构
+- `12-frontend-architecture.md`：前端架构
+- `12-backend-architecture.md`：后端架构
+- `20-references/`：参考资料
+- `tasks/`：任务文档
 
-Use local machine config for stable, user-specific documentation roots. Keep these files outside project repos and treat them as private state.
+如果项目已经有既定目录结构，优先保持一致，只补充缺失部分。
 
-### Agent Home Resolution
+## 核心职责
 
-`<AGENT_HOME>` is the current agent's configuration home directory. Resolve it before reading or writing any local config, using the same priority model as other skill-managed local config:
+- 先定义项目目标、范围、边界和角色。
+- 再把前后端架构拆开讲清楚。
+- 最后把后续任务推进顺序排好。
 
-1. Check the working directory path: if it contains `.qoderworkcn`, use `~/.qoderworkcn/`.
-2. Check the working directory path: if it contains `.codex`, use `~/.codex/`.
-3. If `~/.qoderworkcn/` exists, use it.
-4. If `~/.codex/` exists, use it.
-5. Fallback: `~/.config/skills/`.
+## 和 task-dev-flow 的关系
 
-After resolving, verify the chosen directory exists. If none exists, ask the user which agent home to use and create it.
+- `new-order` 负责项目级秩序。
+- `task-dev-flow` 负责单个任务的拆解、实现和验证。
+- 没有稳定项目文档时，先用 `new-order`，再进入 `task-dev-flow`。
 
-### Config Paths
+## 说明
 
-- Path config: `<AGENT_HOME>/local-config/new-order/paths.yaml`
-
-Recommended path config shape:
-
-```yaml
-version: 1
-
-docs:
-  root: <absolute-project-docs-root>
-```
-
-- `docs.root` is the user-specific root that contains project document folders, such as an Obsidian `03-req` directory.
-- If the config does not exist and the user did not provide a docs root, ask for the docs root first, then create or update the local path config.
-- If the repository already uses the same docs root from `task-dev-flow`, reuse it instead of asking again.
-
-## Project Document Layout
-
-`new-order` owns the project-level document layout under:
-
-```text
-<docs.root>/<project-name>/
-```
-
-Recommended project-level documents:
-
-- `00-overview.md`
-- `10-roadmap.md`
-- `11-architecture.md`
-- `12-interfaces-and-schema.md`
-- `13-frontend-architecture.md`
-- `14-backend-architecture.md`
-- `15-worker-architecture.md` when the project has a separate worker/API backend
-- `20-references.md`
-- `30-decisions.md`
-- `31-open-questions.md`
-- `32-risk-log.md`
-
-Execution-planning documents live in the same project folder, under:
-
-```text
-<docs.root>/<project-name>/plans/
-```
-
-Recommended planning docs:
-
-- `40-implementation-plan.md`
-- `41-task-breakdown.md`
-- `42-validation-plan.md`
-- `43-release-notes.md`
-
-Task-level work-item docs are reserved for `task-dev-flow` and should live under:
-
-```text
-<docs.root>/<project-name>/tasks/
-```
-
-## Workflow
-
-1. Collect the project input.
-   - Accept ideas, notes, screenshots, PRDs, existing docs, prototype references, or a partially started repo.
-   - Identify the project name, target audience, repo name, and whether the project already has stable docs.
-
-2. Inspect what already exists.
-   - Read the existing project docs first.
-   - Inspect repository rules when there is an implementation repo.
-   - Look for duplicate, conflicting, or missing docs.
-
-3. Normalize the project-level doc set.
-   - Ensure `00-overview`, `10-roadmap`, `11-architecture`, `12-interfaces-and-schema`, and `20-references` exist.
-   - Add `13-frontend-architecture` and `14-backend-architecture` for every new product/project unless the project is intentionally frontend-only or backend-only.
-   - Add `15-worker-architecture` when the project includes a separate API/worker backend.
-   - Add `30-decisions`, `31-open-questions`, and `32-risk-log` when the project has enough substance to need them.
-   - Prefer updating existing docs over creating parallel duplicates.
-
-4. Clarify the project structure.
-   - Distinguish project-level constraints from task-level work items.
-   - Keep project docs in the project folder and planning docs in `plans/`.
-   - Leave `tasks/` to `task-dev-flow`.
-
-5. Decide readiness for execution.
-   - If scope, architecture, or priorities are still unstable, keep refining project docs.
-   - If the project is ready to be decomposed into concrete work items, prepare a handoff to `task-dev-flow`.
-
-6. Hand off with a clear summary.
-   - Summarize the current scope, architecture, open questions, risks, and next step.
-   - Point to the project docs that define the constraints.
-   - Tell the user when the project is ready for `task-dev-flow`.
-
-## Output Expectations
-
-- Prefer Chinese for project documents when the repository or existing docs are already written in Chinese.
-- Keep the output concise but structured.
-- Separate confirmed facts, open questions, and next actions.
-- Do not create task cards or `feat-***` / `fix-***` docs.
-
-## Coordination With Other Skills
-
-- Use `task-dev-flow` after the project is sufficiently ordered and the work can be split into concrete tasks.
-- Use `entity-design` when the project is primarily about main/detail entities, table design, or field derivation.
-- Use browser or computer control only when external docs or prototypes need to be inspected.
-
+- 这个 skill 不直接生成 `feat-***` 或 `fix-***` 任务文档。
+- 它的任务是先把项目变得“能开发、可推进、可交接”。

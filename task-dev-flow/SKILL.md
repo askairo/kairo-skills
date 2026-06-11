@@ -1,44 +1,42 @@
 ---
 name: task-dev-flow
-description: Turn an external task, ticket, issue, requirement link, prototype link, or pasted task description into a complete development workflow. Use when the agent needs to understand task metadata, inspect linked requirements, create or use a task branch, split work into implementation cards, follow repository rules, implement changes, and validate them. Do not use this skill for pure entity/table design; use entity-design for that focused analysis.
+description: 将外部任务、工单、需求链接、原型链接或任务描述转成完整的开发流程。用于理解任务信息、检查需求来源、创建或使用任务分支、拆解实施卡片、遵循仓库规则、实现变更并完成验证。纯实体表设计请改用 entity-design。
 ---
 
 # Task Dev Flow
 
-## Overview
+## 目标
 
-Use this skill to run a task-driven development loop from an external work item to a verified local implementation. Keep the workflow platform-neutral: ZenTao, Jira, GitHub issues, Axhub, internal docs, screenshots, or pasted task text are all valid inputs.
+把外部任务转成“可执行、可验证、可交付”的本地开发流程。适用对象包括禅道、Jira、GitHub issue、原型链接、内部文档、截图或直接粘贴的任务描述。
 
-If the project is still exploratory, the architecture is unstable, or the project-level docs are missing, use `new-order` first to establish the project doc set and execution structure before returning here.
+如果项目还处在探索期、架构不稳定，或者项目级文档还没理顺，先使用 `new-order` 把项目文档和架构顺序建立起来，再回到这里做任务拆解和实现。
 
-This skill stops after the finished development work is validated and handed off. Do not automatically commit, push, or merge branches unless the user explicitly asks in a separate request.
+## 本地配置
 
-## Local Config
+本 skill 使用本机私有配置保存稳定路径和认证信息。不要把这些配置写进项目仓库。
 
-Use local machine config for stable, user-specific destinations and auth data. Keep these files outside project repos and treat them as private state.
+### Agent Home 解析
 
-### Agent Home Resolution
+`<AGENT_HOME>` 表示当前 Agent 的配置根目录。读取或写入本地配置前必须先解析它，而且只能使用当前 Agent 对应的目录。
 
-`<AGENT_HOME>` is the **current agent's** configuration home directory. The agent must resolve it **before** reading or writing any local config, and must **never** read config files from another agent's home directory.
+解析顺序：
 
-Resolution order (stop at the first match):
+1. 工作目录路径包含 `.qoderworkcn`，使用 `~/.qoderworkcn/`
+2. 工作目录路径包含 `.codex`，使用 `~/.codex/`
+3. 如果 `~/.qoderworkcn/` 存在，使用它
+4. 如果 `~/.codex/` 存在，使用它
+5. 兜底到 `~/.config/skills/`
 
-1. Check the working directory path: if it contains `.qoderworkcn`, use `~/.qoderworkcn/` (QoderWork).
-2. Check the working directory path: if it contains `.codex`, use `~/.codex/` (Codex / OpenAI).
-3. If `~/.qoderworkcn/` exists, use it.
-4. If `~/.codex/` exists, use it.
-5. Fallback: `~/.config/skills/`.
+解析后必须确认目录真实存在。若都不存在，就询问用户选择哪个 Agent Home。
 
-After resolving, verify the chosen directory actually exists. If none exists, ask the user which agent home to use and create it.
+**硬规则：** 一旦解析出 `<AGENT_HOME>`，只能读写这个目录下的配置，不要跨 Agent 目录。
 
-**Hard rule:** Once `<AGENT_HOME>` is resolved, only read and write config under that directory. Do not fall through to other agent directories (e.g., a QoderWork session must never read `~/.codex/`, and vice versa).
+### 配置文件
 
-### Config Paths
+- 认证配置：`<AGENT_HOME>/local-config/task-dev-flow/auth-sites.yaml`
+- 路径配置：`<AGENT_HOME>/local-config/task-dev-flow/paths.yaml`
 
-- Auth config: `<AGENT_HOME>/local-config/task-dev-flow/auth-sites.yaml`
-- Path config: `<AGENT_HOME>/local-config/task-dev-flow/paths.yaml`
-
-Recommended path config shape:
+推荐路径配置：
 
 ```yaml
 version: 1
@@ -47,127 +45,71 @@ docs:
   root: <absolute-task-docs-root>
 ```
 
-- `docs.root` is the user-specific root that contains all project document folders, such as an Obsidian `03-req` directory.
-- The skill owns the internal structure under `docs.root`:
-  - project-level docs live in `<docs.root>/<repo-name>/`
-  - execution plans live in `<docs.root>/<repo-name>/plans/`
-  - task work-item docs live in `<docs.root>/<repo-name>/tasks/`
-- For existing repos that already use a flat legacy layout, the skill should keep supporting that convention when the project already has task docs there. New projects should prefer the `tasks/` subdirectory.
-- If no config exists and the user did not provide a docs root, ask the user for the docs root. After the user provides it, create or update the local path config before generating task docs.
+- `docs.root` 是任务文档根目录，例如 Obsidian 的 `03-req`。
+- 该 skill 负责 `docs.root` 下的结构：
+  - 项目级文档：`<docs.root>/<repo-name>/`
+  - 执行计划：`<docs.root>/<repo-name>/plans/`
+  - 任务文档：`<docs.root>/<repo-name>/tasks/`
+- 如果项目已有旧的扁平结构，也要兼容；新项目优先用 `tasks/`。
+- 如果没有配置且用户没给文档根目录，就先询问，再写入本地配置。
 
-## Workflow
+## 工作流
 
-1. Capture the task input.
-   - Accept task links, issue IDs, pasted titles, screenshots, prototype links, or natural-language descriptions.
-   - Extract stable metadata when present: task title, task ID, source URL, product area, repository, and target branch name.
-   - If the visible task reference, pasted text, and URL contain conflicting work-item IDs, resolve the canonical ID before creating the branch, task doc, or commit text.
-   - If the user explicitly says to follow their pasted analysis, screenshots, or description instead of the linked task page, treat the external link as metadata only and implement from the user-provided analysis unless the user later asks to inspect the source.
-   - Detect work-item type from the source when possible and map to a unified prefix:
-     - Task links such as `task-view-1336` -> use `feat-1336`
-     - Bug links such as `bug-view-6076` -> use `fix-6076`
-     - Performance/optimization items -> use `perf-<id>` when the repo or task source clearly frames the work as performance-oriented
-   - Keep branch name, task-card filename, and commit suffix aligned with the same work-item prefix (`feat`, `fix`, or `perf`).
+1. 收集任务信息。
+   - 支持任务链接、issue 编号、截图、原型、自然语言描述。
+   - 提取稳定信息：标题、ID、来源链接、产品区域、仓库、目标分支。
+   - 若任务编号冲突，以用户明确说明为准。
+   - 根据来源映射统一前缀：
+     - `task-view-1336` -> `feat-1336`
+     - `bug-view-6076` -> `fix-6076`
+     - 性能/优化项 -> `perf-<id>`
 
-2. Inspect the requirement source.
-   - If the requirement is already open in Chrome and the user asks to use browser MCP, inspect it there.
-   - If credentials are needed, first check the local-only auth config using this resolution order: explicit user-provided path -> `<AGENT_HOME>/local-config/task-dev-flow/auth-sites.yaml`. Treat this config as private machine state: do not write it into any project repo or skills repo.
-   - If credentials are needed and the user provides them during the conversation, use them for the current task and, with explicit user confirmation, add or update the matching local auth config entry for future runs.
-   - If the task needs a stable external document root or workspace-specific outbound path, first check the local path config using this resolution order: explicit user-provided path -> `<AGENT_HOME>/local-config/task-dev-flow/paths.yaml`. Treat this config as private machine state: do not write it into any project repo or skills repo.
-   - Prefer storing durable external destinations in the local path config instead of re-deriving them from memory during each run.
-   - In this skill, `<repo-name>` means the repository's canonical folder name, usually the basename of the local repo path or the task's repo slug such as `znder-erp` or `znder-erp-api`.
-   - If the task points to prototypes or entity/table design, use `$entity-design` for that focused analysis and bring its results back into this workflow.
-   - See `references/task-intake.md` for task-link parsing and requirement intake details.
+2. 检查需求来源。
+   - 若需求已在 Chrome 打开并要求使用浏览器，就直接读该页面。
+   - 若需要认证，先查本地认证配置。
+   - 若需要稳定输出路径，先查路径配置。
+   - 原型或实体设计需要单独分析时，先调用 `entity-design`。
 
-3. Read repository rules before editing.
-   - Inspect the target repository's primary local instruction files first, especially `AGENTS.md`, `CLAUDE.md`, and the root README when present.
-   - If those entry files reference additional architecture, SQL, workflow, or module docs, read only the parts that are directly relevant to the current task.
-   - Avoid broad doc sweeps. Prefer the smallest set of repository docs that can safely constrain the implementation.
-   - If the repo defines an instruction order, follow that order literally.
-   - Let repository rules decide layering, naming, validation style, SQL location, and commit conventions.
-   - For projects with a project-level doc folder, review the active `00-overview`, `10-roadmap`, `11-architecture`, `12-interfaces-and-schema`, `20-references`, and any relevant docs under `plans/` before editing task docs.
+3. 读取仓库规则。
+   - 先看仓库里的 `AGENTS.md`、`CLAUDE.md`、根 README。
+   - 若还有架构、SQL、模块或流程文档，只读与当前任务直接相关的部分。
+   - 项目有项目级文档时，先看 `00-overview`、`10-roadmap`、`11-architecture`、`12-interfaces-and-schema`、`20-references`，再看相关 `plans/`。
 
-4. Create or select the work-item branch.
-   - Check the current branch and working tree before switching.
-   - Avoid touching unrelated dirty changes.
-   - Create the work-item branch only when needed; if it already exists, switch to it after confirming it is the intended branch.
-   - If the inferred work-item branch does not exist, create it from the repository's baseline branch. Prefer the baseline named by repo instructions.
-   - For Znder ERP repositories (`znder-erp`, `znder-erp-api`), default baseline order is: `master` -> `main` -> repository instruction baseline. If the user explicitly requests another baseline, follow the user request.
-   - Before creating a new branch from a baseline, update that baseline from the remote when safe to do so. Do not overwrite, delete, or recreate an existing work-item branch.
-   - After creating a work-item branch, verify the branch head equals the baseline head when no new commits were made yet. If not equal, stop and recreate from the correct baseline.
-   - See `references/branch-prep.md` for the compatible branch preparation flow.
+4. 创建或选择任务分支。
+   - 先看当前分支和工作区状态。
+   - 避免污染无关改动。
+   - 如果分支不存在，基于仓库基线分支新建。
+   - Znder ERP 仓库默认基线顺序：`master` -> `main` -> 仓库规则指定基线。
 
-5. Split the work into task cards.
-   - Produce a short checklist from the requirement before implementation.
-   - Keep cards outcome-oriented, such as API contract, persistence change, assembler mapping, operation log, validation, and tests.
-   - Update the checklist as work completes.
-   - When writing a `task.md` or equivalent task card, follow `references/task-template.md`.
-   - Create or update a requirement task doc during this step, where filename is always `<prefix>-<id>.md` and `prefix` is `feat`, `fix`, or `perf` when the repo convention supports it.
-   - Resolve the doc directory with this priority:
-     - Explicit user-provided docs root for the current task.
-     - Configured docs root from `<AGENT_HOME>/local-config/task-dev-flow/paths.yaml`.
-   - If the docs root cannot be resolved, pause and ask the user for it; then write it to the local path config.
-   - Create or use the skill-defined directory `<docs.root>/<repo-name>/tasks/` for task work-items, and keep project-level planning docs in `<docs.root>/<repo-name>/plans/`.
-   - Only skip this artifact when the user explicitly asks not to create docs.
-   - Keep the task doc metadata (`source`, `branch`, `baseline`, `commit`) synchronized with the actual branch and commit text used later.
+5. 拆分任务卡。
+   - 先把需求拆成简短 checklist。
+   - 任务卡要面向结果，例如接口、持久化、映射、日志、校验、测试。
+   - 写任务文档时遵循 `references/task-template.md`。
+   - 任务文档命名固定为 `<prefix>-<id>.md`，前缀通常是 `feat`、`fix` 或 `perf`。
+   - 文档目录优先写入 `<docs.root>/<repo-name>/tasks/`；项目级规划放在 `plans/`。
+   - 文档里的 `source`、`branch`、`baseline`、`commit` 要和真实状态同步。
 
-6. Implement according to the repository shape.
-   - Start from existing code paths and patterns.
-   - Keep orchestration, conversion, persistence, side effects, and presentation responsibilities in their existing layers.
-   - Prefer narrow edits that satisfy the task without redesigning unrelated code.
-   - If a project-specific convention is missing but repeatedly needed, suggest adding it to the repo's instruction file instead of burying it in this skill.
+6. 按仓库结构实现。
+   - 以现有代码路径和模式为起点。
+   - 保持分层、命名、SQL、验证和提交规范与仓库一致。
+   - 如果项目约定缺失但重复出现，建议补到仓库规则文件里，而不是塞进 skill 本身。
 
-7. Validate.
-   - Run the narrowest meaningful checks first.
-   - Broaden validation when shared contracts, controllers, workflow, or persistence behavior changed.
-   - Report unrelated blockers clearly and do not hide whether verification passed.
+7. 验证。
+   - 先跑最窄的检查，再扩大范围。
+   - 共享契约、控制器、流程或持久化改动时要增加验证力度。
+   - 明确报告与本次任务无关的阻塞项。
 
-8. Hand off the validated work.
-   - Stage only files related to the task when the user explicitly asks for a commit.
-   - Generate a task-aware commit message when task metadata is available and a commit is requested.
-   - If a `task.md` or task card contains a `commit` code block, use that exact message for `git commit` when committing is requested.
-   - Once the `commit` message is generated in the task card, treat it as immutable for this task. Reuse the exact same text for all task commits.
-   - Do not create ad-hoc commit messages later unless the user explicitly asks to change the commit wording.
-   - Do not run `git commit` or `git push` unless the user explicitly asks for those actions in a separate follow-up request.
-   - Example format:
+8. 交付。
+   - 只有在用户明确要求时才提交或推送。
+   - 需要 commit 时，任务文档里的 commit message 一旦生成就视为固定文本。
+   - 不要擅自更换提交信息。
 
-Task item:
-```text
-feat(scope): [Task title](Task URL) (feat-1234)
-```
-Bug item:
-```text
-fix(scope): [Bug title](Bug URL) (fix-6076)
-```
-Performance item:
-```text
-perf(scope): [Task title](Task URL) (perf-1234)
-```
+9. 收尾。
+   - 再核对一次分支、任务文档和必要文件是否齐全。
+   - 总结变更、验证结果和剩余风险。
 
-9. Stop after validation and explicit user handoff.
-   - Run a quick consistency check before finishing:
-     - work-item branch exists and is correct (`feat-<id>` or `fix-<id>` when applicable)
-     - required task doc artifact exists at `<docs.root>/<repo-name>/tasks/<prefix>-<id>.md` when the project uses the new layout, or at the legacy flat path when the repository already uses that convention
-   - Summarize what changed and what was verified.
-   - Leave commit, merge, release, or deployment decisions to the user unless explicitly requested later.
-   - If the user later asks to commit, push, or merge the branch, use the appropriate workflow then.
+## 和其他 skills 的配合
 
-## Coordination With Other Skills
-
-- Use `$entity-design` when the task is primarily about deriving entities, tables, main/detail relationships, lifecycle states, fields, or snapshots from prototypes and requirements.
-- Use `new-order` when the task is a new project, a project with missing or fragmented docs, or any work that needs project-level architecture, scope, and plan documents before task decomposition.
-- Use browser automation when the requirement source must be inspected from an already-open browser tab or an authenticated web app.
-- Do not fold merge behavior into this workflow by default. Branch integration can be handled manually or by a dedicated merge workflow after the task branch has been committed.
-
-## Examples
-
-```text
-Use $task-dev-flow for this task link: https://example.com/task-view-1336.html
-```
-
-```text
-Use $task-dev-flow to read this Jira issue, create the task branch, implement it in the current repo, and prepare the commit.
-```
-
-```text
-Use $task-dev-flow with the Axhub prototype I opened in Chrome, but use $entity-design first if entity/table design is needed.
-```
+- 需求主要是实体、表结构、主从关系或字段推导时，先用 `entity-design`。
+- 项目处于新建阶段、文档缺失或结构混乱时，先用 `new-order`。
+- 任务完成后是否合并分支，不属于这个 skill 的默认职责。

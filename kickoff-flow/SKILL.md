@@ -1,27 +1,27 @@
 ---
 name: kickoff-flow
-description: Standardize personal new-project kickoff from idea to executable local workspace. Use when Codex should create/rename a GitHub repository, clone locally, establish naming conventions, resolve a configured project-docs root directory, and generate the skill-defined kickoff document set.
+description: 将个人新项目的启动流程标准化为可执行的本地工作区。用于创建或重命名 GitHub 仓库、拉取到本地、建立命名规范、解析项目文档根目录，并生成 skill 定义的启动文档集。
 ---
 
 # Kickoff Flow
 
-## Overview
+## 目标
 
-Use this skill to bootstrap a new personal project in a repeatable way, separating:
+把“一个想法”变成可启动、可推进的新项目，明确分开：
 
-- code workspace (repo)
-- project-management docs under a configured root directory
+- 代码工作区
+- 项目管理文档区
 
-This workflow is for project initialization, not feature implementation.
+这个流程只负责项目初始化，不负责功能实现。
 
-## Local Config
+## 本地配置
 
-Use local machine config for stable, user-specific documentation destinations. Keep these files outside project repos and treat them as private state.
+使用本机配置保存稳定的、用户私有的文档根目录。配置文件不要放进项目仓库。
 
-- Path config: `<CODEX_HOME>/local-config/kickoff-flow/paths.yaml`
-- Fallback path config: `<HOME>/.codex/local-config/kickoff-flow/paths.yaml`
+- 路径配置：`<CODEX_HOME>/local-config/kickoff-flow/paths.yaml`
+- 备用路径配置：`<HOME>/.codex/local-config/kickoff-flow/paths.yaml`
 
-Recommended path config shape:
+推荐配置结构：
 
 ```yaml
 version: 1
@@ -30,61 +30,54 @@ docs:
   root: <absolute-project-docs-root>
 ```
 
-- `docs.root` is the user-specific root that contains all kickoff project document folders, such as an Obsidian `03-req` directory.
-- The skill owns the internal structure under `docs.root`: create `<docs.root>/<project_name>/00-overview.md` and `<docs.root>/<project_name>/10-roadmap.md`.
-- Prefer configured paths over deriving a docs root from memory.
-- If no config exists and the user did not provide a docs root, ask the user for the docs root. After the user provides it, create or update the local path config before generating docs.
+- `docs.root` 是用户自己的项目文档根目录，例如 Obsidian 的 `03-req`。
+- skill 负责 `docs.root` 下的结构：创建 `<docs.root>/<project_name>/00-overview.md` 和 `<docs.root>/<project_name>/10-roadmap.md`。
+- 优先使用已配置路径，不要靠记忆推导。
+- 如果没有配置且用户也没提供，就先询问 `docs.root`，再写入本地配置。
 
-## Workflow
+## 流程
 
-1. Capture kickoff input.
-   - Required: project name, one-line objective.
-   - Optional: GitHub visibility (`public`/`private`), local base directory, tech stack, docs root.
+1. 收集启动信息。
+   - 必填：项目名、一句话目标。
+   - 可选：GitHub 可见性、本地目录、技术栈、文档根目录。
+2. 统一命名。
+   - 优先使用简短的 lowercase kebab-case。
+   - 仓库名、本地目录名、文档目录名保持一致。
+3. 创建或重命名 GitHub 仓库。
+   - 仓库不存在就创建。
+   - 项目名变更时同步重命名并更新本地 `origin`。
+4. 准备本地工作区。
+   - 在用户选定目录下克隆仓库。
+   - 检查远端和默认分支。
+5. 在解析后的文档目录下创建项目文档。
+   - 文档根目录优先级：
+     1. 当前请求显式提供
+     2. 本地路径配置
+   - 如果无法解析，就先询问用户，再写入本地配置。
+   - 创建目录：`<docs-root>/<project-name>`
+   - 创建：
+     - `00-overview.md`：项目定义
+     - `10-roadmap.md`：执行计划和校验跟踪
+6. 保持代码仓库干净。
+   - 仓库根目录只放代码、配置和运行时文档。
+   - 如果有独立文档根目录，就不要把项目管理文档塞进代码仓库根目录。
+7. 确认启动完成。
+   - GitHub 仓库名正确。
+   - 本地目录名正确。
+   - `00-overview.md` 存在。
+   - `10-roadmap.md` 存在。
 
-2. Normalize naming.
-   - Prefer short lowercase kebab-case names (example: `envflow`).
-   - Keep GitHub repo name, local folder name, and `03-req` folder name consistent.
-
-3. Create or rename GitHub repository.
-   - If repository does not exist, create it.
-   - If user changed the project name, rename repository and sync local `origin`.
-
-4. Prepare local workspace.
-   - Clone repo under user-selected base directory.
-   - Verify git remote and default branch.
-
-5. Create project-management docs under the resolved docs directory.
-   - Resolve the docs root with this priority:
-     - Explicit user-provided docs root for the current request.
-     - Local path config from `<CODEX_HOME>/local-config/kickoff-flow/paths.yaml`.
-     - Local path config from `<HOME>/.codex/local-config/kickoff-flow/paths.yaml`.
-   - If the docs root cannot be resolved, pause and ask the user for it; then write it to the local path config.
-   - Create directory: `<docs-root>/<project-name>`
-   - Create:
-     - `00-overview.md` (project definition)
-     - `10-roadmap.md` (execution plan and verification tracking)
-
-6. Keep code repo clean.
-   - In project repo root, keep only code/config/runtime docs (for example `README.md`).
-   - Do not store project-management planning docs in code root when `03-req` is available.
-
-7. Confirm kickoff completeness.
-   - GitHub repo exists with correct name.
-   - Local directory exists with correct name.
-   - `<docs-root>/<project-name>/00-overview.md` exists.
-   - `<docs-root>/<project-name>/10-roadmap.md` exists.
-
-## Templates
+## 模板
 
 - Use `references/00-overview.template.md`
 - Use `references/10-roadmap.template.md`
 
-## Notes
+## 说明
 
-- This skill is intentionally generic; requirement details vary by project.
-- For implementation phases after kickoff, hand off to task-specific skills.
+- 这个 skill 故意保持通用，具体需求因项目而异。
+- 启动完成后，后续实现交给任务型 skills。
 
-## Script Helper
+## 脚本辅助
 
 Use `scripts/init_project_docs.ps1` to generate kickoff docs automatically:
 
@@ -99,6 +92,7 @@ pwsh -File scripts/init_project_docs.ps1 \
 ```
 
 It creates/updates:
+
 - `<docs-root>/<project-name>/00-overview.md`
 - `<docs-root>/<project-name>/10-roadmap.md`
 

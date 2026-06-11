@@ -18,8 +18,8 @@ description: 以源码仓库到 GitHub 再到 Agent 运行目录的闭环管理 
 - 当前 Agent 的 skills 目录只是运行时安装目标；具体路径来自配置、显式参数或脚本所在位置。
 - 用户用自然语言表达意图，Agent 负责选择脚本命令。
 - 不依赖环境变量作为主要配置。优先级是：自然语言/显式参数 > 本地配置文件 > 已安装来源元数据 > 自动发现 > 环境变量兜底。
-- 如果仓库维护双语 README，应把 `README.md` 和 `README_ZH.md` 视为一组同步文档，发布时一起更新、一起检查按钮/链接和目录说明是否一致。
-- 对于 `skills-loop` 创建、更新或修复的技能，只要该技能维护 README，就默认要求同时提供 `README.md` 与 `README_ZH.md` 双语版本，并在文档顶部提供可点击的语言切换按钮，确保两个版本的结构、入口和维护说明保持一致。
+- 如果仓库维护双语 README，应把双语内容收敛到同一个 `README.md` 中，顶部提供可点击的语言切换按钮，语言切换后跳转到同一文件里的对应语言区块，避免维护两份独立 README。
+- 对于 `skills-loop` 创建、更新或修复的技能，只要该技能维护 README，就默认要求使用单个 `README.md` 承载中英文双语内容，并在文档顶部提供可点击的语言切换按钮，确保两个语言区块的结构、入口和维护说明保持一致。
 
 ## 触发规则
 
@@ -90,7 +90,7 @@ task-dev-flow: <docs.root>/<repo-name>/<prefix>-<id>.md
 
 2. 验证：
    - `SKILL.md` 可读且描述清楚
-   - 若 skill 维护 README，则 `README.md` 和 `README_ZH.md` 都存在，并且顶部语言切换按钮可互相跳转
+   - 若 skill 维护 README，则 `README.md` 应同时包含中英文内容，并且顶部语言切换按钮可跳转到同一文件内的对应语言区块
    - 若改动涉及 skill 内容设计，先按 `skill-creator` 完成创建或修改
    - 使用 `skill-creator` 的 `quick_validate.py` 校验目标 skill
    - Python 脚本执行 `py_compile`

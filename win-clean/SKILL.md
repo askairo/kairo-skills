@@ -1,87 +1,46 @@
 ---
 name: win-clean
-description: Safely clean C drive space on Windows by prioritizing cache and temporary files, then optionally running deeper cleanup with explicit confirmation for risky actions.
+description: 安全清理 Windows C 盘空间，优先处理缓存和临时文件，并在需要更激进操作时要求用户明确确认。
 ---
 
 # Win Clean
 
-Use this skill when the user asks to clean Windows disk space, especially `C:`. Default to safe cleanup and avoid touching personal files, app binaries, or system-critical folders unless the user explicitly asks.
+用于清理 Windows 磁盘空间，尤其是 `C:`。默认只做安全清理，不主动碰个人文件和系统关键目录。
 
-## Goals
+## 目标
 
-- Recover space with low-risk actions first.
-- Show before/after free space and what was cleaned.
-- Gate higher-risk actions behind explicit user confirmation.
+- 优先回收低风险空间。
+- 展示清理前后空间变化。
+- 高风险操作必须明确确认。
 
-## Safety Rules
+## 安全原则
 
-- Do not delete from personal data folders by default: `Desktop`, `Documents`, `Pictures`, `Videos`, `Downloads`.
-- Do not delete app install trees by default: `C:\Program Files`, `C:\Program Files (x86)`, `C:\ProgramData` (except known cache subpaths).
-- Never manually delete inside `C:\Windows\WinSxS`.
-- Keep Codex runtime/cache untouched unless user explicitly requests it.
-- For each delete operation: prefer targeted known-cache paths and tolerate in-use files.
+- 默认不删除 `Desktop`、`Documents`、`Pictures`、`Videos`、`Downloads`。
+- 默认不删除 `C:\Program Files`、`C:\Program Files (x86)`、`C:\ProgramData`。
+- 不要手动删除 `C:\Windows\WinSxS`。
+- 优先清理已知缓存和临时目录。
 
-## Default Workflow (Safe Mode)
+## 默认流程
 
-1. Baseline check:
-   - Read free/used space for `C:`.
-   - Identify top cache candidates and report estimated size.
-2. Clean low-risk caches:
-   - User temp: `%TEMP%`
-   - Windows temp: `C:\Windows\Temp`
-   - Windows update download cache: `C:\Windows\SoftwareDistribution\Download`
-   - Delivery Optimization cache:
-     `C:\Windows\ServiceProfiles\NetworkService\AppData\Local\Microsoft\Windows\DeliveryOptimization\Cache`
-   - NVIDIA App update artifacts:
-     `C:\ProgramData\NVIDIA Corporation\NVIDIA App\UpdateFramework\ota-artifacts`
-   - Common updater caches in user local appdata:
-     `CrashDumps`, `*-updater`, `npm-cache` (if present)
-3. Component cleanup:
-   - Run:
-     `Dism.exe /Online /Cleanup-Image /StartComponentCleanup`
-   - If blocked by pending actions, report and advise restart, then rerun.
-4. Final verification:
-   - Report free space delta (GB), remaining major consumers, and any skipped items.
+1. 先看 `C:` 当前剩余空间。
+2. 清理常见缓存：
+   - `%TEMP%`
+   - `C:\Windows\Temp`
+   - `C:\Windows\SoftwareDistribution\Download`
+   - Delivery Optimization 缓存
+   - 常见更新器缓存和构建缓存
+3. 执行组件清理。
+4. 汇总清理前后差值和未处理项。
 
-## Mode Switch
+## 模式
 
-### `safe` (default)
+- `safe`：默认模式，只做低风险清理。
+- `aggressive`：只有用户明确要求时才进入，包含更激进但仍可控的清理动作。
 
-- Execute the full "Default Workflow (Safe Mode)" only.
-- No personal-data deletion.
-- No hibernation change.
-- No developer cache purge unless user asks.
+## 输出要求
 
-### `aggressive` (explicit user request only)
-
-- Includes all `safe` actions, plus optional actions below after clear confirmation.
-- User must explicitly ask for aggressive mode (for example: "run win-clean aggressive").
-- If request is ambiguous, stay in `safe`.
-
-## Optional Actions (Explicit Confirmation Required)
-
-- Disable hibernation to remove `hiberfil.sys`:
-  `powercfg /h off`
-  - Impact: disables Hibernate and Fast Startup.
-- Clear developer caches:
-  - Maven: `C:\Users\<user>\.m2\repository`
-  - NuGet: `C:\Users\<user>\.nuget\packages`
-  - Gradle: `C:\Users\<user>\.gradle\caches`
-- Remove stale empty directories in non-system paths.
-- Remove old large logs (for example stale `CbsPersist_*.log`) while keeping active logs.
-
-## Output Format
-
-Return a compact summary:
-
-- `Before`: free/used GB
-- `Actions`: cleaned paths + notes on failures/in-use files
-- `After`: free/used GB
-- `Recovered`: total GB gained
-- `Next`: optional high-impact actions user can approve
-
-## Notes
-
-- WinSxS apparent size often overstates reclaimable space due to hard links.
-- If DISM succeeds but gain is small, this is normal.
-- Prefer repeatable cleanup over risky one-off deletes.
+- 清理前可用空间
+- 已清理路径
+- 失败或被占用的路径
+- 清理后可用空间
+- 下一步可选动作

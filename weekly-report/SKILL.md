@@ -1,52 +1,49 @@
 ---
 name: weekly-report
-description: Write the user's weekly work report from screenshots or pasted task lists, using the existing Obsidian business weekly-report format, historical functional-area wording, and the configured weekly template. Use when the user says to write a weekly report, provides a screenshot of task titles, asks to refer to previous format or functional domains, or asks to update the business weekly report file.
+description: 根据截图或任务列表撰写周报，使用既有的 Obsidian 周报格式、历史功能域命名和当前模板。适用于写周报、整理任务标题或更新业务周报文件的场景。
 ---
 
 # Weekly Report
 
-## Scope
+## 范围
 
-Use this skill for the Obsidian business workspace weekly report workflow.
+用于 Obsidian 业务工作区的周报流程。
 
-- Workspace: `D:\znder\Obsidian\business`
-- Template: `01-templates\inner\weekly.md`
-- Historical examples and write target: `04-reviews\weekly.md`
-- Main data source: screenshots or pasted task titles supplied by the user
-- Secondary data source: recent entries in `04-reviews\weekly.md` for format, phrasing, functional areas, milestones, and next-week-plan style
+- 工作区：`D:\znder\Obsidian\business`
+- 模板：`01-templates\inner\weekly.md`
+- 历史示例和写入目标：`04-reviews\weekly.md`
+- 主数据源：用户提供的截图或任务标题
+- 辅助数据源：`04-reviews\weekly.md` 中最近几篇周报的格式、语气和功能域命名
 
-## Workflow
+## 流程
 
-1. Read workspace instructions first.
-   - Check `AGENTS.md` in `D:\znder\Obsidian\business`.
-   - If it does not exist, check parent directories only as needed.
-   - Follow those instructions when present.
+1. 先读工作区说明。
+   - 先看 `D:\znder\Obsidian\business` 下的 `AGENTS.md`。
+   - 如果没有，再按需看父目录。
 
-2. Read the weekly report template.
-   - Use `01-templates\inner\weekly.md` as the required section structure.
-   - Preserve the existing heading style from `04-reviews\weekly.md` when it is more specific than the bare template.
+2. 读取周报模板。
+   - 按 `01-templates\inner\weekly.md` 的结构写。
+   - 如果 `04-reviews\weekly.md` 的标题风格更具体，就保留那个风格。
 
-3. Read recent historical weekly reports.
-   - Open the top entries of `04-reviews\weekly.md`.
-   - Prefer the most recent 3-6 reports for functional-area naming and tone.
-   - Reuse established area labels such as `供应链管理`, `仓储管理`, `库存管理`, `订单管理`, `商品管理`, `新品开发`, `海外物流`, `美仓表现`, `公共能力`, and `系统功能` when appropriate.
+3. 读取历史周报。
+   - 先看最新的 3 到 6 篇。
+   - 优先复用已经形成的领域命名，例如 `供应链管理`、`仓储管理`、`库存管理`、`订单管理`、`商品管理`、`新品开发`、`海外物流`、`美仓表现`、`公共能力`、`系统功能`。
 
-4. Extract tasks from the user input.
-   - For screenshots, visually transcribe each task title before writing.
-   - Keep bracketed module hints, for example `[wms]`, `[oms]`, `【采购单】`, `【装柜清单】`.
-   - If OCR or visual reading is uncertain, state the uncertain item and ask only if the ambiguity changes the report meaning.
+4. 从用户输入里提取任务。
+   - 截图场景要先把任务标题逐条转出来。
+   - 保留模块标记，如 `[wms]`、`[oms]`、`【采购单】`、`【装柜清单】`。
+   - 如果识别不确定，只在会影响报告意思时再询问。
 
-5. Map task titles to functional areas.
-   - Prefer historical labels from `04-reviews\weekly.md`.
-   - Map `采购单`, `采购合同`, `供应商`, `采购计划`, `装柜清单`, `排柜计划`, `海运排柜` to `供应链管理` unless the historical report clearly uses another label.
-   - Map `[wms]`, `lxWms`, `认领单`, `库存结存`, `入库`, `出库`, `盘点`, `仓库` to `仓储管理` unless the task is explicitly inventory-center reporting, then use `库存管理`.
-   - Map `[oms]`, `vcpo`, `VCPO`, `VCDF`, `订单同步`, `标记发货`, `一键代发` to `订单管理`.
-   - Map cross-module utilities such as file preview, export center, common APIs, and proxy upgrades to `公共能力` only when no business domain is stronger.
+5. 映射功能领域。
+   - 采购单、采购合同、供应商、采购计划、装柜清单、排柜计划、海运排柜 -> `供应链管理`
+   - `[wms]`、`lxWms`、认领单、库存结存、入库、出库、盘点、仓库 -> `仓储管理` 或 `库存管理`
+   - `[oms]`、`vcpo`、`VCPO`、`VCDF`、订单同步、标记发货、一键代发 -> `订单管理`
+   - 只有在没有更强业务领域时，才把文件预览、导出中心、公共 API、代理升级归到 `公共能力`
 
-6. Draft the weekly report.
-   - Use today's date unless the user gives a specific week/date.
-   - Insert the newest report at the top of `04-reviews\weekly.md`.
-   - Required structure:
+6. 撰写周报。
+   - 默认用当天日期，除非用户给了明确周次或日期。
+   - 把新周报插到 `04-reviews\weekly.md` 最顶部。
+   - 固定结构：
 
 ```markdown
 ## YYYY-MM-DD
@@ -66,29 +63,25 @@ Use this skill for the Obsidian business workspace weekly report workflow.
 1. ...
 ```
 
-7. Write in the user's established style.
-   - Keep lines concise and work-report oriented.
-   - Prefer `功能领域: 动作, 结果/范围` phrasing.
-   - Use ASCII punctuation where the file already uses it, but keep Chinese text natural.
-   - Avoid marketing language and invented metrics.
-   - Do not overstate completion. If a title says `开发设计`, write design/planning; if it says `后端`, write backend development; if it says `优化`, write optimization.
+7. 按既有风格写。
+   - 文案简短，偏工作汇报口吻。
+   - 使用 `功能领域: 动作, 结果/范围` 这种写法。
+   - 不要夸大完成情况，不要编造指标。
 
-8. Verify after editing.
-   - Reopen the top 40-80 lines of `04-reviews\weekly.md`.
-   - Confirm the new report is at the top, headings match nearby reports, numbering is valid, and every user-provided task appears once.
-   - Mention any missing `AGENTS.md` or uncertainty in the final response.
+8. 编辑后验证。
+   - 再看一眼 `04-reviews\weekly.md` 的顶部 40 到 80 行。
+   - 确认新周报在最上面，标题结构正确，所有任务都出现过一次。
 
-## Data Source Rules
+## 数据来源规则
 
-- User screenshot or pasted task list is the source of actual work items.
-- `04-reviews\weekly.md` is the source of format, domain vocabulary, and summary style.
-- `01-templates\inner\weekly.md` is the source of required report sections.
-- Do not derive new work items from SQL files, commits, or memories unless the user explicitly asks for enrichment from those sources.
+- 用户截图或任务列表才是实际工作项来源。
+- `04-reviews\weekly.md` 提供格式、领域词汇和历史语气。
+- `01-templates\inner\weekly.md` 提供必填结构。
 
-## Write Target
+## 写入目标
 
-Write the finished report into:
+把完成的周报写到：
 
 `D:\znder\Obsidian\business\04-reviews\weekly.md`
 
-Insert it above the previous newest report. Do not create a separate weekly file unless the user explicitly asks.
+插到最新周报上方，不要另建新文件。
