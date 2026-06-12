@@ -1,9 +1,9 @@
 ---
-name: new-order
-description: Organize a new project into orderly project docs, architecture boundaries, and execution plans. Use this when a project is just starting, existing docs are fragmented, or you need to normalize the project structure from the configured docs root before entering `task-dev-flow`.
+name: p-ordered
+description: Organize an existing project into orderly docs, architecture boundaries, and execution plans. Use this when a project already exists but its docs are fragmented, or when you need to normalize the project structure from the configured docs root before entering `p-task`.
 ---
 
-# New Order
+# P Ordered
 
 Use this before task development to turn a project from scattered into actionable.
 
@@ -22,7 +22,7 @@ Use this before task development to turn a project from scattered into actionabl
 
 ## Doc Hierarchy
 
-`new-order` defines only the hierarchy and responsibilities; it does not hardcode the subject area for any specific project.
+`p-ordered` defines only the hierarchy and responsibilities; it does not hardcode the subject area for any specific project.
 
 ### 00 Layer
 
@@ -64,12 +64,12 @@ Use this before task development to turn a project from scattered into actionabl
 
 ### `tasks/`
 
-- Store task docs managed by `task-dev-flow`.
+- Store task docs managed by `p-task`.
 - This folder is only for concrete tasks, not the project main line, phase plans, or long-term decisions.
 
 ## Base Constraints
 
-`new-order` only cares about "how to layer" and "what should happen first"; it does not care what domain name a project uses.
+`p-ordered` only cares about "how to layer" and "what should happen first"; it does not care what domain name a project uses.
 
 Before task breakdown, establish this order:
 
@@ -98,12 +98,12 @@ The key is not the file names themselves, but the responsibilities of each layer
 - Keep important decisions, open questions, and risks in separate docs.
 - Finally, arrange the phase plans and task execution order.
 
-## Relationship To `task-dev-flow`
+## Relationship To `p-task`
 
-- `new-order` is responsible for turning a project from scattered into actionable.
-- `task-dev-flow` is responsible for turning a concrete task from "to do" into "verified".
-- Use `new-order` first to establish the main line and focus areas, then enter `task-dev-flow` to claim specific task docs.
-- If the key focus areas in the 20 layer are still unclear, stop at `new-order` and do not issue task cards too early.
+- `p-ordered` is responsible for turning a project from scattered into actionable.
+- `p-task` is responsible for turning a concrete task from "to do" into "verified".
+- Use `p-ordered` first to establish the main line and focus areas, then enter `p-task` to claim specific task docs.
+- If the key focus areas in the 20 layer are still unclear, stop at `p-ordered` and do not issue task cards too early.
 
 ## Notes
 

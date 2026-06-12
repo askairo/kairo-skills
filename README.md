@@ -16,7 +16,7 @@ https://github.com/askairo/kairo-skills
 
 - One skill per root-level directory for simple GitHub path installs.
 - `skills-loop` is the source-of-truth for publish, sync, reinstall, and verify.
-- `new-order` is the project-level skill for new projects, docs, and architecture boundaries.
+- `p-ordered` is the project-level skill for project docs, structure, and architecture boundaries.
 
 ## Install
 
@@ -57,13 +57,15 @@ kairo-skills/
 ├── entity-design/
 ├── hexo-push/
 ├── merge-to/
-├── new-order/
+├── p-bootstrap/
+├── p-ordered/
+├── p-task/
 ├── skills-loop/
 ├── upgrade-kimi-cli/
 └── weekly-report/
 ```
 
-Physical grouping such as `blog/` or `work/` is intentionally deferred. Project-discovery skills like `new-order` can still define their own project-level folders, such as `00/`, `10/`, `20/`, and `tasks/`, without affecting the root skill layout.
+Physical grouping such as `blog/` or `work/` is intentionally deferred. Project-discovery skills like `p-ordered` can still define their own project-level folders, such as `00/`, `10/`, `20/`, and `tasks/`, without affecting the root skill layout.
 
 ## Config and Storage
 
@@ -74,15 +76,16 @@ Physical grouping such as `blog/` or `work/` is intentionally deferred. Project-
 
 ## Notes
 
-- `task-dev-flow` still drives task-specific implementation, validation, and handoff.
-- `new-order` defines the project-level architecture and document order before task execution starts.
+- `p-task` still drives task-specific implementation, validation, and handoff.
+- `p-ordered` defines the project-level architecture and document order before task execution starts.
 - The root README stays concise so the actual skill folders remain the source of truth.
 
 ## Related Docs
 
 - [`skills-loop/SKILL.md`](skills-loop/SKILL.md)
-- [`new-order/SKILL.md`](new-order/SKILL.md)
-- [`task-dev-flow/SKILL.md`](task-dev-flow/SKILL.md)
+- [`p-bootstrap/SKILL.md`](p-bootstrap/SKILL.md)
+- [`p-ordered/SKILL.md`](p-ordered/SKILL.md)
+- [`p-task/SKILL.md`](p-task/SKILL.md)
 
 ---
 
@@ -102,7 +105,7 @@ https://github.com/askairo/kairo-skills
 
 - 根目录保持“一个 skill 一个文件夹”，便于 GitHub path 安装。
 - `skills-loop` 是发布、同步、回装、校验的统一闭环。
-- `new-order` 负责新项目的项目级文档顺序、架构边界和启动约束。
+- `p-ordered` 负责项目级文档顺序、架构边界和启动约束。
 
 ## 安装
 
@@ -143,13 +146,15 @@ kairo-skills/
 ├── entity-design/
 ├── hexo-push/
 ├── merge-to/
-├── new-order/
+├── p-bootstrap/
+├── p-ordered/
+├── p-task/
 ├── skills-loop/
 ├── upgrade-kimi-cli/
 └── weekly-report/
 ```
 
-暂不做 `blog/`、`work/` 这类物理分组。项目探索类技能如 `new-order` 可以自己定义项目级目录，例如 `00/`、`10/`、`20/` 和 `tasks/`，但不影响根目录 skill 布局。
+暂不做 `blog/`、`work/` 这类物理分组。项目探索类技能如 `p-ordered` 可以自己定义项目级目录，例如 `00/`、`10/`、`20/` 和 `tasks/`，但不影响根目录 skill 布局。
 
 ## 配置与存储
 
@@ -160,12 +165,13 @@ kairo-skills/
 
 ## 说明
 
-- `task-dev-flow` 仍然负责具体任务的拆解、实现、验证和交付。
-- `new-order` 负责在任务执行前先把项目级文档和架构顺序理清。
+- `p-task` 仍然负责具体任务的拆解、实现、验证和交付。
+- `p-ordered` 负责在任务执行前先把项目级文档和架构顺序理清。
 - 根目录 README 保持简洁，具体规则以各 skill 目录内文件为准。
 
 ## 相关文档
 
 - [`skills-loop/SKILL.md`](skills-loop/SKILL.md)
-- [`new-order/SKILL.md`](new-order/SKILL.md)
-- [`task-dev-flow/SKILL.md`](task-dev-flow/SKILL.md)
+- [`p-bootstrap/SKILL.md`](p-bootstrap/SKILL.md)
+- [`p-ordered/SKILL.md`](p-ordered/SKILL.md)
+- [`p-task/SKILL.md`](p-task/SKILL.md)

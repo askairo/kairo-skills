@@ -1,15 +1,15 @@
 ---
-name: task-dev-flow
-description: Turn external tasks, tickets, requirement links, prototype links, or task descriptions into a complete development workflow. Use this to understand task context, check requirement sources, create or use a task branch, split implementation cards, follow repo rules, implement changes, and verify the result. For pure entity table design, use `entity-design` instead.
+name: p-task
+description: Turn external tasks, tickets, requirement links, prototype links, or task descriptions into a complete development workflow. Use this when there is a concrete task to execute after `p-ordered`, to understand task context, check requirement sources, create or use a task branch, split implementation cards, follow repo rules, implement changes, and verify the result. For pure entity table design, use `entity-design` instead.
 ---
 
-# Task Dev Flow
+# P Task
 
 ## Goal
 
 Turn an external task into a local development flow that is executable, verifiable, and deliverable. This covers Zentao, Jira, GitHub issues, prototype links, internal docs, screenshots, or directly pasted task descriptions.
 
-If the project is still in an exploratory phase, the architecture is unstable, or project-level docs are not yet organized, use `new-order` first to establish the project documentation and architecture order, then come back here for task breakdown and implementation.
+If the project is still in an exploratory phase, the architecture is unstable, or project-level docs are not yet organized, use `p-ordered` first to establish the project documentation and architecture order, then come back here for task breakdown and implementation.
 
 ## Local Configuration
 
@@ -33,8 +33,8 @@ After resolving, confirm that the directory really exists. If none exist, ask th
 
 ### Config Files
 
-- Auth config: `<AGENT_HOME>/local-config/task-dev-flow/auth-sites.yaml`
-- Path config: `<AGENT_HOME>/local-config/task-dev-flow/paths.yaml`
+- Auth config: `<AGENT_HOME>/local-config/p-task/auth-sites.yaml`
+- Path config: `<AGENT_HOME>/local-config/p-task/paths.yaml`
 
 Recommended path config:
 
@@ -87,7 +87,7 @@ docs:
    - Follow `references/task-template.md` when writing task docs.
    - Task doc names are fixed as `<prefix>-<id>.md`, usually with `feat`, `fix`, or `perf` prefixes.
    - Prefer writing docs into `<docs.root>/<repo-name>/tasks/`; put project-level planning in `plans/`.
-   - If the project uses `new-order` hierarchy constraints, keep the 20-layer focus docs in sync, along with `30-decisions`, `31-open-questions`, and `32-risk-log`.
+   - If the project uses `p-ordered` hierarchy constraints, keep the 20-layer focus docs in sync, along with `30-decisions`, `31-open-questions`, and `32-risk-log`.
    - Keep `source`, `branch`, `baseline`, and `commit` in the docs aligned with the real state.
 
 6. Implement according to the repository structure.
@@ -112,5 +112,5 @@ docs:
 ## Working With Other Skills
 
 - If the requirement is mainly about entities, table structure, parent-child relationships, or field derivation, use `entity-design` first.
-- If the project is in the early stage, the docs are missing, or the structure is messy, use `new-order` first.
+- If the project is in the early stage, the docs are missing, or the structure is messy, use `p-ordered` first.
 - Whether to merge the branch after task completion is not part of this skill's default responsibility.

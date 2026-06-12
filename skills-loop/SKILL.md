@@ -58,8 +58,8 @@ docs:
 技能内部再定义自己的结构，例如：
 
 ```text
-kickoff-flow: <docs.root>/<project-name>/00-overview.md
-task-dev-flow: <docs.root>/<repo-name>/<prefix>-<id>.md
+p-bootstrap: <docs.root>/<project-name>/00-overview.md
+p-task: <docs.root>/<repo-name>/<prefix>-<id>.md
 ```
 
 也就是说，`docs.root` 属于用户配置；`<project-name>`、`<repo-name>`、`00-overview.md`、`10-roadmap.md`、`<prefix>-<id>.md` 属于技能规范。

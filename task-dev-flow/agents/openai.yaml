@@ -1,4 +1,0 @@
-interface:
-  display_name: "Task Dev Flow"
-  short_description: "Turn external tasks into dev workflow"
-  default_prompt: "Use $task-dev-flow to turn this task link or requirement into a complete development workflow."

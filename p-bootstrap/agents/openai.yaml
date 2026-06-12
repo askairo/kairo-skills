@@ -1,0 +1,4 @@
+interface:
+  display_name: "P Bootstrap"
+  short_description: "Bootstrap new projects and kickoff docs"
+  default_prompt: "Use $p-bootstrap to bootstrap a new project, set up the repo, and generate kickoff docs."

@@ -1,9 +1,9 @@
 ---
-name: kickoff-flow
-description: Standardize personal new-project kickoff from idea to executable local workspace. Use when Codex should create/rename a GitHub repository, clone locally, establish naming conventions, resolve a configured project-docs root directory, and generate the skill-defined kickoff document set.
+name: p-bootstrap
+description: Bootstrap a new project from idea to an executable local workspace. Use when Codex should create or rename a GitHub repository, clone locally, set naming conventions, resolve the project docs root, and generate the kickoff docs before project work begins.
 ---
 
-# Kickoff Flow
+# P Bootstrap
 
 ## Overview
 
@@ -18,8 +18,8 @@ This workflow is for project initialization, not feature implementation.
 
 Use local machine config for stable, user-specific documentation destinations. Keep these files outside project repos and treat them as private state.
 
-- Path config: `<CODEX_HOME>/local-config/kickoff-flow/paths.yaml`
-- Fallback path config: `<HOME>/.codex/local-config/kickoff-flow/paths.yaml`
+- Path config: `<CODEX_HOME>/local-config/p-bootstrap/paths.yaml`
+- Fallback path config: `<HOME>/.codex/local-config/p-bootstrap/paths.yaml`
 
 Recommended path config shape:
 
@@ -56,8 +56,8 @@ docs:
 5. Create project-management docs under the resolved docs directory.
    - Resolve the docs root with this priority:
      - Explicit user-provided docs root for the current request.
-     - Local path config from `<CODEX_HOME>/local-config/kickoff-flow/paths.yaml`.
-     - Local path config from `<HOME>/.codex/local-config/kickoff-flow/paths.yaml`.
+     - Local path config from `<CODEX_HOME>/local-config/p-bootstrap/paths.yaml`.
+     - Local path config from `<HOME>/.codex/local-config/p-bootstrap/paths.yaml`.
    - If the docs root cannot be resolved, pause and ask the user for it; then write it to the local path config.
    - Create directory: `<docs-root>/<project-name>`
    - Create:
