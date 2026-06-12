@@ -14,7 +14,7 @@ https://github.com/askairo/kairo-skills
 
 ## Current Status
 
-- One skill per root-level directory for simple GitHub path installs.
+- Skills are grouped by package while keeping each skill as a self-contained directory.
 - `skills-loop` is the operational backbone for publish, sync, reinstall, and verify.
 - `p-bootstrap` starts a new project.
 - `p-ordered` normalizes project structure and docs.
@@ -34,19 +34,19 @@ Typical flow:
 Publish local changes and update the current Agent:
 
 ```powershell
-python skills-loop\scripts\sync.py publish-and-update --skill hexo-push --message "feat: improve hexo push"
+python core\skills-loop\scripts\sync.py publish-and-update --skill hexo-push --message "feat: improve hexo push"
 ```
 
 Install from GitHub into an Agent runtime:
 
 ```powershell
-python skills-loop\scripts\sync.py install --repo askairo/kairo-skills --path hexo-push --agent-dir C:\Users\admin\.codex\skills
+python core\skills-loop\scripts\sync.py install --repo askairo/kairo-skills --skill hexo-push --agent-dir C:\Users\admin\.codex\skills
 ```
 
 Update an installed skill with recorded source metadata:
 
 ```powershell
-python skills-loop\scripts\sync.py update --skill hexo-push --agent-dir C:\Users\admin\.codex\skills
+python core\skills-loop\scripts\sync.py update --skill hexo-push --agent-dir C:\Users\admin\.codex\skills
 ```
 
 ## Local Development
@@ -64,19 +64,27 @@ Make the change in this repository first, validate it, commit and push it, then 
 ```text
 kairo-skills/
 ├── README.md
-├── dialogue-refine/
-├── entity-design/
-├── hexo-push/
-├── merge-to/
-├── p-bootstrap/
-├── p-ordered/
-├── p-task/
-├── skills-loop/
-├── upgrade-kimi-cli/
-└── weekly-report/
+├── core/
+│   └── skills-loop/
+├── project/
+│   ├── entity-design/
+│   ├── merge-to/
+│   ├── p-bootstrap/
+│   ├── p-ordered/
+│   ├── p-task/
+│   └── release-flow/
+├── blog/
+│   ├── dialogue-refine/
+│   └── hexo-push/
+└── tools/
+    ├── excel2sql/
+    ├── mac-clean/
+    ├── upgrade-kimi-cli/
+    ├── weekly-report/
+    └── win-clean/
 ```
 
-Physical grouping such as `blog/` or `work/` is intentionally deferred. Project-discovery skills like `p-ordered` can still define their own project-level folders, such as `00/`, `10/`, `20/`, and `tasks/`, without affecting the root skill layout.
+`skills-loop` discovers skills recursively by reading each `SKILL.md`, so commands can use either a skill name such as `hexo-push` or an explicit package path such as `blog/hexo-push`.
 
 ## Config and Storage
 
@@ -92,10 +100,10 @@ Physical grouping such as `blog/` or `work/` is intentionally deferred. Project-
 
 ## Related Docs
 
-- [`skills-loop/SKILL.md`](skills-loop/SKILL.md)
-- [`p-bootstrap/SKILL.md`](p-bootstrap/SKILL.md)
-- [`p-ordered/SKILL.md`](p-ordered/SKILL.md)
-- [`p-task/SKILL.md`](p-task/SKILL.md)
+- [`core/skills-loop/SKILL.md`](core/skills-loop/SKILL.md)
+- [`project/p-bootstrap/SKILL.md`](project/p-bootstrap/SKILL.md)
+- [`project/p-ordered/SKILL.md`](project/p-ordered/SKILL.md)
+- [`project/p-task/SKILL.md`](project/p-task/SKILL.md)
 
 ---
 
@@ -113,7 +121,7 @@ https://github.com/askairo/kairo-skills
 
 ## 当前状态
 
-- 根目录保持“一个 skill 一个文件夹”，便于 GitHub path 安装。
+- Skills 已按包分组，每个 skill 仍然保持自包含目录。
 - `skills-loop` 是发布、同步、回装、校验的统一闭环，也是技能维护的核心入口。
 - `p-bootstrap` 负责新项目启动。
 - `p-ordered` 负责项目结构和文档秩序。
@@ -133,19 +141,19 @@ https://github.com/askairo/kairo-skills
 发布本地修改并更新当前 Agent：
 
 ```powershell
-python skills-loop\scripts\sync.py publish-and-update --skill hexo-push --message "feat: improve hexo push"
+python core\skills-loop\scripts\sync.py publish-and-update --skill hexo-push --message "feat: improve hexo push"
 ```
 
 从 GitHub 安装到 Agent 运行目录：
 
 ```powershell
-python skills-loop\scripts\sync.py install --repo askairo/kairo-skills --path hexo-push --agent-dir C:\Users\admin\.codex\skills
+python core\skills-loop\scripts\sync.py install --repo askairo/kairo-skills --skill hexo-push --agent-dir C:\Users\admin\.codex\skills
 ```
 
 更新已记录来源元数据的 skill：
 
 ```powershell
-python skills-loop\scripts\sync.py update --skill hexo-push --agent-dir C:\Users\admin\.codex\skills
+python core\skills-loop\scripts\sync.py update --skill hexo-push --agent-dir C:\Users\admin\.codex\skills
 ```
 
 ## 本地开发
@@ -163,19 +171,27 @@ python skills-loop\scripts\sync.py update --skill hexo-push --agent-dir C:\Users
 ```text
 kairo-skills/
 ├── README.md
-├── dialogue-refine/
-├── entity-design/
-├── hexo-push/
-├── merge-to/
-├── p-bootstrap/
-├── p-ordered/
-├── p-task/
-├── skills-loop/
-├── upgrade-kimi-cli/
-└── weekly-report/
+├── core/
+│   └── skills-loop/
+├── project/
+│   ├── entity-design/
+│   ├── merge-to/
+│   ├── p-bootstrap/
+│   ├── p-ordered/
+│   ├── p-task/
+│   └── release-flow/
+├── blog/
+│   ├── dialogue-refine/
+│   └── hexo-push/
+└── tools/
+    ├── excel2sql/
+    ├── mac-clean/
+    ├── upgrade-kimi-cli/
+    ├── weekly-report/
+    └── win-clean/
 ```
 
-暂不做 `blog/`、`work/` 这类物理分组。项目探索类技能如 `p-ordered` 可以自己定义项目级目录，例如 `00/`、`10/`、`20/` 和 `tasks/`，但不影响根目录 skill 布局。
+`skills-loop` 会递归读取各目录下的 `SKILL.md`，因此命令既可以使用 `hexo-push` 这样的 skill 名称，也可以使用 `blog/hexo-push` 这样的显式包路径。
 
 ## 配置与存储
 
@@ -191,7 +207,7 @@ kairo-skills/
 
 ## 相关文档
 
-- [`skills-loop/SKILL.md`](skills-loop/SKILL.md)
-- [`p-bootstrap/SKILL.md`](p-bootstrap/SKILL.md)
-- [`p-ordered/SKILL.md`](p-ordered/SKILL.md)
-- [`p-task/SKILL.md`](p-task/SKILL.md)
+- [`core/skills-loop/SKILL.md`](core/skills-loop/SKILL.md)
+- [`project/p-bootstrap/SKILL.md`](project/p-bootstrap/SKILL.md)
+- [`project/p-ordered/SKILL.md`](project/p-ordered/SKILL.md)
+- [`project/p-task/SKILL.md`](project/p-task/SKILL.md)

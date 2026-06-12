@@ -84,16 +84,105 @@ def is_skill_dir(path: Path) -> bool:
     return path.is_dir() and (path / "SKILL.md").exists()
 
 
+def is_ignored_path(path: Path) -> bool:
+    return any(part in EXCLUDE_DIRS or BACKUP_PATTERN.match(part) for part in path.parts)
+
+
+def read_skill_name(skill_dir: Path) -> str:
+    skill_file = skill_dir / "SKILL.md"
+    try:
+        lines = skill_file.read_text(encoding="utf-8").splitlines()
+    except FileNotFoundError:
+        return skill_dir.name
+
+    if not lines or lines[0].strip() != "---":
+        return skill_dir.name
+
+    for line in lines[1:]:
+        stripped = line.strip()
+        if stripped == "---":
+            break
+        if stripped.startswith("name:"):
+            return stripped.split(":", 1)[1].strip().strip('"').strip("'") or skill_dir.name
+    return skill_dir.name
+
+
+def iter_skill_dirs(root: Path) -> list[Path]:
+    if not root.exists():
+        return []
+
+    if is_skill_dir(root):
+        return [root]
+
+    skill_dirs: list[Path] = []
+    for skill_file in root.rglob("SKILL.md"):
+        if is_ignored_path(skill_file.relative_to(root)):
+            continue
+        skill_dirs.append(skill_file.parent)
+    return sorted(set(skill_dirs))
+
+
 def is_skills_repo(path: Path) -> bool:
-    return path.is_dir() and any(is_skill_dir(child) for child in path.iterdir() if child.is_dir())
+    return path.is_dir() and bool(iter_skill_dirs(path))
+
+
+def git_root(start: Path) -> Path | None:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=str(start),
+            text=True,
+            encoding="utf-8",
+            capture_output=True,
+            shell=False,
+        )
+    except Exception:
+        return None
+    if result.returncode != 0 or not result.stdout.strip():
+        return None
+    return Path(result.stdout.strip()).resolve()
+
+
+def find_skills_repo_from_path(start: Path) -> Path | None:
+    start = start.resolve()
+    git_repo = git_root(start if start.is_dir() else start.parent)
+    if git_repo and is_skills_repo(git_repo):
+        return git_repo
+
+    matches = []
+    for candidate in [start] + list(start.parents):
+        if is_skills_repo(candidate):
+            matches.append(candidate)
+    if matches:
+        return matches[-1]
+    return None
 
 
 def find_skills_repo_from_cwd() -> Path | None:
-    cwd = Path.cwd().resolve()
-    for candidate in [cwd] + list(cwd.parents):
-        if is_skills_repo(candidate):
-            return candidate
-    return None
+    return find_skills_repo_from_path(Path.cwd())
+
+
+def relative_skill_path(repo: Path, skill_dir: Path) -> str:
+    return skill_dir.relative_to(repo).as_posix()
+
+
+def resolve_skill_dir(repo: Path, skill_ref: str) -> Path:
+    normalized = skill_ref.replace("\\", "/").strip("/")
+    candidate = repo / normalized
+    if is_skill_dir(candidate):
+        return candidate
+
+    matches = []
+    for skill_dir in iter_skill_dirs(repo):
+        if skill_dir.name == skill_ref or read_skill_name(skill_dir) == skill_ref:
+            matches.append(skill_dir)
+
+    if not matches:
+        raise FileNotFoundError(f"Skill not found by name or path: {skill_ref}")
+    if len(matches) > 1:
+        choices = ", ".join(relative_skill_path(repo, match) for match in matches)
+        raise RuntimeError(f"Skill name is ambiguous: {skill_ref}. Candidates: {choices}")
+    return matches[0]
 
 
 def read_json(path: Path) -> dict:
@@ -179,7 +268,7 @@ def resolve_local_repo(args, config: dict) -> Path | None:
         return detected_from_cwd
 
     candidates = [
-        script_skill_dir().parents[0] if len(script_skill_dir().parents) >= 1 else None,
+        find_skills_repo_from_path(script_skill_dir()),
     ]
     for candidate in candidates:
         if candidate and is_skills_repo(candidate.expanduser().resolve()):
@@ -226,18 +315,18 @@ def clean_skill_name(path: str) -> str:
     return Path(path.replace("\\", "/").rstrip("/")).name
 
 
-def download_github_path(repo: str, ref: str, skill_path: str, target_dir: Path, dry_run: bool = False):
+def download_github_path(repo: str, ref: str, skill_ref: str, target_dir: Path, dry_run: bool = False) -> str:
     """Download one skill directory from a GitHub repo archive and overwrite target_dir."""
     repo = repo.strip().removeprefix("https://github.com/").strip("/")
     archive_url = f"https://github.com/{repo}/archive/refs/heads/{ref}.zip"
     if len(ref) == 40:
         archive_url = f"https://github.com/{repo}/archive/{ref}.zip"
 
-    print(f"  Source: GitHub {repo}/{skill_path}@{ref}")
+    print(f"  Source: GitHub {repo}/{skill_ref}@{ref}")
     print(f"  Target: {target_dir}")
     if dry_run:
         print("  [DRY-RUN] Would download and overwrite target skill directory.")
-        return
+        return skill_ref.replace("\\", "/").strip("/")
 
     with tempfile.TemporaryDirectory(prefix="skill-update-") as tmp:
         tmp_path = Path(tmp)
@@ -256,16 +345,22 @@ def download_github_path(repo: str, ref: str, skill_path: str, target_dir: Path,
         roots = [p for p in extract_dir.iterdir() if p.is_dir()]
         if not roots:
             raise FileNotFoundError("GitHub archive did not contain a repository root")
-        source_dir = roots[0] / skill_path
-        if not is_skill_dir(source_dir):
-            hint = f"Skill path not found or missing SKILL.md: {skill_path}"
+        repo_root = roots[0]
+        try:
+            source_dir = resolve_skill_dir(repo_root, skill_ref)
+        except Exception as exc:
+            hint = f"Skill not found or missing SKILL.md: {skill_ref}"
             local_repo = find_skills_repo_from_cwd()
-            if local_repo and is_skill_dir(local_repo / skill_path):
-                hint += (
-                    " | Found locally but missing in GitHub archive. "
-                    "Publish/push local repo first, then install again."
-                )
-            raise FileNotFoundError(hint)
+            if local_repo:
+                try:
+                    resolve_skill_dir(local_repo, skill_ref)
+                    hint += (
+                        " | Found locally but missing in GitHub archive. "
+                        "Publish/push local repo first, then install again."
+                    )
+                except Exception:
+                    pass
+            raise FileNotFoundError(f"{hint} ({exc})")
 
         target_dir.parent.mkdir(parents=True, exist_ok=True)
         if target_dir.exists():
@@ -273,6 +368,7 @@ def download_github_path(repo: str, ref: str, skill_path: str, target_dir: Path,
             print(f"  Backup: {backup}")
             shutil.rmtree(target_dir)
         copy_tree(source_dir, target_dir)
+        return relative_skill_path(repo_root, source_dir)
 
 
 def copy_tree(source: Path, target: Path):
@@ -307,17 +403,17 @@ def source_meta(repo: str, skill_path: str, ref: str) -> dict:
 def install_or_update(args, config: dict):
     repo = resolve_repo(args, config, args.path or args.skill)
     ref = args.ref or config.get("defaultRef", DEFAULT_REF)
-    skill_path = args.path or args.skill
-    if not skill_path:
+    skill_ref = args.path or args.skill
+    if not skill_ref:
         raise SystemExit("--skill or --path is required")
 
-    skill_name = args.name or clean_skill_name(skill_path)
+    skill_name = args.name or clean_skill_name(args.skill or skill_ref)
     agent_dir = resolve_agent_dir(args, config)
     target = agent_dir / skill_name
 
-    download_github_path(repo, ref, skill_path, target, args.dry_run)
+    resolved_path = download_github_path(repo, ref, skill_ref, target, args.dry_run)
     if not args.dry_run:
-        write_json(target / SOURCE_META, source_meta(repo, skill_path, ref))
+        write_json(target / SOURCE_META, source_meta(repo, resolved_path, ref))
         print(f"  [OK] Installed/updated {skill_name}")
         print("  Restart the Agent or open a new session to load updated skill metadata.")
 
@@ -430,10 +526,15 @@ def publish(args, config: dict):
         raise SystemExit("Local skills repo not found. Pass --local-repo or run inside the repo.")
     if not local_repo.exists():
         raise FileNotFoundError(f"Local repo does not exist: {local_repo}")
-    if not args.skill:
-        raise SystemExit("--skill is required for publish")
+    skill_ref = args.path or args.skill
+    if not skill_ref:
+        raise SystemExit("--skill or --path is required for publish")
 
-    skill_dir = local_repo / args.skill
+    skill_dir = resolve_skill_dir(local_repo, skill_ref)
+    skill_path = relative_skill_path(local_repo, skill_dir)
+    skill_name = read_skill_name(skill_dir)
+    args._resolved_skill_path = skill_path
+    args._resolved_skill_name = skill_name
     print(f"Local repo: {local_repo}")
     print(f"Skill: {skill_dir}")
     validate_skill(skill_dir, args.dry_run)
@@ -449,10 +550,10 @@ def publish(args, config: dict):
         if args.dry_run:
             print("\n[DRY-RUN] Would commit and push these changes.")
             return
-        require_success(["git", "add", args.skill], local_repo)
+        require_success(["git", "add", skill_path], local_repo)
         if (local_repo / ".gitignore").exists():
             require_success(["git", "add", ".gitignore"], local_repo)
-        message = args.message or f"chore: update {args.skill} skill"
+        message = args.message or f"chore: update {skill_name} skill"
         require_success(["git", "commit", "-m", message], local_repo)
         print(f"  [OK] git commit: {message}")
 
@@ -464,8 +565,8 @@ def publish(args, config: dict):
 def publish_and_update(args, config: dict):
     publish(args, config)
     install_args = argparse.Namespace(**vars(args))
-    install_args.path = args.path or args.skill
-    install_args.name = args.name or args.skill
+    install_args.path = getattr(args, "_resolved_skill_path", args.path or args.skill)
+    install_args.name = args.name or getattr(args, "_resolved_skill_name", clean_skill_name(install_args.path))
     install_args.dry_run = args.dry_run
     install_or_update(install_args, config)
 

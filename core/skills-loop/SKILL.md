@@ -16,6 +16,7 @@ description: 以源码仓库到 GitHub 再到 Agent 运行目录的闭环管理 
 - GitHub 是跨机器、跨 Agent 的分发源。
 - 本地源码仓库只用于开发和提交；具体路径来自配置、显式参数、已安装来源元数据或自动发现。
 - 当前 Agent 的 skills 目录只是运行时安装目标；具体路径来自配置、显式参数或脚本所在位置。
+- 源码仓库可以按包分组；脚本会递归发现 `SKILL.md`，并用 frontmatter 的 `name` 解析 skill。
 - 用户用自然语言表达意图，Agent 负责选择脚本命令。
 - 不依赖环境变量作为主要配置。优先级是：自然语言/显式参数 > 本地配置文件 > 已安装来源元数据 > 自动发现 > 环境变量兜底。
 - 如果仓库维护双语 README，应把 `README.md` 和 `README_ZH.md` 视为一组同步文档，发布时一起更新、一起检查按钮/链接和目录说明是否一致。
@@ -85,7 +86,7 @@ p-task: <docs.root>/<repo-name>/<prefix>-<id>.md
 1. 修改本地源码仓库中的 skill：
 
    ```text
-   <local-skills-repo>/<skill-name>
+   <local-skills-repo>/<package>/<skill-name>
    ```
 
 2. 验证：
@@ -104,7 +105,7 @@ p-task: <docs.root>/<repo-name>/<prefix>-<id>.md
 脚本命令：
 
 ```powershell
-python scripts/sync.py publish-and-update --skill hexo-push --message "feat: improve hexo push publishing flow"
+python core\skills-loop\scripts\sync.py publish-and-update --skill hexo-push --message "feat: improve hexo push publishing flow"
 ```
 
 ### 2. 在另一个 Agent 环境安装或更新自己的 skill
@@ -112,10 +113,16 @@ python scripts/sync.py publish-and-update --skill hexo-push --message "feat: imp
 当用户切到另一台机器或另一个 Agent，只想从 GitHub 拉取：
 
 ```powershell
-python scripts/sync.py install --repo <owner>/<repo> --path hexo-push
+python core\skills-loop\scripts\sync.py install --repo <owner>/<repo> --skill hexo-push
 ```
 
 如果本地已有同名 skill，会先备份再覆盖。
+
+也可以使用显式包路径：
+
+```powershell
+python core\skills-loop\scripts\sync.py install --repo <owner>/<repo> --path blog/hexo-push
+```
 
 ### 3. 更新已安装的 GitHub skill
 
@@ -128,25 +135,25 @@ python scripts/sync.py install --repo <owner>/<repo> --path hexo-push
 之后可以直接更新：
 
 ```powershell
-python scripts/sync.py update --skill hexo-push
+python core\skills-loop\scripts\sync.py update --skill hexo-push
 ```
 
 或更新全部带来源元数据的 skills：
 
 ```powershell
-python scripts/sync.py update-all
+python core\skills-loop\scripts\sync.py update-all
 ```
 
 清理安装/更新时自动生成的备份目录（`*.backup.YYYYmmdd_HHMMSS`）：
 
 ```powershell
-python scripts/sync.py cleanup-backups
+python core\skills-loop\scripts\sync.py cleanup-backups
 ```
 
 只清理某个 skill 的备份：
 
 ```powershell
-python scripts/sync.py cleanup-backups --skill hexo-push
+python core\skills-loop\scripts\sync.py cleanup-backups --skill hexo-push
 ```
 
 ### 4. 安装第三方 skill
@@ -154,7 +161,7 @@ python scripts/sync.py cleanup-backups --skill hexo-push
 第三方 GitHub 仓库也可以使用同样流程：
 
 ```powershell
-python scripts/sync.py install --repo owner/repo --path path/to/skill --ref main
+python core\skills-loop\scripts\sync.py install --repo owner/repo --path path/to/skill --ref main
 ```
 
 区别是：第三方仓库通常只能安装/更新，不能 publish，除非用户维护 fork 或拥有推送权限。
@@ -184,7 +191,7 @@ python scripts/sync.py install --repo owner/repo --path path/to/skill --ref main
 可以用脚本生成本地配置：
 
 ```powershell
-python scripts/sync.py write-config --repo <owner>/<repo> --local-repo <absolute-local-skills-repo> --agent-dir <absolute-agent-skills-dir>
+python core\skills-loop\scripts\sync.py write-config --repo <owner>/<repo> --local-repo <absolute-local-skills-repo> --agent-dir <absolute-agent-skills-dir>
 ```
 
 ## 常用命令
@@ -192,17 +199,17 @@ python scripts/sync.py write-config --repo <owner>/<repo> --local-repo <absolute
 列出当前 Agent 已安装 skills 和来源：
 
 ```powershell
-python scripts/sync.py list
+python core\skills-loop\scripts\sync.py list
 ```
 
 发布本地修改并更新当前 Agent：
 
 ```powershell
-python scripts/sync.py publish-and-update --skill skills-loop --message "feat: improve skills loop workflow"
+python core\skills-loop\scripts\sync.py publish-and-update --skill skills-loop --message "feat: improve skills loop workflow"
 ```
 
 只发布本地仓库，不更新当前 Agent：
 
 ```powershell
-python scripts/sync.py publish --skill skills-loop --message "feat: improve skills loop workflow"
+python core\skills-loop\scripts\sync.py publish --skill skills-loop --message "feat: improve skills loop workflow"
 ```
