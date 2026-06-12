@@ -15,10 +15,21 @@ https://github.com/askairo/kairo-skills
 ## Current Status
 
 - One skill per root-level directory for simple GitHub path installs.
-- `skills-loop` is the source-of-truth for publish, sync, reinstall, and verify.
-- `p-ordered` is the project-level skill for project docs, structure, and architecture boundaries.
+- `skills-loop` is the operational backbone for publish, sync, reinstall, and verify.
+- `p-bootstrap` starts a new project.
+- `p-ordered` normalizes project structure and docs.
+- `p-task` executes concrete tasks.
 
-## Install
+## `skills-loop`
+
+Use `skills-loop` whenever a skill needs to be created, edited, published, synced, reinstalled, or repaired. It keeps the source repo, GitHub, and the current Agent runtime copy in sync.
+
+Typical flow:
+
+1. Edit the skill in this repository.
+2. Validate and commit the change.
+3. Publish to GitHub.
+4. Pull the latest version back into the runtime copy.
 
 Publish local changes and update the current Agent:
 
@@ -40,7 +51,7 @@ python skills-loop\scripts\sync.py update --skill hexo-push --agent-dir C:\Users
 
 ## Local Development
 
-Recommended flow:
+Recommended flow for any skill change:
 
 ```text
 local source repository -> GitHub -> current Agent skills runtime directory
@@ -76,8 +87,7 @@ Physical grouping such as `blog/` or `work/` is intentionally deferred. Project-
 
 ## Notes
 
-- `p-task` still drives task-specific implementation, validation, and handoff.
-- `p-ordered` defines the project-level architecture and document order before task execution starts.
+- `skills-loop` is the only skill that should be used to keep skill source and runtime copies aligned.
 - The root README stays concise so the actual skill folders remain the source of truth.
 
 ## Related Docs
@@ -104,10 +114,21 @@ https://github.com/askairo/kairo-skills
 ## 当前状态
 
 - 根目录保持“一个 skill 一个文件夹”，便于 GitHub path 安装。
-- `skills-loop` 是发布、同步、回装、校验的统一闭环。
-- `p-ordered` 负责项目级文档顺序、架构边界和启动约束。
+- `skills-loop` 是发布、同步、回装、校验的统一闭环，也是技能维护的核心入口。
+- `p-bootstrap` 负责新项目启动。
+- `p-ordered` 负责项目结构和文档秩序。
+- `p-task` 负责具体任务执行。
 
-## 安装
+## `skills-loop`
+
+只要涉及 skill 的创建、修改、发布、同步、回装、修复，就优先用 `skills-loop`。它负责把本地源码仓库、GitHub 和当前 Agent 运行目录保持一致。
+
+典型流程：
+
+1. 在本仓库修改 skill。
+2. 校验并提交。
+3. 发布到 GitHub。
+4. 回装到当前运行目录。
 
 发布本地修改并更新当前 Agent：
 
@@ -165,8 +186,7 @@ kairo-skills/
 
 ## 说明
 
-- `p-task` 仍然负责具体任务的拆解、实现、验证和交付。
-- `p-ordered` 负责在任务执行前先把项目级文档和架构顺序理清。
+- `skills-loop` 是技能维护的核心入口，其他 skill 不负责同步源码和运行时副本。
 - 根目录 README 保持简洁，具体规则以各 skill 目录内文件为准。
 
 ## 相关文档
