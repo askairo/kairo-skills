@@ -1,9 +1,9 @@
 ---
 name: sync-skills
-description: 旧名称兼容入口，当前请改用 skills-loop。仅用于平滑过渡和历史脚本兼容。
+description: 兼容旧名称。请改用 skills-loop；本技能仅用于平滑过渡。
 ---
 
-# sync-skills（已弃用）
+# sync-skills (Deprecated Alias)
 
 `sync-skills` 已重命名为 `skills-loop`。
 
@@ -13,4 +13,4 @@ description: 旧名称兼容入口，当前请改用 skills-loop。仅用于平�
 python ..\skills-loop\scripts\sync.py <command> ...
 ```
 
-如果历史脚本还在调用 `sync-skills/scripts/sync.py`，兼容入口会自动转发到 `skills-loop`。
+若历史脚本仍调用 `sync-skills/scripts/sync.py`，兼容入口会自动转发到 `skills-loop`。

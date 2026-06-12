@@ -1,77 +1,77 @@
 ---
 name: new-order
-description: 将新项目整理成有秩序的项目级文档、架构边界和执行计划。适用于新项目启动、已有文档碎片化，或需要先从已配置的文档根目录理顺项目结构再进入 task-dev-flow 的场景。
+description: Organize a new project into orderly project docs, architecture boundaries, and execution plans. Use this when a project is just starting, existing docs are fragmented, or you need to normalize the project structure from the configured docs root before entering `task-dev-flow`.
 ---
 
 # New Order
 
-用于在任务开发前，先把项目从“散”变成“可推进”。
+Use this before task development to turn a project from scattered into actionable.
 
-## 适用场景
+## When To Use
 
-- 新项目刚开始，没有稳定的文档结构。
-- 旧项目文档散乱、重复、过时。
-- 需要先明确项目主线，再进入任务拆解和实现。
+- A project is just starting and does not yet have a stable documentation structure.
+- An older project has scattered, duplicate, or outdated docs.
+- You need to clarify the project main line before task breakdown and implementation.
 
-## 文档根目录
+## Docs Root
 
-- 优先使用已配置的文档根目录。
-- 如果项目或本地配置已经给出 `docs.root`，就围绕该根目录整理文档。
-- 如果没有配置且用户也没有明确给出路径，再询问用户要使用的文档根目录。
-- 不要通过全盘搜索去猜文档根目录。
+- Prefer the configured docs root.
+- If the project or local config already provides `docs.root`, organize docs around that root.
+- If nothing is configured and the user has not given a path, ask which docs root to use.
+- Do not guess the docs root through a full-disk search.
 
-## 文档层级
+## Doc Hierarchy
 
-new-order 只规定层级和职责，不把某个项目的主题写死。
+`new-order` defines only the hierarchy and responsibilities; it does not hardcode the subject area for any specific project.
 
-### 00 层
+### 00 Layer
 
 - `00-overview.md`
-- 只回答：这个项目是什么，要解决什么问题，边界在哪里。
+- Answer only: what this project is, what problem it solves, and where the boundaries are.
 
-### 10 层
+### 10 Layer
 
 - `10-roadmap.md`
-- 只回答：这个项目准备怎么推进，阶段怎么切，先后顺序是什么。
+- Answer only: how this project will move forward, how the phases are split, and what the sequence is.
 
-### 20 层
+### 20 Layer
 
 - `20-*.md`
-- 这是项目自己的“关注点文档”集合。
-- 这一层承载项目最重要、最需要单独沉淀的主题，例如架构、存储、接口、体验、规则、兼容性、性能、安全等。
-- 文档名称由项目决定，不要求固定成某几个名字，但必须服务于项目的关键关注点。
-- 一个项目可以只保留一份 20 层文档，也可以拆成多份。
+- This is the project-specific collection of focus docs.
+- This layer holds the most important topics that need to be captured separately, such as architecture, storage, APIs, UX, rules, compatibility, performance, and security.
+- The project decides the exact file names. They do not have to follow a fixed set, but they must serve the project's key focus areas.
+- A project can keep just one 20-layer doc or split it into several.
 
-### 30 层
+### 30 Layer
 
 - `30-decisions.md`
-- 只记录已经确认的关键决策。
+- Record only confirmed key decisions.
 
-### 31 层
+### 31 Layer
 
 - `31-open-questions.md`
-- 只记录还没确认、还需要继续追问的问题。
+- Record only questions that are not yet confirmed and still need follow-up.
 
-### 32 层
+### 32 Layer
 
 - `32-risk-log.md`
-- 只记录风险、依赖和阻塞项。
+- Record only risks, dependencies, and blockers.
 
-### plans/
+### `plans/`
 
-- 存放阶段计划和推进方案。
-- 这里的内容通常是“这一阶段怎么落地”，不是单个任务卡。
+- Store phase plans and rollout proposals here.
+- The content here is usually "how this phase gets implemented", not a single task card.
 
-### tasks/
+### `tasks/`
 
-- 存放由 `task-dev-flow` 声称的任务文档。
-- 这里只放具体任务，不放项目主线、不放阶段计划、不放长期决策。
+- Store task docs managed by `task-dev-flow`.
+- This folder is only for concrete tasks, not the project main line, phase plans, or long-term decisions.
 
-## 基础约束
+## Base Constraints
 
-new-order 只关心“怎么分层”和“什么先做”，不关心某个项目具体叫哪一个领域名。
+`new-order` only cares about "how to layer" and "what should happen first"; it does not care what domain name a project uses.
 
-必须先建立下面这套顺序，再进入任务拆解：
+Before task breakdown, establish this order:
 
 1. `00-overview.md`
 2. `10-roadmap.md`
@@ -82,30 +82,30 @@ new-order 只关心“怎么分层”和“什么先做”，不关心某个项�
 7. `plans/`
 8. `tasks/`
 
-核心不是文件名本身，而是层级职责：
+The key is not the file names themselves, but the responsibilities of each layer:
 
-- 00 层回答“是什么”
-- 10 层回答“怎么推进”
-- 20 层回答“关键问题怎么定”
-- 30/31/32 层回答“已经定了什么、没定什么、哪里有风险”
-- plans/ 回答“阶段怎么落地”
-- tasks/ 回答“具体任务怎么执行”
+- 00 layer answers "what it is"
+- 10 layer answers "how it moves forward"
+- 20 layer answers "how key issues are decided"
+- 30/31/32 layers answer "what is decided, what is not decided, and where the risks are"
+- `plans/` answers "how the phase gets implemented"
+- `tasks/` answers "how the concrete tasks get executed"
 
-## 核心职责
+## Core Responsibilities
 
-- 先定义项目目标、范围、边界和角色。
-- 再识别项目有哪些必须单独沉淀的关注点，并把它们放进 20 层。
-- 重要决策、待确认问题和风险要单独沉淀。
-- 最后把阶段计划和任务推进顺序排好。
+- Define the project goals, scope, boundaries, and roles first.
+- Identify which focus areas must be captured separately, then place them in the 20 layer.
+- Keep important decisions, open questions, and risks in separate docs.
+- Finally, arrange the phase plans and task execution order.
 
-## 和 task-dev-flow 的关系
+## Relationship To `task-dev-flow`
 
-- `new-order` 负责把项目从“散”变成“可推进”。
-- `task-dev-flow` 负责把某个具体任务从“待办”变成“已验证”。
-- 先用 `new-order` 建立主线和关注点，再进入 `task-dev-flow` 声称具体任务文档。
-- 如果 20 层里的关键关注点还没定清楚，就先停在 `new-order`，不要提前发任务卡。
+- `new-order` is responsible for turning a project from scattered into actionable.
+- `task-dev-flow` is responsible for turning a concrete task from "to do" into "verified".
+- Use `new-order` first to establish the main line and focus areas, then enter `task-dev-flow` to claim specific task docs.
+- If the key focus areas in the 20 layer are still unclear, stop at `new-order` and do not issue task cards too early.
 
-## 说明
+## Notes
 
-- 这个 skill 不直接生成 `feat-***` 或 `fix-***` 任务文档。
-- 它的任务是先把项目变得“能开发、可推进、可交接”。
+- This skill does not directly generate `feat-***` or `fix-***` task docs.
+- Its job is to make the project "ready to develop, ready to move forward, and ready to hand off."
