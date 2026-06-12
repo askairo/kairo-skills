@@ -1,13 +1,13 @@
 ---
 name: p-bootstrap
-description: Bootstrap a new project from idea to an executable local workspace. Use when Codex should create or rename a GitHub repository, clone locally, set naming conventions, resolve the project docs root, and generate the kickoff docs before project work begins.
+description: Bootstrap a new project into an executable local workspace. Use when Codex needs to create or rename a GitHub repository, clone locally, set naming conventions, resolve the project docs root, or generate kickoff docs.
 ---
 
 # P Bootstrap
 
 ## Overview
 
-Use this skill to bootstrap a new personal project in a repeatable way, separating:
+Use this skill to bootstrap a new project in a repeatable way, separating:
 
 - code workspace (repo)
 - project-management docs under a configured root directory

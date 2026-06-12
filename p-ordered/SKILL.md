@@ -1,6 +1,6 @@
 ---
 name: p-ordered
-description: Organize an existing project into orderly docs, architecture boundaries, and execution plans. Use this when a project already exists but its docs are fragmented, or when you need to normalize the project structure from the configured docs root before entering `p-task`.
+description: Organize an existing project into ordered docs and boundaries. Use when a project already exists but its docs are fragmented, or when you need to normalize the docs root and project structure before `p-task`.
 ---
 
 # P Ordered

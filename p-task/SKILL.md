@@ -1,13 +1,13 @@
 ---
 name: p-task
-description: Turn external tasks, tickets, requirement links, prototype links, or task descriptions into a complete development workflow. Use this when there is a concrete task to execute after `p-ordered`, to understand task context, check requirement sources, create or use a task branch, split implementation cards, follow repo rules, implement changes, and verify the result. For pure entity table design, use `entity-design` instead.
+description: Turn concrete tasks into a complete development workflow. Use when Codex needs to execute a task, ticket, requirement link, or prototype after `p-ordered`, then verify and hand it off. For pure entity table design, use `entity-design` instead.
 ---
 
 # P Task
 
 ## Goal
 
-Turn an external task into a local development flow that is executable, verifiable, and deliverable. This covers Zentao, Jira, GitHub issues, prototype links, internal docs, screenshots, or directly pasted task descriptions.
+Turn a concrete task into a local development flow that is executable, verifiable, and deliverable. This covers Zentao, Jira, GitHub issues, prototype links, internal docs, screenshots, or directly pasted task descriptions.
 
 If the project is still in an exploratory phase, the architecture is unstable, or project-level docs are not yet organized, use `p-ordered` first to establish the project documentation and architecture order, then come back here for task breakdown and implementation.
 

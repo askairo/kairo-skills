@@ -1,4 +1,4 @@
 interface:
   display_name: "P Ordered"
-  short_description: "Organize project docs into a clear order"
+  short_description: "Organize project docs"
   default_prompt: "Use $p-ordered to organize an existing project's docs, boundaries, and plans."

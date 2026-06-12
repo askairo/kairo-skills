@@ -1,4 +1,4 @@
 interface:
   display_name: "P Task"
-  short_description: "Turn tasks into a dev workflow"
+  short_description: "Execute project tasks"
   default_prompt: "Use $p-task to turn this task link or requirement into a complete development workflow."
