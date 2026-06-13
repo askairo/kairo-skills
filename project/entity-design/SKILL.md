@@ -22,6 +22,21 @@ This skill is intended for a browser-operated design workflow:
 - Do not assume the in-app browser can access authenticated Axhub or Alidocs pages. Use the already-open Chrome tab when available.
 - Treat Alidocs as an Excel-like spreadsheet: preserve formulas, sheet structure, required template rows, generated-SQL columns, and user-corrected content.
 
+## Local Configuration
+
+Use private local config when the current request depends on stable project paths or authenticated requirement sources.
+
+- Resolve `<AGENT_HOME>` the same way as `p-task`.
+- Read config only from the current agent home, never from the project repo.
+- Preferred config files:
+  - `<AGENT_HOME>/local-config/entity-design/paths.yaml`
+  - `<AGENT_HOME>/local-config/entity-design/auth-sites.yaml`
+- `paths.yaml` stores the local docs root used for saved design artifacts.
+- `auth-sites.yaml` stores login records for requirement sources such as ZenTao and Axhub.
+- If config exists, use it before asking the user for a docs root or credentials.
+- If the user provides new credentials, ask before saving them to local config.
+- Keep the config shape small and human-readable; see `references/local-config.md` for the expected layout.
+
 ## Inputs And Outputs
 
 Read requirements from these sources, in this order:
@@ -58,6 +73,7 @@ Output destinations:
 1. Collect context.
    - Read prototype links, PRD links, screenshots, existing table/design links, module prefix, and user clarifications.
    - Read local project rules first when available (`AGENTS.md`, `CLAUDE.md`, existing module code, existing table/entity examples).
+   - If the requirement source or output path needs machine-local state, read `<AGENT_HOME>/local-config/entity-design/auth-sites.yaml` and `<AGENT_HOME>/local-config/entity-design/paths.yaml` first.
    - Identify whether the task is to generate entities, review existing designs, or update an external document.
 
 2. Inspect the prototype.

@@ -1,4 +1,4 @@
 interface:
   display_name: "Entity Design"
-  short_description: "Design entities from prototypes."
-  default_prompt: "Read the prototype and business context, then design domain entities and flag missing or redundant fields."
+  short_description: "Design entities from prototypes and requirements."
+  default_prompt: "Read the prototype, local config, and business context, then design domain entities and flag missing, redundant, or derived fields."
