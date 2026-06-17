@@ -53,18 +53,29 @@ KNOWN_AGENT_HOMES = [
 ]
 
 
+def detect_agent_homes() -> list[Path]:
+    """Return all known agent home directories that exist on this machine."""
+    home = Path.home()
+    return [home / dirname for dirname, _label in KNOWN_AGENT_HOMES if (home / dirname).exists()]
+
+
 def detect_agent_home() -> Path | None:
     """Detect the current agent's home directory by checking known paths.
 
-    Returns the first existing known agent home, or None if none found.
-    Priority order: QoderWork (.qoderworkcn) > Codex (.codex) > generic (.config/agents).
+    Returns the only existing known agent home, or None if none found or if
+    multiple agent homes exist and the caller should choose explicitly.
     """
-    home = Path.home()
-    for dirname, _label in KNOWN_AGENT_HOMES:
-        candidate = home / dirname
-        if candidate.exists():
-            return candidate
+    homes = detect_agent_homes()
+    if len(homes) == 1:
+        return homes[0]
     return None
+
+
+def format_agent_home_candidates(homes: list[Path]) -> str:
+    lines = []
+    for home in homes:
+        lines.append(f"- {home / 'skills'}")
+    return "\n".join(lines)
 
 
 def now_iso() -> str:
@@ -207,9 +218,9 @@ def load_config() -> dict:
         script_skill_dir(),
         Path.home() / ".config" / "skills",
     ]
-    agent_home = detect_agent_home()
-    if agent_home:
-        search_dirs.append(agent_home)
+    agent_homes = detect_agent_homes()
+    if len(agent_homes) == 1:
+        search_dirs.append(agent_homes[0])
     cwd_repo = find_skills_repo_from_cwd()
     if cwd_repo:
         search_dirs.insert(0, cwd_repo)
@@ -246,14 +257,21 @@ def resolve_agent_dir(args, config: dict) -> Path:
         return Path(config["agentSkillsDir"]).expanduser().resolve()
 
     detected = script_agent_dir()
-    if detected.name != "skills":
-        # Try known agent home directories in priority order.
-        agent_home = detect_agent_home()
-        if agent_home:
-            return (agent_home / "skills").resolve()
-        # Last resort: generic XDG-style path.
-        return (Path.home() / ".config" / "agents" / "skills").resolve()
-    return detected
+    if detected.name == "skills":
+        return detected
+
+    agent_homes = detect_agent_homes()
+    if len(agent_homes) == 1:
+        return (agent_homes[0] / "skills").resolve()
+    if len(agent_homes) > 1:
+        homes = format_agent_home_candidates(agent_homes)
+        raise SystemExit(
+            "Multiple agent skill directories detected. Pass --agent-dir explicitly.\n"
+            f"Detected candidates:\n{homes}"
+        )
+
+    # Last resort: generic XDG-style path.
+    return (Path.home() / ".config" / "agents" / "skills").resolve()
 
 
 def resolve_local_repo(args, config: dict) -> Path | None:
@@ -616,7 +634,7 @@ def build_parser():
     parser.add_argument("--path", help="Path to skill inside repo. Defaults to --skill")
     parser.add_argument("--ref", help="Git ref/branch/tag. Defaults to config or main")
     parser.add_argument("--name", help="Installed skill directory name. Defaults to path basename")
-    parser.add_argument("--agent-dir", help="Current Agent skills directory")
+    parser.add_argument("--agent-dir", help="Current Agent skills directory. Required when multiple agents exist.")
     parser.add_argument("--local-repo", help="Local writable skills source repository")
     parser.add_argument("--config-dir", help="Agent home directory for config files (auto-detected if omitted)")
     parser.add_argument("--message", help="Commit message for publish")
