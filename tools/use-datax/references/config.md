@@ -25,3 +25,4 @@ Use a user-level `.codex` directory for runtime settings, for example:
 
 - Keep environment, table, column, and date-range choices out of the config file.
 - Use the config only to locate runtime inputs and outputs.
+- If the project includes a DataX template JSON, treat it as the canonical shape reference and keep any copied examples redacted.

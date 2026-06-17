@@ -7,7 +7,7 @@ description: Generate, validate, and run DataX sync jobs for MySQL table transfe
 
 ## Overview
 
-Use this skill to prepare and execute DataX syncs for project databases. It covers runtime config resolution, explicit job generation, overwrite safety, execution, and fast failure reporting.
+Use this skill to prepare and execute DataX syncs for project databases. It covers runtime config resolution, template-driven job generation, overwrite safety, execution, and fast failure reporting.
 
 ## Configuration
 
@@ -21,6 +21,20 @@ Only these values are externalized:
 
 Do not hardcode source/target environments, tables, columns, or date ranges in the skill.
 Derive JDBC settings from the env config files under `config_dir`.
+Treat any project-provided DataX JSON template as a structure reference only; when documenting or reproducing it, replace real credentials, hosts, and database names with placeholders.
+
+## Template First
+
+When the project already contains a DataX JSON template, use it as the primary shape reference.
+
+Prefer these adjustments over inventing a new layout:
+
+- keep the same job nesting and writer overwrite pattern
+- keep explicit column order aligned between reader and writer
+- preserve project-specific JDBC option baselines
+- keep file naming and output location driven by configuration
+
+Do not copy real connection values into skill text or examples.
 
 ## Workflow
 
