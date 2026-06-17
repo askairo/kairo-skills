@@ -1,0 +1,4 @@
+interface:
+  display_name: "Use DataX"
+  short_description: "Generate and run DataX sync jobs."
+  default_prompt: "Use $use-datax to prepare and run a DataX sync job."
