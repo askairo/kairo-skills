@@ -15,10 +15,54 @@ Use this before task development to turn a project from scattered into actionabl
 
 ## Docs Root
 
-- Prefer the configured docs root.
-- If the project or local config already provides `docs.root`, organize docs around that root.
-- If nothing is configured and the user has not given a path, ask which docs root to use.
-- Do not guess the docs root through a full-disk search.
+This skill uses private local configuration to store stable document roots. Do not write this configuration into the project repository.
+
+### Agent Home Resolution
+
+`<AGENT_HOME>` means the current Agent's config root. Resolve it before reading or writing local config, and only use the directory that belongs to the current Agent.
+
+Resolution order:
+
+1. If the working directory path contains `.qoderworkcn`, use `~/.qoderworkcn/`
+2. If the working directory path contains `.codex`, use `~/.codex/`
+3. If `~/.qoderworkcn/` exists, use it
+4. If `~/.codex/` exists, use it
+5. Fall back to `~/.config/skills/`
+
+After resolving, confirm that the directory really exists. If none exist, ask the user which Agent Home to use.
+
+**Hard rule:** once `<AGENT_HOME>` has been resolved, only read and write config under that directory. Do not cross Agent directories.
+
+### Config Files
+
+- Preferred path config: `<AGENT_HOME>/local-config/p-ordered/paths.yaml`
+- Compatibility path config: `<AGENT_HOME>/local-config/p-task/paths.yaml`
+
+Recommended path config:
+
+```yaml
+version: 1
+
+docs:
+  root: <absolute-project-docs-collection-root>
+```
+
+- `docs.root` is the common root for project requirement docs, for example Obsidian's `03-req`.
+- This skill owns the project-level structure under `<docs.root>/<repo-name>/`.
+- Do not store a single project's path, such as `<docs.root>/dimoo`, in the global skill config unless the user explicitly says this Agent only works with that one project.
+- If only the compatibility `p-task` config exists, reuse its `docs.root` because `p-task` and `p-ordered` share the same project-docs collection root.
+
+### Project Docs Root Resolution
+
+When using `p-ordered`, resolve the actual project docs root in this order:
+
+1. If the user gives a docs path for this turn, use it. If it already contains project files such as `00-overview.md` or `10-roadmap.md`, treat it as the project docs root; otherwise treat it as the collection root and append `<repo-name>`.
+2. Else read `docs.root` from `<AGENT_HOME>/local-config/p-ordered/paths.yaml`.
+3. Else read `docs.root` from `<AGENT_HOME>/local-config/p-task/paths.yaml`.
+4. If a configured `docs.root` already contains project files such as `00-overview.md` or `10-roadmap.md`, treat it as the project docs root for compatibility with older configs.
+5. Otherwise treat configured `docs.root` as the collection root and use `<docs.root>/<repo-name>` as the project docs root.
+
+If no docs root is configured and the user has not given a path, ask first, then write only the common collection root into `<AGENT_HOME>/local-config/p-ordered/paths.yaml`. Do not guess the docs root through a full-disk search.
 
 ## Doc Hierarchy
 
