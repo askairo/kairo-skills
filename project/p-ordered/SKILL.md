@@ -1,17 +1,38 @@
 ---
 name: p-ordered
-description: Organize an existing project into ordered docs and boundaries. Use when a project already exists but its docs are fragmented, or when you need to normalize the docs root and project structure before `p-task`.
+description: Maintain a project's architecture-planning loop through ordered external docs. Use when Codex needs to clarify project goals, boundaries, roadmap, focus docs, decisions, open questions, risks, plans, and task readiness before `p-task`, or when implementation/user feedback should update project state and guide the next planning cycle.
 ---
 
 # P Ordered
 
 Use this before task development to turn a project from scattered into actionable.
 
+## Goal
+
+Use external project docs as the shared architecture memory that helps Codex plan, split, execute, verify, learn from feedback, update state, and plan the next step.
+
+`p-ordered` is not a task-execution skill. It is the project-line and architecture-loop skill:
+
+```text
+project line -> next plan -> task split -> execution by p-task -> verification feedback -> state writeback -> next plan
+```
+
+Its responsibility is to keep the project ready for development by maintaining:
+
+- clear goals, scope, boundaries, and roles
+- current roadmap and phase sequence
+- focus docs for architecture, UX, data, storage, APIs, rules, compatibility, performance, and security
+- confirmed decisions, open questions, risks, dependencies, and blockers
+- phase plans and task readiness
+- feedback writeback after meaningful implementation or user review
+
 ## When To Use
 
 - A project is just starting and does not yet have a stable documentation structure.
 - An older project has scattered, duplicate, or outdated docs.
 - You need to clarify the project main line before task breakdown and implementation.
+- You need to decide what should happen next before entering `p-task`.
+- User or implementation feedback changes product direction, architecture constraints, UX rules, risk, or task priority.
 
 ## Docs Root
 
