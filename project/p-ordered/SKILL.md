@@ -142,6 +142,103 @@ The key is not the file names themselves, but the responsibilities of each layer
 - Keep important decisions, open questions, and risks in separate docs.
 - Finally, arrange the phase plans and task execution order.
 
+## Feedback Writeback
+
+Use project docs as external working memory for the architecture loop:
+
+```text
+read project line -> plan next work -> split tasks -> implement -> verify -> collect feedback -> write back state -> plan again
+```
+
+Do not record every temporary action. Record only feedback that changes future work, constraints, state, or risk.
+
+### What To Write Back
+
+Write back when an event:
+
+- changes project priority, sequencing, scope, or acceptance criteria
+- confirms or changes a product, architecture, UX, data, storage, security, or workflow constraint
+- completes, blocks, reopens, or materially changes a task
+- exposes a bug, risk, dependency, open question, or missing validation
+- captures a user decision that future agents should not rediscover
+- produces implementation feedback that should shape the next planning cycle
+
+Usually do not write back:
+
+- service starts, log cleanup, file inspection, or other temporary operations
+- command attempts that do not affect project state
+- exploratory notes that create no decision, risk, task, or follow-up
+
+### Where To Write Back
+
+Choose the document by information type:
+
+- `00-overview.md`: project identity, scope, boundary, or role changes only.
+- `10-roadmap.md`: phase status, current focus, priority order, and next-step sequencing.
+- `20-*` focus docs: durable architecture, product, UX, data-flow, state-machine, cache, API, storage, security, compatibility, or performance constraints.
+- `30-decisions.md`: confirmed key decisions. If this file does not exist yet, record the decision in the most relevant focus doc or task and consider creating it when decisions accumulate.
+- `31-open-questions.md`: unresolved questions that can change design, scope, sequence, or acceptance.
+- `32-risk-log.md`: risks, blockers, external dependencies, and validation gaps.
+- `plans/`: phase plans and rollout proposals.
+- `tasks/`: concrete task goals, scope, acceptance criteria, progress, validation, remaining work, and commit/push state.
+
+If one feedback item spans layers, write the durable principle to the focus/decision doc and the concrete work to the task doc. Update `10-roadmap.md` only when priority or phase sequencing changes.
+
+### When To Check Writeback
+
+At these points, explicitly decide whether docs need updates:
+
+1. Before planning: verify that the project line is current enough to split work.
+2. When creating a task: record goal, scope, assumptions, acceptance, and validation plan.
+3. During implementation: record meaningful discoveries, not every step.
+4. After user feedback: classify whether it affects product, architecture, UX, task scope, priority, risk, or process.
+5. After verification: update validation results, remaining issues, and task status.
+6. Before handoff: ensure task docs, roadmap, focus docs, decisions, questions, and risks are not stale.
+
+### Writeback Shape
+
+Keep entries short and actionable. A useful writeback usually answers at least two of:
+
+- what happened
+- why it matters
+- what it changes
+- what happens next
+
+Example:
+
+```markdown
+- Feedback: Cloud storage config stays expanded and crowds the reading workspace.
+- Impact: Low-frequency settings interrupt the core "library -> item list -> reader" path.
+- Constraint: Configuration surfaces should be collapsed, drawer-based, modal, or moved into settings by default.
+- Next: Split a reader-focused layout task before continuing end-to-end reading validation.
+```
+
+### Task Status
+
+Task docs should not be write-once. Keep these sections current when they exist:
+
+- background
+- goal
+- scope
+- acceptance criteria
+- progress log
+- validation results
+- remaining work or open issues
+- commit and push state
+
+## Loop Discipline
+
+After meaningful work, ask:
+
+- Did this change the roadmap or current focus?
+- Did it create a durable architecture, product, UX, data, or process constraint?
+- Did it confirm a decision or open a question?
+- Did it add or reduce risk?
+- Is the task card stale?
+- Does the next step need to be reordered?
+
+If yes, write back to the appropriate project docs before moving to the next planning cycle.
+
 ## Relationship To `p-task`
 
 - `p-ordered` is responsible for turning a project from scattered into actionable.
