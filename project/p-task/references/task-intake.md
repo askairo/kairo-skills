@@ -58,6 +58,14 @@ If the user explicitly says to follow their pasted analysis, screenshots, or des
 - If the task includes prototype or entity design work, use `$entity-design` for that analysis instead of duplicating its rules here.
 - If the task page has too much content, collect only the fields needed for implementation: goal, acceptance criteria, affected pages/APIs, data model impact, and edge cases.
 
+## Clarification Pass
+
+After inspecting the source and repository context, pause before implementation when any unanswered point could change the result. Common categories include API shape, existing endpoint reuse, source-of-truth data, persistence impact, list/export coupling, sorting/filtering expectations, branch baseline, and verification depth.
+
+Present the user with a concise list of questions and any reasonable default assumptions. After the user answers, update the task doc's `Confirmed Understanding`, `Open Questions`, and `User Decisions` sections before creating the final implementation checklist.
+
+If the user explicitly asks to proceed without answering, record the assumptions as user-accepted decisions and continue.
+
 ### Local Auth Config Shape
 
 Preferred path order:

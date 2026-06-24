@@ -20,6 +20,19 @@ Use this structure when the user asks for a `task.md`, task card, or implementat
 
 <Short summary of the business goal and affected module.>
 
+## Confirmed Understanding
+
+- <Stable fact confirmed from the source or user discussion>
+- <Stable fact confirmed from the source or user discussion>
+
+## Open Questions
+
+- [ ] <Question that must be answered before implementation, or `None`>
+
+## User Decisions
+
+- <Decision confirmed by the user, including any accepted assumption>
+
 ## Scope
 
 - <Concrete behavior or API/UI/data change>
@@ -80,3 +93,13 @@ Always create a requirement task doc artifact using the configured docs root and
 If `docs.root` is not configured and the user has not provided it, ask for the docs root before creating the artifact and then save it to the local path config.
 
 Keep the metadata and the `commit` code block consistent with the main task card.
+
+## Clarification Records
+
+Before implementation, update the task doc with:
+
+- `Confirmed Understanding`: facts from the requirement source, repository context, or user discussion.
+- `Open Questions`: key ambiguities that could change implementation or verification. If none remain, write `None`.
+- `User Decisions`: the user's answers and accepted assumptions.
+
+Do not use this section for project-specific coding standards. Put recurring project rules in the repository's rule files or project documentation.

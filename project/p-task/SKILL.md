@@ -81,7 +81,14 @@ docs:
    - If the branch does not exist, create it from the repository baseline branch.
    - Default baseline order for the Znder ERP repo: `master` -> `main` -> repo-specific baseline from the rules.
 
-5. Split the task card.
+5. Clarify before implementation.
+   - Before implementation, separate confirmed facts from assumptions and questions.
+   - Ask the user to confirm any key ambiguity that could change API shape, data source, branch, persistence, export behavior, sorting/filtering behavior, or verification scope.
+   - Do not start implementation while important questions remain unresolved, unless the user explicitly asks to proceed with stated assumptions.
+   - Record confirmed facts, open questions, and user decisions in the task doc before writing the implementation plan.
+   - Keep this step process-focused. Project-specific rules belong in the repository rules, project docs, or `AGENTS.md`, not in this skill.
+
+6. Split the task card.
    - Break the requirement into a short checklist first.
    - Task cards should be outcome-oriented, for example API, persistence, mapping, logging, validation, and tests.
    - Follow `references/task-template.md` when writing task docs.
@@ -90,27 +97,29 @@ docs:
    - If the project uses `p-ordered` hierarchy constraints, keep the 20-layer focus docs in sync, along with `30-decisions`, `31-open-questions`, and `32-risk-log`.
    - Keep `source`, `branch`, `baseline`, and `commit` in the docs aligned with the real state.
 
-6. Implement according to the repository structure.
+7. Implement according to the repository structure.
    - Start from the existing code paths and patterns.
    - Keep layering, naming, SQL, validation, and commit conventions aligned with the repository.
    - If a recurring project convention is missing, propose adding it to the repo rules file instead of baking it into the skill itself.
 
-7. Verify.
+8. Verify.
    - Run the narrowest useful checks first, then broaden as needed.
    - Increase verification when shared contracts, controllers, workflows, or persistence are affected.
    - Clearly report blockers that are unrelated to the current task.
 
-8. Deliver.
+9. Deliver.
    - Commit or push only when the user explicitly asks for it.
    - If a commit is needed, treat the commit message in the task doc as fixed once it is generated.
    - Do not change the commit message on your own.
 
-9. Wrap up.
+10. Wrap up.
    - Recheck that the branch, task doc, and required files are all present.
    - Summarize the changes, verification results, and remaining risks.
+   - If the user asks to merge into integration branches after completion, switch to `merge-to` and follow that skill's clean-worktree and target-branch flow.
+   - If no merge was requested, state that merge or release-branch synchronization is intentionally left for the user to request.
 
 ## Working With Other Skills
 
 - If the requirement is mainly about entities, table structure, parent-child relationships, or field derivation, use `entity-design` first.
 - If the project is in the early stage, the docs are missing, or the structure is messy, use `p-ordered` first.
-- Whether to merge the branch after task completion is not part of this skill's default responsibility.
+- Whether to merge the branch after task completion is not part of this skill's default responsibility. Use `merge-to` only after the user explicitly asks to merge or synchronize the completed task branch.
