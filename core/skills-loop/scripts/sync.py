@@ -34,12 +34,7 @@ except AttributeError:
 
 DEFAULT_REF = "main"
 SOURCE_META = ".skill-source.json"
-CONFIG_NAMES = (
-    "skills-loop.local.json",
-    "sync-skills.local.json",
-    ".skills-loop.json",
-    ".sync-skills.json",
-)
+PREFERRED_CONFIG_PATH = Path("local-config") / "skills-loop" / "config.json"
 EXCLUDE_DIRS = {".git", "__pycache__", ".venv", "node_modules"}
 EXCLUDE_SUFFIXES = {".pyc", ".pyo"}
 BACKUP_PATTERN = re.compile(r"^(.+)\.backup\.\d{8}_\d{6}$")
@@ -56,7 +51,15 @@ KNOWN_AGENT_HOMES = [
 def detect_agent_homes() -> list[Path]:
     """Return all known agent home directories that exist on this machine."""
     home = Path.home()
-    return [home / dirname for dirname, _label in KNOWN_AGENT_HOMES if (home / dirname).exists()]
+    homes = []
+    for dirname, _label in KNOWN_AGENT_HOMES:
+        candidate = home / dirname
+        try:
+            if candidate.exists():
+                homes.append(candidate)
+        except OSError:
+            continue
+    return homes
 
 
 def detect_agent_home() -> Path | None:
@@ -89,6 +92,18 @@ def script_skill_dir() -> Path:
 def script_agent_dir() -> Path:
     # <agent-skills-dir>/<skill-name>/scripts/sync.py
     return Path(__file__).resolve().parents[2]
+
+
+def script_agent_home() -> Path | None:
+    """Return Agent Home when this script is running from an installed skill."""
+    return agent_home_from_skills_dir(script_agent_dir())
+
+
+def agent_home_from_skills_dir(agent_dir: Path) -> Path | None:
+    """Infer Agent Home from a conventional <Agent Home>/skills directory."""
+    if agent_dir.name == "skills":
+        return agent_dir.parent
+    return None
 
 
 def is_skill_dir(path: Path) -> bool:
@@ -211,25 +226,19 @@ def write_json(path: Path, data: dict):
     )
 
 
-def load_config() -> dict:
+def load_config(explicit_agent_home: Path | None = None) -> dict:
     """Load optional config files. Env vars are fallback only."""
     config = {}
-    search_dirs = [
-        script_skill_dir(),
-        Path.home() / ".config" / "skills",
-    ]
-    agent_homes = detect_agent_homes()
-    if len(agent_homes) == 1:
-        search_dirs.append(agent_homes[0])
-    cwd_repo = find_skills_repo_from_cwd()
-    if cwd_repo:
-        search_dirs.insert(0, cwd_repo)
-
-    for directory in search_dirs:
-        for name in CONFIG_NAMES:
-            path = directory / name
+    agent_home = explicit_agent_home or script_agent_home() or detect_agent_home()
+    if agent_home:
+        path = agent_home / PREFERRED_CONFIG_PATH
+        try:
             if path.exists():
                 config.update(read_json(path))
+        except OSError:
+            pass
+
+    cwd_repo = find_skills_repo_from_cwd()
 
     if "defaultRepo" not in config and os.environ.get("SKILLS_DEFAULT_REPO"):
         config["defaultRepo"] = os.environ["SKILLS_DEFAULT_REPO"]
@@ -603,15 +612,28 @@ def write_config(args, config: dict):
     elif config.get("agentSkillsDir"):
         data["agentSkillsDir"] = config["agentSkillsDir"]
 
-    config_dir = None
+    agent_home = None
     if args.config_dir:
-        config_dir = Path(args.config_dir).expanduser().resolve()
+        agent_home = Path(args.config_dir).expanduser().resolve()
+    elif args.agent_dir:
+        agent_dir = Path(args.agent_dir).expanduser().resolve()
+        agent_home = agent_home_from_skills_dir(agent_dir)
     else:
-        config_dir = detect_agent_home()
-    if not config_dir:
-        config_dir = Path.home() / ".config" / "skills"
+        agent_home = script_agent_home() or detect_agent_home()
+    if not agent_home:
+        homes = detect_agent_homes()
+        if len(homes) > 1:
+            choices = "\n".join(f"- {home}" for home in homes)
+            raise SystemExit(
+                "Multiple Agent Homes detected. Pass --config-dir explicitly.\n"
+                f"Detected candidates:\n{choices}"
+            )
+        agent_home = Path.home() / ".config" / "agents"
 
-    path = config_dir / ".skills-loop.json"
+    path = agent_home / PREFERRED_CONFIG_PATH
+    if args.dry_run:
+        print(f"[DRY-RUN] Would write config: {path}")
+        return
     path.parent.mkdir(parents=True, exist_ok=True)
     write_json(path, data)
     print(f"Wrote config: {path}")
@@ -636,7 +658,13 @@ def build_parser():
     parser.add_argument("--name", help="Installed skill directory name. Defaults to path basename")
     parser.add_argument("--agent-dir", help="Current Agent skills directory. Required when multiple agents exist.")
     parser.add_argument("--local-repo", help="Local writable skills source repository")
-    parser.add_argument("--config-dir", help="Agent home directory for config files (auto-detected if omitted)")
+    parser.add_argument(
+        "--config-dir",
+        help=(
+            "Agent Home used for local config. skills-loop reads/writes "
+            "<Agent Home>/local-config/skills-loop/config.json"
+        ),
+    )
     parser.add_argument("--message", help="Commit message for publish")
     parser.add_argument("--dry-run", action="store_true", help="Print actions without writing")
     return parser
@@ -645,7 +673,14 @@ def build_parser():
 def main():
     parser = build_parser()
     args = parser.parse_args()
-    config = load_config()
+    explicit_agent_home = None
+    if args.config_dir:
+        explicit_agent_home = Path(args.config_dir).expanduser().resolve()
+    elif args.agent_dir:
+        explicit_agent_home = agent_home_from_skills_dir(
+            Path(args.agent_dir).expanduser().resolve()
+        )
+    config = load_config(explicit_agent_home)
 
     try:
         if args.command == "list":

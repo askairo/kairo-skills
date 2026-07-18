@@ -38,15 +38,42 @@ description: 以源码仓库到 GitHub 再到 Agent 运行目录的闭环管理 
 
 ## Skill 配置边界
 
-创建或优化任何 skill 时，按同一条边界处理本地路径配置和技能规范：
+创建或优化任何自有 skill 时，统一分离三类内容：
 
-- 本地配置只保存用户机器相关的“总根目录”或“根路径”，例如 `docs.root`、`localRepoPath`、`agentSkillsDir`。
-- 不要把技能内部目录结构、文件名、任务卡命名、项目文档清单等规范外包给本地配置。
-- 具体到根目录下面创建哪些子目录和文件，应由 skill 自己定义。
-- 不要在 `SKILL.md`、`references/` 或脚本默认值里写死个人机器路径、个人 GitHub 仓库、个人 Obsidian 路径。
-- 示例路径使用占位符，例如 `<absolute-docs-root>`、`<local-skills-repo>`、`<agent-skills-dir>`、`<owner>/<repo>`。
+- **Skill 规范**：工作流、配置 schema、目录结构、文件命名、允许值、默认规则和安全门禁。保存在 skill 源码中并通过 GitHub 分发。
+- **Agent 本地配置**：用户或机器特有、需要跨项目复用且不适合进入 Git 的运行数据，例如根路径、账号画像、内容风格、来源清单、环境映射和执行策略。
+- **凭证与会话**：密码、Cookie、令牌、恢复码和浏览器登录态。不要保存在普通 skill 配置中；使用 Agent 连接器、系统凭证库或受控会话。
 
-推荐模式：
+不要把 Skill 规范外包给本地配置。配置可以选择“使用哪个账号、风格、来源或策略”，但这些对象的字段、引用关系、合法值和不可关闭的门禁必须由 Skill 定义。
+
+不要在 `SKILL.md`、`references/` 或脚本默认值里写死个人机器路径、个人 GitHub 仓库、个人 Obsidian 路径和真实账号数据。示例使用 `<absolute-docs-root>`、`<local-skills-repo>`、`<agent-skills-dir>`、`<account-handle>`、`<owner>/<repo>` 等占位符。
+
+### Agent Home resolution
+
+`<AGENT_HOME>` 表示当前 Agent 的用户配置根目录。按以下顺序解析：
+
+1. 使用用户或命令显式指定的 Agent Home。
+2. 若当前 Skill 的运行路径位于 `<AGENT_HOME>/skills/<skill-name>/`，从该路径确定 Agent Home。
+3. 若工作目录明确位于某个 Agent Home 内，使用该目录。
+4. 若本机只存在一个已知 Agent Home，使用它。
+5. 若存在多个候选且当前上下文无法区分，必须要求用户或调用方显式选择；不要跨 Agent 读取配置。
+6. 若没有已知 Agent Home，使用当前 Agent 定义的通用配置根；仍无法确定时先询问用户。
+
+### Preferred local config directory
+
+所有自有 Skills 的首选本地配置目录统一为：
+
+```text
+<AGENT_HOME>/local-config/<skill-name>/
+```
+
+- 单文件配置优先命名为 `config.yaml` 或 `config.json`。
+- 按职责拆分时使用稳定语义名，例如 `paths.yaml`、`accounts.yaml`、`sources.yaml`；文件结构由 Skill 自己定义。
+- 本地配置不得放入源码仓库或已安装 Skill 目录，因为发布和回装不应覆盖用户配置。
+- 显式配置路径可以覆盖首选目录。
+- 不为旧目录、旧文件名或旧命令保留兼容分支；规范升级时直接使用当前约定，避免长期维护多套入口。
+
+路径配置示例：
 
 ```yaml
 version: 1
@@ -166,14 +193,15 @@ python core\skills-loop\scripts\sync.py install --repo owner/repo --path path/to
 
 ## 配置文件
 
-推荐使用配置文件，而不是环境变量。
+`skills-loop` 自身也遵循 Agent 本地配置目录规范。首选配置文件为：
 
-可选配置文件位置：
+```text
+<AGENT_HOME>/local-config/skills-loop/config.json
+```
 
-- 当前 skills 源码仓库：`.skills-loop.json`（兼容 `.sync-skills.json`）
-- 当前 `skills-loop` skill 目录：`skills-loop.local.json`（兼容 `sync-skills.local.json`）
-- 用户配置目录：`~/.config/skills/.skills-loop.json`（兼容 `.sync-skills.json`）
-- 当前 Agent 的用户目录（自动检测，按优先级）：`~/.qoderworkcn/.skills-loop.json`、`~/.codex/.skills-loop.json`、`~/.config/agents/.skills-loop.json`（均兼容 `.sync-skills.json`）
+配置优先级为：显式命令参数 > 首选 Agent 本地配置 > 已安装来源元数据 > 自动发现 > 环境变量兜底。
+
+只支持上述首选配置文件，不读取其他历史位置，也不提供旧命令别名。
 
 示例：
 
@@ -189,8 +217,10 @@ python core\skills-loop\scripts\sync.py install --repo owner/repo --path path/to
 可以用脚本生成本地配置：
 
 ```powershell
-python core\skills-loop\scripts\sync.py write-config --repo <owner>/<repo> --local-repo <absolute-local-skills-repo> --agent-dir <absolute-agent-skills-dir>
+python core\skills-loop\scripts\sync.py write-config --repo <owner>/<repo> --local-repo <absolute-local-skills-repo> --agent-dir <absolute-agent-skills-dir> --config-dir <agent-home>
 ```
+
+当只存在一个 Agent Home、脚本从已安装的 `skills-loop` 内运行，或 `--agent-dir` 明确指向 `<AGENT_HOME>/skills` 时，可以省略 `--config-dir`。否则存在多个 Agent Home 时必须显式指定。
 
 ## 常用命令
 

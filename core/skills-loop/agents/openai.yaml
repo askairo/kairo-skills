@@ -1,0 +1,4 @@
+interface:
+  display_name: "Skills 生命周期闭环"
+  short_description: "统一管理 Skill 源码发布、运行目录同步、回装与本地配置规范"
+  default_prompt: "Use $skills-loop to publish, install, update, or align a Skill and its Agent-local configuration conventions."
