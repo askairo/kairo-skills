@@ -1,11 +1,11 @@
 ---
 name: media-ops
-description: 依据可配置的平台账号、内容风格、数据源和执行策略，发现、核验、评分并改编内容，为 Twitter/X、小红书和抖音生成差异化草稿。Use when Codex needs to operate a configured content account, build a candidate pool from account-specific sources, assess whether a topic is worth publishing, adapt supplied material for these platforms, or prepare a scheduled editorial run for human review. Do not use for credential management, automatic publishing, or simple verbatim cross-posting.
+description: 依据可配置的平台账号、内容风格、数据源和执行策略，发现、核验、评分、改编并在明确授权后发布内容到 Twitter/X、小红书和抖音。Use when Codex needs to operate a configured content account, build a candidate pool from account-specific sources, assess whether a topic is worth publishing, adapt supplied material, prepare a scheduled editorial run, or publish an approved draft through an available authenticated browser or connector. Do not use for credential management, unattended automatic publishing, or simple verbatim cross-posting.
 ---
 
 # Media Ops
 
-把可信素材转化为可核验、有原创增量、适合不同平台的内容草稿。把能力规则保留在 Skill 中，把账号、风格、来源和频率保留在用户配置中，并始终保留人工发布门禁。
+把可信素材转化为可核验、有原创增量、适合不同平台的内容，并在用户明确授权后完成发布。把能力规则保留在 Skill 中，把账号、风格、来源和频率保留在用户配置中，并始终保留动作前人工确认门禁。
 
 ## Resolve configuration
 
@@ -64,9 +64,9 @@ description: 依据可配置的平台账号、内容风格、数据源和执行�
 
 ### 6. Apply the human gate
 
-停止在草稿和发布准备阶段。即使配置声明执行频率，也只把它解释为本次运行的计划上下文，不自行创建常驻任务。只有用户明确要求时，才使用当前环境的自动化能力另行建立调度。
+默认停止在草稿和发布准备阶段。即使配置声明执行频率，也只把它解释为本次运行的计划上下文，不自行创建常驻任务。只有用户明确要求时，才使用当前环境的自动化能力另行建立调度。
 
-不要登录账号、排程、发送或发布内容。`autoPublish` 必须为 `false`；出现其他值时将配置判为无效。
+不要读取、填写或保存密码、Cookie、令牌和验证码。可以复用用户已建立的受控登录会话。`autoPublish` 必须为 `false`；单次明确授权发布不视为自动发布，出现其他值时仍将配置判为无效。
 
 发布前要求人工确认：
 
@@ -76,6 +76,10 @@ description: 依据可配置的平台账号、内容风格、数据源和执行�
 - 版权、隐私、商业披露和平台风险可接受；
 - 每个平台版本确实针对该平台重写；
 - 链接、标签、画面和口播占位符已补全。
+
+当用户明确要求代理发布时，在动作发生前说明目标平台、账号和将要发布的完整内容。只有用户对这些具体信息作出明确授权后，才点击最终发布或发送控件；不得把早期的宽泛授权解释为对后续不同内容的持续授权。
+
+发布后核对平台成功提示、帖子 URL 或账号时间线中的新内容。若无法取得明确成功信号，不要重复点击发布；报告当前状态并保留页面供人工检查。
 
 ## Deliver the editorial package
 
@@ -87,5 +91,6 @@ description: 依据可配置的平台账号、内容风格、数据源和执行�
 4. **平台草稿**：每个平台独立成节，包含成稿与必要的媒体制作说明。
 5. **编辑说明**：内容增量、平台化差异、仍待确认事项。
 6. **发布检查单**：逐项列出需要用户确认或补充的内容。
+7. **发布结果**：仅在执行发布时提供平台、账号、成功信号和帖子链接；失败或不确定时说明停留状态。
 
 在来源不足时，交付“待核验候选清单”和下一步取证建议，不生成貌似完整的发布稿。

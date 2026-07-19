@@ -1,4 +1,4 @@
 interface:
   display_name: "跨平台自媒体运营"
-  short_description: "依据账号、内容风格、数据来源和执行策略配置生成多平台差异化内容草稿"
-  default_prompt: "Use $media-ops to run the configured media account and prepare verified drafts for X, Xiaohongshu, and Douyin."
+  short_description: "生成多平台差异化内容，并在明确授权后发布"
+  default_prompt: "Use $media-ops to prepare verified platform-specific content and publish it only after I explicitly approve the exact account and final draft."
