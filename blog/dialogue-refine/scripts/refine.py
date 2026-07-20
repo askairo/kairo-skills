@@ -5,7 +5,6 @@ Dialogue Refine - AI 对话文章提炼工具
 将 AI 对话记录转换为结构化的 Hexo 博客文章
 """
 
-import os
 import sys
 import re
 import subprocess
@@ -24,10 +23,7 @@ except AttributeError:
 
 
 ALLOWED_CATEGORIES = ["AI", "工作", "健康", "杂谈"]
-CONFIG_NAMES = (
-    "dialogue-refine.local.json",
-    ".dialogue-refine.json",
-)
+BLOG_CONFIG_PATH = Path("local-config") / "blog" / "config.json"
 
 
 def read_json(path: Path) -> dict:
@@ -40,28 +36,29 @@ def read_json(path: Path) -> dict:
         return {}
 
 
-def load_config() -> dict:
-    """读取本地配置。环境变量只作为最后兜底，不作为主配置来源。"""
-    config = {}
-    search_dirs = [
-        Path.cwd(),
-        Path(__file__).resolve().parents[1],
-        Path.home() / '.config' / 'skills',
-        Path.home() / '.codex',
-    ]
-    for directory in search_dirs:
-        for name in CONFIG_NAMES:
-            path = directory / name
-            if path.exists():
-                config.update(read_json(path))
-    return config
+def script_agent_home() -> Path | None:
+    """从 <Agent Home>/skills/<skill>/scripts 中确定当前 Agent Home。"""
+    skills_dir = Path(__file__).resolve().parents[2]
+    return skills_dir.parent if skills_dir.name == 'skills' else None
 
 
-def save_user_config(blog_root: Path) -> Path:
-    """将机器相关路径保存到用户目录，而不是写入 skill 源码。"""
-    config_path = Path.home() / '.codex' / '.dialogue-refine.json'
+def resolve_agent_home(explicit: str = '') -> Path | None:
+    if explicit:
+        return Path(explicit).expanduser().resolve()
+    return script_agent_home()
+
+
+def load_config(agent_home: Path | None) -> dict:
+    """只读取统一的博客领域配置。"""
+    return read_json(agent_home / BLOG_CONFIG_PATH) if agent_home else {}
+
+
+def save_user_config(agent_home: Path, blog_root: Path) -> Path:
+    """将共享博客配置写入当前 Agent Home。"""
+    config_path = agent_home / BLOG_CONFIG_PATH
     config_path.parent.mkdir(parents=True, exist_ok=True)
     config = read_json(config_path)
+    config['version'] = 1
     config['blogRoot'] = str(blog_root)
     config_path.write_text(json.dumps(config, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     return config_path
@@ -105,14 +102,10 @@ def resolve_blog_root(args, config: dict) -> tuple[Path, str]:
     )
 
 
-def resolve_dialogues_dir(args, config: dict, blog_root: Path) -> tuple[str, str]:
-    """确定对话目录：显式参数 > 兼容配置 > blogRoot 固定结构。"""
+def resolve_dialogues_dir(args, blog_root: Path) -> tuple[str, str]:
+    """确定对话目录：显式参数 > blogRoot 固定结构。"""
     if args.dialogue_dir:
         return args.dialogue_dir, "command line argument --dialogue-dir"
-
-    configured = config.get('dialoguesDir') or config.get('dialogues_dir')
-    if configured:
-        return configured, "config file"
 
     posts_root = blog_root / 'source' / '_posts'
     dialogues = posts_root / 'Dialogues'
@@ -122,10 +115,6 @@ def resolve_dialogues_dir(args, config: dict, blog_root: Path) -> tuple[str, str
     clippings = posts_root / 'Clippings'
     if clippings.exists():
         return str(clippings), "blogRoot-derived Clippings path"
-
-    env_path = os.environ.get('HEXO_CLIPPINGS_DIR')
-    if env_path:
-        return env_path, "fallback environment variable HEXO_CLIPPINGS_DIR"
 
     return "", ""
 
@@ -349,16 +338,20 @@ def main():
     parser.add_argument('--output-dir', help='显式输出目录（默认使用系统临时目录，不写入当前项目）')
     parser.add_argument('--dialogue-dir', help='对话记录目录（优先于配置文件和自动发现）')
     parser.add_argument('--blog-root', help='Hexo 博客根目录；首次使用时结合 --save-config 保存')
+    parser.add_argument('--agent-home', help='当前 Agent Home；从已安装 skill 运行时可自动确定')
     parser.add_argument('--save-config', action='store_true', help='将 blogRoot 保存到用户目录配置')
     
     args = parser.parse_args()
     
     try:
-        config = load_config()
+        agent_home = resolve_agent_home(args.agent_home)
+        config = load_config(agent_home)
         blog_root, root_source = resolve_blog_root(args, config)
         print(f"Using blog root from {root_source}: {blog_root}")
         if args.save_config:
-            config_path = save_user_config(blog_root)
+            if not agent_home:
+                raise ValueError("无法确定 Agent Home，请显式传入 --agent-home")
+            config_path = save_user_config(agent_home, blog_root)
             print(f"Saved blogRoot to user config: {config_path}")
 
         # 确定输入文件
@@ -368,7 +361,7 @@ def main():
                 print(f"[ERROR] 文件不存在: {input_path}")
                 sys.exit(1)
         else:
-            dialogues_dir, source = resolve_dialogues_dir(args, config, blog_root)
+            dialogues_dir, source = resolve_dialogues_dir(args, blog_root)
             
             if not dialogues_dir:
                 print("\n[ERROR] 未指定对话文件，且无法自动确定目录")

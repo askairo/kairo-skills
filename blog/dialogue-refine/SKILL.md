@@ -25,8 +25,9 @@ description: 将 AI 对话记录提炼、脱敏并重构为结构化的 Hexo 博
 
 ## 路径与配置边界
 
-- `blogRoot` 是用户机器相关配置。不得在 `SKILL.md`、脚本默认值或 Git 仓库中写死个人绝对路径。
-- 首次使用且无法自动识别 Hexo 根目录时，先询问用户，再将答案写入用户目录配置。
+- `blogRoot` 是博客领域共享的机器配置，只保存在 `<AGENT_HOME>/local-config/blog/config.json`。
+- 首次使用且无法自动识别 Hexo 根目录时，先询问用户，再写入上述唯一配置文件。
+- 不读取工作目录、Skill 目录、隐藏点文件、通用用户配置目录或环境变量中的旧配置，不提供迁移回退。
 - 技能固定使用 `<blogRoot>/source/_posts` 作为博客文章根目录；其下的 `Dialogues`、`Clippings` 和年份目录属于技能规范，不需要用户逐项配置。
 - 加工稿默认写入系统临时目录。显式输出只允许位于系统临时目录或 `<blogRoot>/source/_posts`，禁止写入无关业务项目。
 - 发布完成后删除不再需要的临时加工稿。
@@ -113,7 +114,7 @@ import tempfile
 from pathlib import Path
 
 # 加载 refine 模块
-sys.path.insert(0, str(Path.home() / '.config' / 'agents' / 'skills' / 'dialogue-refine' / 'scripts'))
+sys.path.insert(0, str(Path('<AGENT_HOME>') / 'skills' / 'dialogue-refine' / 'scripts'))
 from refine import get_latest_dialogue, parse_dialogue
 
 # 1. 从用户本地配置解析 <blogRoot>，再定位对话目录
@@ -182,21 +183,22 @@ python scripts/refine.py --dialogue-dir <dialogues_dir>
 - `--summary <summary>`: 指定文章摘要
 - `--output-dir <dir>`: 指定输出目录；仅允许系统临时目录或 `<blogRoot>/source/_posts`
 - `--blog-root <dir>`: 显式指定 Hexo 博客根目录
+- `--agent-home <dir>`: 从源码目录运行时显式指定当前 Agent Home；安装后可自动确定
 - `--save-config`: 将已校验的 `blogRoot` 写入用户目录配置
 
 ### 配置文件
 
-推荐使用配置文件，而不是环境变量。可选配置文件：
+与 `hexo-push` 共用唯一配置文件：
 
-- 当前工作目录：`dialogue-refine.local.json`
-- 当前 skill 目录：`dialogue-refine.local.json`
-- 用户配置目录：`~/.config/skills/.dialogue-refine.json`
-- Codex 用户目录：`~/.codex/.dialogue-refine.json`
+```text
+<AGENT_HOME>/local-config/blog/config.json
+```
 
 示例：
 
 ```json
 {
+  "version": 1,
   "blogRoot": "<absolute-hexo-blog-root>"
 }
 ```
@@ -204,12 +206,10 @@ python scripts/refine.py --dialogue-dir <dialogues_dir>
 首次使用示例：
 
 ```powershell
-python scripts/refine.py --blog-root <absolute-hexo-blog-root> --save-config
+python scripts/refine.py --agent-home <agent-home> --blog-root <absolute-hexo-blog-root> --save-config
 ```
 
-脚本将配置保存在用户目录，不得提交到 skill 或博客仓库。`dialoguesDir` 仅作为旧配置兼容项。
-
-环境变量 `HEXO_CLIPPINGS_DIR` 仅作为旧流程兜底兼容，不作为主推荐配置方式。
+脚本将配置保存在当前 Agent Home，不得提交到 Skill 或博客仓库。旧配置位置和旧字段不读取、不迁移。
 
 ## 文章结构模板
 
