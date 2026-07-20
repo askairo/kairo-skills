@@ -57,23 +57,56 @@ def load_config() -> dict:
     return config
 
 
-def get_default_dialogues_path() -> str:
-    """智能推断默认对话记录路径"""
-    cwd = Path.cwd()
-    check_dirs = [cwd] + list(cwd.parents)
-    for d in check_dirs:
-        candidate = d / 'source' / '_posts' / 'Dialogues'
-        if candidate.exists():
-            return str(candidate)
-        # 也检查 Clippings 目录
-        candidate = d / 'source' / '_posts' / 'Clippings'
-        if candidate.exists():
-            return str(candidate)
-    return ""
+def save_user_config(blog_root: Path) -> Path:
+    """将机器相关路径保存到用户目录，而不是写入 skill 源码。"""
+    config_path = Path.home() / '.codex' / '.dialogue-refine.json'
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config = read_json(config_path)
+    config['blogRoot'] = str(blog_root)
+    config_path.write_text(json.dumps(config, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    return config_path
 
 
-def resolve_dialogues_dir(args, config: dict) -> tuple[str, str]:
-    """确定对话目录：显式参数 > 配置文件 > 自动发现 > 环境变量兜底。"""
+def auto_detect_blog_root() -> Path | None:
+    """仅从当前目录向上识别 Hexo 根目录，不使用个人路径默认值。"""
+    cwd = Path.cwd().resolve()
+    for directory in [cwd] + list(cwd.parents):
+        if (directory / '_config.yml').is_file() and (directory / 'source' / '_posts').is_dir():
+            return directory
+    return None
+
+
+def validate_blog_root(path: Path) -> Path:
+    """校验 Hexo 博客根目录。"""
+    root = path.expanduser().resolve()
+    required = [root / '_config.yml', root / 'source' / '_posts', root / '.git']
+    missing = [str(item) for item in required if not item.exists()]
+    if missing:
+        raise FileNotFoundError(f"无效的 Hexo 博客根目录 {root}，缺少: {', '.join(missing)}")
+    return root
+
+
+def resolve_blog_root(args, config: dict) -> tuple[Path, str]:
+    """确定博客根目录：显式参数 > 用户配置 > 自动发现。"""
+    if args.blog_root:
+        return validate_blog_root(Path(args.blog_root)), 'command line argument --blog-root'
+
+    configured = config.get('blogRoot') or config.get('blog_root')
+    if configured:
+        return validate_blog_root(Path(configured)), 'config file blogRoot'
+
+    detected = auto_detect_blog_root()
+    if detected:
+        return validate_blog_root(detected), 'auto-detected Hexo root'
+
+    raise FileNotFoundError(
+        "未配置 blogRoot。请先询问用户的 Hexo 博客根目录，再使用 "
+        "--blog-root <path> --save-config 保存到用户配置。"
+    )
+
+
+def resolve_dialogues_dir(args, config: dict, blog_root: Path) -> tuple[str, str]:
+    """确定对话目录：显式参数 > 兼容配置 > blogRoot 固定结构。"""
     if args.dialogue_dir:
         return args.dialogue_dir, "command line argument --dialogue-dir"
 
@@ -81,15 +114,34 @@ def resolve_dialogues_dir(args, config: dict) -> tuple[str, str]:
     if configured:
         return configured, "config file"
 
-    detected = get_default_dialogues_path()
-    if detected:
-        return detected, "auto-detected path"
+    posts_root = blog_root / 'source' / '_posts'
+    dialogues = posts_root / 'Dialogues'
+    if dialogues.exists():
+        return str(dialogues), "blogRoot-derived Dialogues path"
+
+    clippings = posts_root / 'Clippings'
+    if clippings.exists():
+        return str(clippings), "blogRoot-derived Clippings path"
 
     env_path = os.environ.get('HEXO_CLIPPINGS_DIR')
     if env_path:
         return env_path, "fallback environment variable HEXO_CLIPPINGS_DIR"
 
     return "", ""
+
+
+def validate_output_dir(path: Path, blog_root: Path) -> Path:
+    """只允许将加工稿写入系统临时目录或配置博客的 posts 目录。"""
+    output_dir = path.expanduser().resolve()
+    allowed_roots = [
+        Path(tempfile.gettempdir()).resolve(),
+        (blog_root / 'source' / '_posts').resolve(),
+    ]
+    if not any(output_dir == root or root in output_dir.parents for root in allowed_roots):
+        raise ValueError(
+            f"输出目录必须位于系统临时目录或 {blog_root / 'source' / '_posts'} 内，实际为 {output_dir}"
+        )
+    return output_dir
 
 
 def get_latest_dialogue(dialogues_dir: str) -> Path:
@@ -264,20 +316,21 @@ categories:
     return hexo_content
 
 
-def get_output_filename(input_file: Path, now: datetime = None) -> Path:
-    """生成输出文件名，在原文目录下生成 yyyyMMdd-refined.md"""
+def get_output_filename(now: datetime = None) -> Path:
+    """在系统临时目录生成加工稿，避免污染当前业务项目。"""
     if now is None:
         now = datetime.now()
     
     filename = now.strftime('%Y%m%d') + '-refined.md'
-    output_path = input_file.parent / filename
+    output_dir = Path(tempfile.gettempdir()) / 'dialogue-refine'
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / filename
     
     # 如果文件已存在，添加序号
     counter = 1
-    original_output = output_path
     while output_path.exists():
         filename = now.strftime('%Y%m%d') + f'-refined-{counter}.md'
-        output_path = input_file.parent / filename
+        output_path = output_dir / filename
         counter += 1
     
     return output_path
@@ -293,13 +346,20 @@ def main():
     parser.add_argument('--category', help='文章分类')
     parser.add_argument('--tags', help='文章标签，逗号分隔')
     parser.add_argument('--summary', help='文章摘要')
-    parser.add_argument('--output-dir', help='输出目录（默认：与原文同目录）')
+    parser.add_argument('--output-dir', help='显式输出目录（默认使用系统临时目录，不写入当前项目）')
     parser.add_argument('--dialogue-dir', help='对话记录目录（优先于配置文件和自动发现）')
+    parser.add_argument('--blog-root', help='Hexo 博客根目录；首次使用时结合 --save-config 保存')
+    parser.add_argument('--save-config', action='store_true', help='将 blogRoot 保存到用户目录配置')
     
     args = parser.parse_args()
     
     try:
         config = load_config()
+        blog_root, root_source = resolve_blog_root(args, config)
+        print(f"Using blog root from {root_source}: {blog_root}")
+        if args.save_config:
+            config_path = save_user_config(blog_root)
+            print(f"Saved blogRoot to user config: {config_path}")
 
         # 确定输入文件
         if args.dialogue_file:
@@ -308,15 +368,14 @@ def main():
                 print(f"[ERROR] 文件不存在: {input_path}")
                 sys.exit(1)
         else:
-            dialogues_dir, source = resolve_dialogues_dir(args, config)
+            dialogues_dir, source = resolve_dialogues_dir(args, config, blog_root)
             
             if not dialogues_dir:
                 print("\n[ERROR] 未指定对话文件，且无法自动确定目录")
                 print("\n请通过以下方式之一指定：")
                 print("  1. 传递文件路径: python refine.py <dialogue_file>")
                 print("  2. 传递目录: python refine.py --dialogue-dir <dialogues_dir>")
-                print("  3. 在配置文件 dialogue-refine.local.json 中配置 dialoguesDir")
-                print("  4. 在 Hexo 博客根目录下运行此脚本")
+                print("  3. 配置 blogRoot，并在博客目录中创建 Dialogues 或 Clippings")
                 sys.exit(1)
             
             if not Path(dialogues_dir).exists():
@@ -372,11 +431,11 @@ def main():
         
         # 确定输出路径
         if args.output_dir:
-            output_dir = Path(args.output_dir)
+            output_dir = validate_output_dir(Path(args.output_dir), blog_root)
             output_dir.mkdir(parents=True, exist_ok=True)
             output_file = output_dir / (datetime.now().strftime('%Y%m%d') + '-refined.md')
         else:
-            output_file = get_output_filename(input_path)
+            output_file = get_output_filename()
         
         # 写入文件
         with open(output_file, 'w', encoding='utf-8') as f:

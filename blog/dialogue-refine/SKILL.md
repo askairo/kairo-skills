@@ -1,6 +1,6 @@
 ---
 name: dialogue-refine
-description: 将 AI 对话记录提炼、重构为结构化的 Hexo 博客文章。支持主题聚焦、内容筛选、结构重组、格式规范化，输出符合 Markdown 和 Hexo 格式要求的高质量文章。
+description: 将 AI 对话记录提炼、脱敏并重构为结构化的 Hexo 博客加工稿。用于从对话生成博客文章、隐藏业务敏感细节、依据用户本机 blogRoot 定位素材，并将临时加工稿安全交给 hexo-push 发布。
 ---
 
 # Dialogue Refine - AI 对话文章提炼工具
@@ -19,9 +19,17 @@ description: 将 AI 对话记录提炼、重构为结构化的 Hexo 博客文章
    - 优化代码块、列表、引用等格式
    - 生成符合 Hexo 要求的 front matter
 6. **智能分类**：自动从已有分类中选择（`AI`、`工作`、`健康`、`杂谈`）
-7. **输出生成**：在原文目录下生成提炼后的 Hexo 格式副本
+7. **安全输出**：加工稿默认写入系统临时目录，正式文章只由 `hexo-push` 写入配置博客
 
-> **注意**：本工具仅负责文章提炼和格式化输出，发布操作请使用 `hexo-push` skill 处理。
+> **注意**：本工具仅负责文章提炼和格式化。不要在当前业务项目中保存博客加工稿；发布操作交给 `hexo-push`。
+
+## 路径与配置边界
+
+- `blogRoot` 是用户机器相关配置。不得在 `SKILL.md`、脚本默认值或 Git 仓库中写死个人绝对路径。
+- 首次使用且无法自动识别 Hexo 根目录时，先询问用户，再将答案写入用户目录配置。
+- 技能固定使用 `<blogRoot>/source/_posts` 作为博客文章根目录；其下的 `Dialogues`、`Clippings` 和年份目录属于技能规范，不需要用户逐项配置。
+- 加工稿默认写入系统临时目录。显式输出只允许位于系统临时目录或 `<blogRoot>/source/_posts`，禁止写入无关业务项目。
+- 发布完成后删除不再需要的临时加工稿。
 
 ## 工作流程
 
@@ -30,7 +38,8 @@ description: 将 AI 对话记录提炼、重构为结构化的 Hexo 博客文章
 1. **读取对话文件**
    - 获取最新的对话记录文件
    - 支持 `.md`、`.txt` 格式
-   - 路径优先级：自然语言/显式路径 > 本地配置文件 > 自动发现 > 环境变量兜底
+   - 博客根目录优先级：自然语言/`--blog-root` > 用户本地配置 > 从当前 Hexo 目录自动发现
+   - 对话输入可由显式文件或目录指定；未指定时依次检查 `<blogRoot>/source/_posts/Dialogues` 和 `Clippings`
 
 2. **分析对话内容**
    - 识别核心主题和讨论目标
@@ -62,9 +71,10 @@ description: 将 AI 对话记录提炼、重构为结构化的 Hexo 博客文章
    - 调整图片、链接等引用
    - 添加 `<!--more-->` 分隔符
 
-7. **输出文件**
+7. **输出加工稿**
    - 文件名格式：`yyyyMMdd-refined.md`
-   - 输出目录：与原文相同的目录
+   - 默认输出：系统临时目录下的 `dialogue-refine` 子目录
+   - 正式文章路径由 `hexo-push` 生成，不由当前工作目录决定
 
 > 生成的文件可直接使用 `hexo-push` skill 进行发布。
 
@@ -106,8 +116,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path.home() / '.config' / 'agents' / 'skills' / 'dialogue-refine' / 'scripts'))
 from refine import get_latest_dialogue, parse_dialogue
 
-# 1. 确定对话目录（优先级：显式路径 > 配置文件 > 自动推断 > 环境变量兜底）
-dialogues_dir = Path('source/_posts/Dialogues').resolve()
+# 1. 从用户本地配置解析 <blogRoot>，再定位对话目录
+dialogues_dir = Path('<blogRoot>') / 'source' / '_posts' / 'Dialogues'
 
 # 2. 读取最新对话文件
 latest = get_latest_dialogue(str(dialogues_dir))
@@ -170,7 +180,9 @@ python scripts/refine.py --dialogue-dir <dialogues_dir>
 - `--category <cat>`: 指定分类
 - `--tags <tag1,tag2>`: 指定标签
 - `--summary <summary>`: 指定文章摘要
-- `--output-dir <dir>`: 指定输出目录（默认：与原文同目录）
+- `--output-dir <dir>`: 指定输出目录；仅允许系统临时目录或 `<blogRoot>/source/_posts`
+- `--blog-root <dir>`: 显式指定 Hexo 博客根目录
+- `--save-config`: 将已校验的 `blogRoot` 写入用户目录配置
 
 ### 配置文件
 
@@ -185,9 +197,17 @@ python scripts/refine.py --dialogue-dir <dialogues_dir>
 
 ```json
 {
-  "dialoguesDir": "D:\\private-vs-space\\hexo-blog\\source\\_posts\\Dialogues"
+  "blogRoot": "<absolute-hexo-blog-root>"
 }
 ```
+
+首次使用示例：
+
+```powershell
+python scripts/refine.py --blog-root <absolute-hexo-blog-root> --save-config
+```
+
+脚本将配置保存在用户目录，不得提交到 skill 或博客仓库。`dialoguesDir` 仅作为旧配置兼容项。
 
 环境变量 `HEXO_CLIPPINGS_DIR` 仅作为旧流程兜底兼容，不作为主推荐配置方式。
 
@@ -247,6 +267,9 @@ categories:
 - ❌ 与主题无关的闲聊
 - ❌ 过于口语化的填充词
 - ❌ 未完成的思路和跑题内容
+- ❌ 真实项目名、业务模块名、类名、任务名、服务器地址、账号密钥和生产参数
+
+生产问题复盘默认使用通用问题、抽象角色和符号参数替代敏感细节；除非用户明确授权，不粘贴业务代码。
 
 ### 转换方式
 - 对话形式 → 第三人称叙述
@@ -272,16 +295,15 @@ categories:
 ## 完整使用流程示例
 
 ```
-1. 准备 AI 对话记录，保存到配置文件或显式路径指定的目录
-   例如：D:\private-vs-space\hexo-blog\source\_posts\Dialogues\20260409-ai-chat.md
+1. 准备 AI 对话记录，通过显式文件传入，或放到 `<blogRoot>/source/_posts/Dialogues`
 
 2. 运行 dialogue-refine skill
    - 读取最新对话文件
    - Agent 分析并提炼内容
    - 生成结构化文章
-   - 输出：20260409-refined.md（在同目录下）
+   - 输出：系统临时目录中的 `20260409-refined.md`
 
 3. 使用 hexo-push skill 发布
-   - 将 refined 文件复制到 Clippings 目录
-   - 运行 hexo-push 进行发布
+   - 通过 `--content-file` 将临时加工稿交给 `hexo-push`
+   - `hexo-push` 将正式文章写入 `<blogRoot>/source/_posts/<yyyy>/<yyyyMMdd>.md`
 ```
