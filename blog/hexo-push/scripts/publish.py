@@ -13,6 +13,7 @@ import re
 import subprocess
 import time
 import json
+import shutil
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -459,6 +460,23 @@ def run_command_with_retries(cmd: list[str], cwd: str | None = None, retries: in
     return last
 
 
+def resolve_hexo_command(blog_root: Path) -> str:
+    """Resolve Hexo reliably on Windows and Unix-like systems."""
+    local_name = 'hexo.cmd' if os.name == 'nt' else 'hexo'
+    local_hexo = blog_root / 'node_modules' / '.bin' / local_name
+    if local_hexo.is_file():
+        return str(local_hexo)
+
+    for command in ([local_name, 'hexo'] if os.name == 'nt' else ['hexo']):
+        resolved = shutil.which(command)
+        if resolved:
+            return resolved
+
+    raise FileNotFoundError(
+        f"找不到 Hexo CLI。请先在 {blog_root} 安装依赖，确保 node_modules/.bin/{local_name} 存在。"
+    )
+
+
 def resolve_blog_root(options: dict, positional_args: list[str], config: dict) -> tuple[Path, str]:
     """Resolve blog root from explicit input, local config, legacy input, or safe auto-detection."""
     if options['blog_root']:
@@ -768,19 +786,21 @@ def main():
             print("\n[7/7] Skipping Hexo deploy (--skip-deploy)")
         else:
             print("\n[7/7] Executing Hexo deploy...")
-            rc, out, err = run_command(['hexo', 'clean'], cwd=str(blog_root))
-            print("  [OK] hexo clean" if rc == 0 else f"  [WARN] hexo clean: {err}")
+            hexo_command = resolve_hexo_command(blog_root)
+            print(f"  Hexo CLI: {hexo_command}")
+            rc, out, err = run_command([hexo_command, 'clean'], cwd=str(blog_root))
+            if rc != 0:
+                raise RuntimeError(f"hexo clean failed: {err or out}")
+            print("  [OK] hexo clean")
 
             rc, out, err = run_command_with_retries(
-                ['hexo', 'deploy'],
+                [hexo_command, 'deploy'],
                 cwd=str(blog_root),
                 retries=options['deploy_retries'],
             )
             if rc != 0:
-                print(f"  [FAIL] hexo deploy: {err}")
-                print(f"\nPlease manually run: cd {blog_root} && hexo deploy")
-            else:
-                print("  [OK] hexo deploy")
+                raise RuntimeError(f"hexo deploy failed: {err or out}")
+            print("  [OK] hexo deploy")
 
         print("\nDone!")
         print(f"  Article {'updated' if is_update else 'published'}: {output_file}")

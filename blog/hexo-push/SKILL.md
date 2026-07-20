@@ -81,6 +81,8 @@ python <agent-skills-dir>\hexo-push\scripts\publish.py `
 - `--skip-deploy`：提交推送源码，但不执行 Hexo deploy。
 - `--deploy-retries <n>`：Hexo deploy 失败时重试次数，默认 2。
 
+部署时优先使用 `<blogRoot>/node_modules/.bin/hexo.cmd`（Windows）或本地 `hexo`，再回退到系统 PATH。找不到 CLI 或部署失败时必须返回失败，不能把未部署报告为成功。
+
 ## 路径解析
 
 `blogRoot` 优先级：自然语言/`--blog-root` > 用户本地配置 > 自动推断当前 Hexo 根目录。旧版 `clippingsDir` 和环境变量仅用于迁移兼容，不作为新配置方式；无法确定时必须询问用户，不得猜测个人路径。
