@@ -35,9 +35,20 @@ except AttributeError:
 DEFAULT_REF = "main"
 SOURCE_META = ".skill-source.json"
 PREFERRED_CONFIG_PATH = Path("local-config") / "skills-loop" / "config.json"
+SKILL_BACKUPS_DIR = "skill-backups"
 EXCLUDE_DIRS = {".git", "__pycache__", ".venv", "node_modules"}
 EXCLUDE_SUFFIXES = {".pyc", ".pyo"}
 BACKUP_PATTERN = re.compile(r"^(.+)\.backup\.\d{8}_\d{6}$")
+LEGACY_CONFIG_PATTERNS = (
+    (re.compile(r"[A-Za-z0-9_-]+\.local\.json", re.IGNORECASE), "legacy *.local.json config"),
+    (
+        re.compile(r"(?<![A-Za-z0-9_-])\.(?!skill-source\.json)[A-Za-z0-9_-]+\.json", re.IGNORECASE),
+        "legacy hidden JSON config",
+    ),
+    (re.compile(r"~[/\\]\.config[/\\]skills", re.IGNORECASE), "legacy ~/.config/skills directory"),
+    (re.compile(r"CONFIG_NAMES\s*=", re.IGNORECASE), "multi-location CONFIG_NAMES fallback"),
+)
+CONFIG_TEXT_SUFFIXES = {".md", ".py", ".json", ".yaml", ".yml", ".toml"}
 
 # Known agent home directories, checked in priority order.
 # Each entry is (directory_name, agent_label).
@@ -411,8 +422,19 @@ def copy_tree(source: Path, target: Path):
 
 
 def backup_dir(path: Path) -> Path:
+    """Back up an installed skill outside the active skills discovery tree."""
+    agent_dir = path.parent
+    agent_home = agent_home_from_skills_dir(agent_dir)
+    if not agent_home:
+        raise RuntimeError(f"Cannot derive Agent Home from skills directory: {agent_dir}")
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup = path.with_name(f"{path.name}.backup.{stamp}")
+    backup_root = agent_home / SKILL_BACKUPS_DIR / path.name
+    backup = backup_root / stamp
+    counter = 1
+    while backup.exists():
+        backup = backup_root / f"{stamp}-{counter}"
+        counter += 1
+    backup.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(path, backup)
     return backup
 
@@ -492,19 +514,17 @@ def list_installed(args, config: dict):
 
 def list_backup_dirs(agent_dir: Path, skill: str | None = None) -> list[Path]:
     backups: list[Path] = []
-    if not agent_dir.exists():
+    agent_home = agent_home_from_skills_dir(agent_dir)
+    if not agent_home:
+        return backups
+    root = agent_home / SKILL_BACKUPS_DIR
+    if not root.exists():
         return backups
 
-    for path in agent_dir.iterdir():
-        if not path.is_dir():
-            continue
-        match = BACKUP_PATTERN.match(path.name)
-        if not match:
-            continue
-        base_name = match.group(1)
-        if skill and base_name != skill:
-            continue
-        backups.append(path)
+    skill_roots = [root / skill] if skill else [path for path in root.iterdir() if path.is_dir()]
+    for skill_root in skill_roots:
+        if skill_root.exists():
+            backups.extend(path for path in skill_root.iterdir() if path.is_dir())
 
     return sorted(backups)
 
@@ -516,9 +536,9 @@ def cleanup_backups(args, config: dict):
         print("No backup skill directories found.")
         return
 
-    print(f"Agent skills dir: {agent_dir}")
+    print(f"Skill backups root: {agent_dir.parent / SKILL_BACKUPS_DIR}")
     for backup in backups:
-        print(f"- {backup.name}")
+        print(f"- {backup.relative_to(agent_dir.parent / SKILL_BACKUPS_DIR)}")
 
     if args.dry_run:
         print("[DRY-RUN] Would remove backup directories above.")
@@ -531,9 +551,44 @@ def cleanup_backups(args, config: dict):
     print(f"[OK] Removed {removed} backup director{'y' if removed == 1 else 'ies'}.")
 
 
+def validate_local_config_model(skill_dir: Path):
+    """Enforce one canonical Agent-local config model for owned skills."""
+    text_parts = []
+    for path in skill_dir.rglob("*"):
+        if not path.is_file() or path.suffix.lower() not in CONFIG_TEXT_SUFFIXES:
+            continue
+        if is_ignored_path(path.relative_to(skill_dir)):
+            continue
+        if read_skill_name(skill_dir) == "skills-loop" and path.name == "sync.py":
+            continue
+        text_parts.append(path.read_text(encoding="utf-8", errors="ignore"))
+
+    combined = "\n".join(text_parts)
+    violations = [label for pattern, label in LEGACY_CONFIG_PATTERNS if pattern.search(combined)]
+    if violations:
+        details = ", ".join(sorted(set(violations)))
+        raise ValueError(
+            "Skill uses forbidden legacy local-config locations or fallback names: " + details
+        )
+
+    uses_local_config = any(
+        marker in combined
+        for marker in ("def load_config(", "def save_user_config(", "Agent 本地配置", "Agent-local config")
+    )
+    if uses_local_config:
+        if "local-config" not in combined or "config.json" not in combined:
+            raise ValueError(
+                "Skill with Agent-local config must use "
+                "<AGENT_HOME>/local-config/<skill-or-domain>/config.json"
+            )
+    print("  [OK] local-config model")
+
+
 def validate_skill(skill_dir: Path, dry_run: bool = False):
     if not is_skill_dir(skill_dir):
         raise FileNotFoundError(f"Missing SKILL.md: {skill_dir}")
+
+    validate_local_config_model(skill_dir)
 
     for py_file in skill_dir.rglob("*.py"):
         if "__pycache__" in py_file.parts:
