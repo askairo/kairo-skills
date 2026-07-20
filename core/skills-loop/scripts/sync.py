@@ -42,7 +42,10 @@ BACKUP_PATTERN = re.compile(r"^(.+)\.backup\.\d{8}_\d{6}$")
 LEGACY_CONFIG_PATTERNS = (
     (re.compile(r"[A-Za-z0-9_-]+\.local\.json", re.IGNORECASE), "legacy *.local.json config"),
     (
-        re.compile(r"(?<![A-Za-z0-9_-])\.(?!skill-source\.json)[A-Za-z0-9_-]+\.json", re.IGNORECASE),
+        re.compile(
+            r"(?<![A-Za-z0-9_.-])\.(?!skill-source\.json\b)[A-Za-z0-9_-]+\.json\b",
+            re.IGNORECASE,
+        ),
         "legacy hidden JSON config",
     ),
     (re.compile(r"~[/\\]\.config[/\\]skills", re.IGNORECASE), "legacy ~/.config/skills directory"),
