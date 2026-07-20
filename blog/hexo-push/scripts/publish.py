@@ -57,6 +57,46 @@ def load_config() -> dict:
     return config
 
 
+def save_user_config(blog_root: Path) -> Path:
+    """Persist machine-specific configuration outside the skill source tree."""
+    config_path = Path.home() / '.codex' / '.hexo-push.json'
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config = read_json(config_path)
+    config['blogRoot'] = str(blog_root)
+    config_path.write_text(json.dumps(config, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    return config_path
+
+
+def auto_detect_blog_root() -> Path | None:
+    """Find the nearest Hexo root without assuming a user-specific absolute path."""
+    cwd = Path.cwd().resolve()
+    for directory in [cwd] + list(cwd.parents):
+        if (directory / '_config.yml').is_file() and (directory / 'source' / '_posts').is_dir():
+            return directory
+    return None
+
+
+def validate_blog_root(path: Path) -> Path:
+    """Validate the configured Hexo root before any file or Git operation."""
+    root = path.expanduser().resolve()
+    required = [root / '_config.yml', root / 'source' / '_posts', root / '.git']
+    missing = [str(item) for item in required if not item.exists()]
+    if missing:
+        raise FileNotFoundError(f"无效的 Hexo 博客根目录 {root}，缺少: {', '.join(missing)}")
+    return root
+
+
+def ensure_within(path: Path, parent: Path, label: str) -> Path:
+    """Reject paths that escape the configured blog boundary."""
+    resolved = path.expanduser().resolve()
+    parent_resolved = parent.expanduser().resolve()
+    try:
+        resolved.relative_to(parent_resolved)
+    except ValueError as exc:
+        raise ValueError(f"{label} 必须位于 {parent_resolved} 内，实际为 {resolved}") from exc
+    return resolved
+
+
 def get_latest_file(clippings_dir: str) -> Path:
     """获取 Clippings 目录下最新修改的 Markdown 文件。"""
     clips_path = Path(clippings_dir)
@@ -419,34 +459,45 @@ def run_command_with_retries(cmd: list[str], cwd: str | None = None, retries: in
     return last
 
 
-def get_auto_clippings_path() -> str:
-    """Auto-detect Clippings path from current Hexo root."""
-    cwd = Path.cwd()
-    for d in [cwd] + list(cwd.parents):
-        candidate = d / 'source' / '_posts' / 'Clippings'
-        if candidate.exists():
-            return str(candidate)
-    return ""
+def resolve_blog_root(options: dict, positional_args: list[str], config: dict) -> tuple[Path, str]:
+    """Resolve blog root from explicit input, local config, legacy input, or safe auto-detection."""
+    if options['blog_root']:
+        return validate_blog_root(Path(options['blog_root'])), 'command line argument --blog-root'
+
+    configured = config.get('blogRoot') or config.get('blog_root')
+    if configured:
+        return validate_blog_root(Path(configured)), 'config file blogRoot'
+
+    legacy_clippings = positional_args[0] if positional_args else (
+        config.get('clippingsDir') or config.get('clippings_dir') or os.environ.get('HEXO_CLIPPINGS_DIR')
+    )
+    if legacy_clippings:
+        clips = Path(legacy_clippings).expanduser().resolve()
+        return validate_blog_root(clips.parent.parent.parent), 'legacy Clippings path'
+
+    detected = auto_detect_blog_root()
+    if detected:
+        return validate_blog_root(detected), 'auto-detected Hexo root'
+
+    raise FileNotFoundError(
+        "未配置 blogRoot。请先询问用户的 Hexo 博客根目录，再使用 "
+        "--blog-root <path> --save-config 保存到用户配置。"
+    )
 
 
-def resolve_clippings_dir(positional_args: list[str], config: dict) -> tuple[str, str]:
-    """Resolve Clippings path: explicit arg > config > auto-detect > env fallback > default."""
+def resolve_clippings_dir(blog_root: Path, positional_args: list[str], config: dict) -> tuple[Path, str]:
+    """Resolve Clippings inside the configured blog posts tree."""
+    posts_root = blog_root / 'source' / '_posts'
     if positional_args:
-        return positional_args[0], 'command line argument'
+        clips = ensure_within(Path(positional_args[0]), posts_root, 'Clippings 目录')
+        return clips, 'command line argument'
 
     configured = config.get('clippingsDir') or config.get('clippings_dir')
     if configured:
-        return configured, 'config file'
+        clips = ensure_within(Path(configured), posts_root, 'Clippings 目录')
+        return clips, 'legacy config clippingsDir'
 
-    detected = get_auto_clippings_path()
-    if detected:
-        return detected, 'auto-detected path'
-
-    env_path = os.environ.get('HEXO_CLIPPINGS_DIR')
-    if env_path:
-        return env_path, 'fallback environment variable HEXO_CLIPPINGS_DIR'
-
-    return r"D:\private-vs-space\hexo-blog\source\_posts\Clippings", 'default path'
+    return posts_root / 'Clippings', 'blogRoot-derived path'
 
 
 def read_optional_file(path: str) -> str:
@@ -474,6 +525,8 @@ def parse_args(argv: list[str]) -> tuple[dict, list[str]]:
         'deploy_retries': 2,
         'skip_deploy': False,
         'skip_git': False,
+        'blog_root': '',
+        'save_config': False,
     }
     positional = []
 
@@ -525,6 +578,15 @@ def parse_args(argv: list[str]) -> tuple[dict, list[str]]:
         elif arg == '--skip-git':
             options['skip_git'] = True
             i += 1
+        elif arg == '--blog-root' and i + 1 < len(argv):
+            options['blog_root'] = argv[i + 1]
+            i += 2
+        elif arg.startswith('--blog-root='):
+            options['blog_root'] = arg.split('=', 1)[1]
+            i += 1
+        elif arg == '--save-config':
+            options['save_config'] = True
+            i += 1
         elif arg == '--deploy-retries' and i + 1 < len(argv):
             options['deploy_retries'] = int(argv[i + 1])
             i += 2
@@ -568,8 +630,15 @@ def print_publish_summary(output_file: Path, metadata: dict, category: str, is_u
 def main():
     options, positional_args = parse_args(sys.argv[1:])
     config = load_config()
-    clippings_dir, path_source = resolve_clippings_dir(positional_args, config)
+    blog_root, root_source = resolve_blog_root(options, positional_args, config)
+    clippings_path, path_source = resolve_clippings_dir(blog_root, positional_args, config)
+    clippings_dir = str(clippings_path)
 
+    if options['save_config']:
+        config_path = save_user_config(blog_root)
+        print(f"Saved blogRoot to user config: {config_path}")
+
+    print(f"Using blog root from {root_source}: {blog_root}")
     print(f"Using path from {path_source}: {clippings_dir}")
     if options['description']:
         print(f"Using custom description ({len(options['description'])} chars)")
@@ -578,14 +647,18 @@ def main():
     if options['tags']:
         print(f"Using Agent-confirmed tags: {', '.join(options['tags'])}")
 
-    if not Path(clippings_dir).exists():
+    if not Path(clippings_dir).exists() and not options['content_file']:
         print(f"\n[ERROR] Clippings directory does not exist: {clippings_dir}")
         sys.exit(1)
 
     try:
-        print(f"\n[1/7] Reading Clippings directory: {clippings_dir}")
-        latest_file = get_latest_file(clippings_dir)
-        print(f"  Latest file: {latest_file.name}")
+        if options['content_file']:
+            latest_file = None
+            print(f"\n[1/7] Using Agent content file; Clippings directory is not required")
+        else:
+            print(f"\n[1/7] Reading Clippings directory: {clippings_dir}")
+            latest_file = get_latest_file(clippings_dir)
+            print(f"  Latest file: {latest_file.name}")
 
         print("\n[2/7] Parsing file...")
         if options['content_file']:
@@ -593,6 +666,7 @@ def main():
             content = content_path.read_text(encoding='utf-8')
             print(f"  Content override: {content_path}")
         else:
+            assert latest_file is not None
             content = latest_file.read_text(encoding='utf-8')
 
         metadata = parse_front_matter(content)
@@ -607,8 +681,7 @@ def main():
         print(f"  Tags: {', '.join(metadata.get('tags', []))}")
 
         print("\n[3/7] Determining output path...")
-        clips_path = Path(clippings_dir)
-        posts_path = clips_path.parent
+        posts_path = blog_root / 'source' / '_posts'
         title = metadata.get('title', '')
         source = metadata.get('source', '')
         earliest_file, duplicate_files = find_existing_posts(posts_path, title, source)
@@ -660,18 +733,24 @@ def main():
         output_file.write_text(hexo_content, encoding='utf-8', newline='\n')
         print(f"  [OK] File {'updated' if is_update else 'generated'}")
 
-        blog_root = posts_path.parent.parent
         if options['skip_git']:
             print("\n[6/7] Skipping Git operations (--skip-git)")
         else:
             print("\n[6/7] Executing Git operations...")
             print(f"  Blog root: {blog_root}")
-            rc, out, err = run_command(['git', 'add', '.'], cwd=str(blog_root))
-            print("  [OK] git add" if rc == 0 else f"  [WARN] git add: {err}")
+            changed_files = [output_file, *duplicate_files]
+            relative_files = [str(path.resolve().relative_to(blog_root)) for path in changed_files]
+            rc, out, err = run_command(['git', 'add', '--', *relative_files], cwd=str(blog_root))
+            if rc != 0:
+                raise RuntimeError(f"git add failed: {err or out}")
+            print(f"  [OK] git add explicit files: {', '.join(relative_files)}")
 
             commit_prefix = 'update' if is_update else 'add'
             commit_msg = f"{commit_prefix}: {metadata.get('title', 'New post')[:50]}"
-            rc, out, err = run_command(['git', 'commit', '-m', commit_msg], cwd=str(blog_root))
+            rc, out, err = run_command(
+                ['git', 'commit', '--only', '-m', commit_msg, '--', *relative_files],
+                cwd=str(blog_root),
+            )
             if rc != 0:
                 if 'nothing to commit' in err.lower() or 'nothing to commit' in out.lower():
                     print("  [INFO] Nothing to commit")
@@ -681,7 +760,9 @@ def main():
                 print(f"  [OK] git commit: {commit_msg}")
 
             rc, out, err = run_command(['git', 'push'], cwd=str(blog_root))
-            print("  [OK] git push" if rc == 0 else f"  [WARN] git push: {err}")
+            if rc != 0:
+                raise RuntimeError(f"git push failed: {err or out}")
+            print("  [OK] git push")
 
         if options['skip_deploy']:
             print("\n[7/7] Skipping Hexo deploy (--skip-deploy)")
