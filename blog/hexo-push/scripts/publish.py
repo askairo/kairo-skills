@@ -25,10 +25,7 @@ except AttributeError:
 
 
 ALLOWED_CATEGORIES = ["AI", "工作", "健康", "杂谈"]
-CONFIG_NAMES = (
-    "hexo-push.local.json",
-    ".hexo-push.json",
-)
+BLOG_CONFIG_PATH = Path("local-config") / "blog" / "config.json"
 
 
 def read_json(path: Path) -> dict:
@@ -41,28 +38,29 @@ def read_json(path: Path) -> dict:
         return {}
 
 
-def load_config() -> dict:
-    """Load stable local config. Environment variables are fallback only."""
-    config = {}
-    search_dirs = [
-        Path.cwd(),
-        Path(__file__).resolve().parents[1],
-        Path.home() / '.config' / 'skills',
-        Path.home() / '.codex',
-    ]
-    for directory in search_dirs:
-        for name in CONFIG_NAMES:
-            path = directory / name
-            if path.exists():
-                config.update(read_json(path))
-    return config
+def script_agent_home() -> Path | None:
+    """Resolve Agent Home from <Agent Home>/skills/<skill>/scripts."""
+    skills_dir = Path(__file__).resolve().parents[2]
+    return skills_dir.parent if skills_dir.name == 'skills' else None
 
 
-def save_user_config(blog_root: Path) -> Path:
-    """Persist machine-specific configuration outside the skill source tree."""
-    config_path = Path.home() / '.codex' / '.hexo-push.json'
+def resolve_agent_home(explicit: str = '') -> Path | None:
+    if explicit:
+        return Path(explicit).expanduser().resolve()
+    return script_agent_home()
+
+
+def load_config(agent_home: Path | None) -> dict:
+    """Load only the canonical shared blog config."""
+    return read_json(agent_home / BLOG_CONFIG_PATH) if agent_home else {}
+
+
+def save_user_config(agent_home: Path, blog_root: Path) -> Path:
+    """Persist shared blog configuration under the current Agent Home."""
+    config_path = agent_home / BLOG_CONFIG_PATH
     config_path.parent.mkdir(parents=True, exist_ok=True)
     config = read_json(config_path)
+    config['version'] = 1
     config['blogRoot'] = str(blog_root)
     config_path.write_text(json.dumps(config, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     return config_path
@@ -477,21 +475,14 @@ def resolve_hexo_command(blog_root: Path) -> str:
     )
 
 
-def resolve_blog_root(options: dict, positional_args: list[str], config: dict) -> tuple[Path, str]:
-    """Resolve blog root from explicit input, local config, legacy input, or safe auto-detection."""
+def resolve_blog_root(options: dict, config: dict) -> tuple[Path, str]:
+    """Resolve blog root from explicit input, canonical config, or safe auto-detection."""
     if options['blog_root']:
         return validate_blog_root(Path(options['blog_root'])), 'command line argument --blog-root'
 
     configured = config.get('blogRoot') or config.get('blog_root')
     if configured:
         return validate_blog_root(Path(configured)), 'config file blogRoot'
-
-    legacy_clippings = positional_args[0] if positional_args else (
-        config.get('clippingsDir') or config.get('clippings_dir') or os.environ.get('HEXO_CLIPPINGS_DIR')
-    )
-    if legacy_clippings:
-        clips = Path(legacy_clippings).expanduser().resolve()
-        return validate_blog_root(clips.parent.parent.parent), 'legacy Clippings path'
 
     detected = auto_detect_blog_root()
     if detected:
@@ -503,18 +494,9 @@ def resolve_blog_root(options: dict, positional_args: list[str], config: dict) -
     )
 
 
-def resolve_clippings_dir(blog_root: Path, positional_args: list[str], config: dict) -> tuple[Path, str]:
-    """Resolve Clippings inside the configured blog posts tree."""
+def resolve_clippings_dir(blog_root: Path) -> tuple[Path, str]:
+    """Resolve Clippings from the fixed blog structure."""
     posts_root = blog_root / 'source' / '_posts'
-    if positional_args:
-        clips = ensure_within(Path(positional_args[0]), posts_root, 'Clippings 目录')
-        return clips, 'command line argument'
-
-    configured = config.get('clippingsDir') or config.get('clippings_dir')
-    if configured:
-        clips = ensure_within(Path(configured), posts_root, 'Clippings 目录')
-        return clips, 'legacy config clippingsDir'
-
     return posts_root / 'Clippings', 'blogRoot-derived path'
 
 
@@ -545,6 +527,7 @@ def parse_args(argv: list[str]) -> tuple[dict, list[str]]:
         'skip_git': False,
         'blog_root': '',
         'save_config': False,
+        'agent_home': '',
     }
     positional = []
 
@@ -605,6 +588,12 @@ def parse_args(argv: list[str]) -> tuple[dict, list[str]]:
         elif arg == '--save-config':
             options['save_config'] = True
             i += 1
+        elif arg == '--agent-home' and i + 1 < len(argv):
+            options['agent_home'] = argv[i + 1]
+            i += 2
+        elif arg.startswith('--agent-home='):
+            options['agent_home'] = arg.split('=', 1)[1]
+            i += 1
         elif arg == '--deploy-retries' and i + 1 < len(argv):
             options['deploy_retries'] = int(argv[i + 1])
             i += 2
@@ -647,13 +636,18 @@ def print_publish_summary(output_file: Path, metadata: dict, category: str, is_u
 
 def main():
     options, positional_args = parse_args(sys.argv[1:])
-    config = load_config()
-    blog_root, root_source = resolve_blog_root(options, positional_args, config)
-    clippings_path, path_source = resolve_clippings_dir(blog_root, positional_args, config)
+    if positional_args:
+        raise ValueError("不支持位置式 Clippings 路径；请配置 blogRoot 或使用 --content-file")
+    agent_home = resolve_agent_home(options['agent_home'])
+    config = load_config(agent_home)
+    blog_root, root_source = resolve_blog_root(options, config)
+    clippings_path, path_source = resolve_clippings_dir(blog_root)
     clippings_dir = str(clippings_path)
 
     if options['save_config']:
-        config_path = save_user_config(blog_root)
+        if not agent_home:
+            raise ValueError("无法确定 Agent Home，请显式传入 --agent-home")
+        config_path = save_user_config(agent_home, blog_root)
         print(f"Saved blogRoot to user config: {config_path}")
 
     print(f"Using blog root from {root_source}: {blog_root}")

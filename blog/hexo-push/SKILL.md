@@ -16,8 +16,9 @@ description: 将 Clippings 或 Agent 加工稿发布为 Hexo 文章，按用户�
 
 ## 路径与配置边界
 
-- `blogRoot` 是用户机器相关配置，只能保存在用户本地配置中，不得写死到 skill 源码或脚本默认值。
-- 首次使用且无法自动识别 Hexo 根目录时，先询问用户，再用 `--blog-root <path> --save-config` 持久化。
+- `blogRoot` 是博客领域共享配置，只能保存在 `<AGENT_HOME>/local-config/blog/config.json`。
+- 首次使用且无法自动识别 Hexo 根目录时，先询问用户，再用 `--blog-root <path> --save-config` 写入唯一配置文件。
+- 不读取工作目录、Skill 目录、隐藏点文件、通用用户配置目录或环境变量中的旧配置，不提供迁移回退。
 - 技能固定推导文章根目录为 `<blogRoot>/source/_posts`，Clippings 为其下的 `Clippings`。
 - 新文章固定写入 `<blogRoot>/source/_posts/<yyyy>/<yyyyMMdd>.md`；`source/_posts` 只是外层目录，年份目录由脚本创建。
 - 更新已有文章时保留原文件路径，不强制迁移到当前年份。
@@ -61,7 +62,7 @@ description: 将 Clippings 或 Agent 加工稿发布为 Hexo 文章，按用户�
 
 ```powershell
 python <agent-skills-dir>\hexo-push\scripts\publish.py `
-  --blog-root <absolute-hexo-blog-root> --save-config `
+  --agent-home <agent-home> --blog-root <absolute-hexo-blog-root> --save-config `
   --category 杂谈 `
   --tags-file <tags临时文件> `
   --description-file <摘要临时文件> `
@@ -75,6 +76,7 @@ python <agent-skills-dir>\hexo-push\scripts\publish.py `
 - `--tags <a,b,c>` / `--tags-file <path>`：传入用户确认的 tags。推荐用文件，避免转义问题。
 - `--content-file <path>`：使用 Agent 生成的完整 Markdown 加工稿发布，保留原始 clipping 不变。
 - `--blog-root <path>`：显式指定用户本机 Hexo 博客根目录。
+- `--agent-home <path>`：从源码目录运行时显式指定当前 Agent Home；安装后可自动确定。
 - `--save-config`：将校验通过的 `blogRoot` 保存到用户目录配置。
 - `--dry-run`：生成并打印发布内容，不写文件、不 git、不 deploy。
 - `--skip-git`：只写入文件，不提交推送。
@@ -85,24 +87,24 @@ python <agent-skills-dir>\hexo-push\scripts\publish.py `
 
 ## 路径解析
 
-`blogRoot` 优先级：自然语言/`--blog-root` > 用户本地配置 > 自动推断当前 Hexo 根目录。旧版 `clippingsDir` 和环境变量仅用于迁移兼容，不作为新配置方式；无法确定时必须询问用户，不得猜测个人路径。
+`blogRoot` 优先级：自然语言/`--blog-root` > 当前 Agent 的统一博客配置 > 自动推断当前 Hexo 根目录。无法确定时必须询问用户，不得猜测个人路径。
 
-推荐使用配置文件，而不是环境变量。可选配置文件：
+与 `dialogue-refine` 共用唯一配置文件：
 
-- 当前工作目录：`hexo-push.local.json`
-- 当前 skill 目录：`hexo-push.local.json`
-- 用户配置目录：`~/.config/skills/.hexo-push.json`
-- Codex 用户目录：`~/.codex/.hexo-push.json`
+```text
+<AGENT_HOME>/local-config/blog/config.json
+```
 
 示例：
 
 ```json
 {
+  "version": 1,
   "blogRoot": "<absolute-hexo-blog-root>"
 }
 ```
 
-配置由使用技能的 Agent 在获得用户输入并校验后写入用户目录，不进入 Git。`clippingsDir` 与 `HEXO_CLIPPINGS_DIR` 仅作为旧流程兜底兼容。
+配置由使用技能的 Agent 在获得用户输入并校验后写入当前 Agent Home，不进入 Git。旧配置位置和旧字段不读取、不迁移。
 
 正式文章目录结构：
 
