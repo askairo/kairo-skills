@@ -244,11 +244,13 @@ strategies:
 ### strategies
 
 - `lookback` 使用 ISO 8601 duration；`maxCandidates`、`minScore` 和 `selectLimit` 控制单次运行。
-- `schedule` 只声明期望频率、时间和时区。Skill 被调用时执行一次，不因读取配置而自动建立计划任务。
+- `schedule` 只声明期望频率、时间和时区。Skill 被调用时执行一次，不因读取配置而自动建立计划任务；“执行一次”与“创建常驻调度”是两个不同的操作。
 - `targetPlatforms` 只能选择账号已启用的平台。
 - `publishingMode: reviewed` 要求 `humanApprovalRequired: true` 且 `autoPublish: false`。
-- `publishingMode: unattended` 要求 `humanApprovalRequired: false`、`autoPublish: true`、`selectLimit: 1`、`maxPublishedPerRun: 1`，并配置有效 `schedule`。
+- `publishingMode: unattended` 要求 `humanApprovalRequired: false`、`autoPublish: true`、`selectLimit: 1`、`maxPublishedPerRun: 1`，并配置有效 `schedule`。配置校验通过后，已有调度触发的一次运行无需人工确认；用户明确要求按该配置执行一次时，也不应被再次拦截。只有创建或更新常驻调度需要单独的用户请求。
 - 无人值守模式只授权计划运行按内容门禁发布，不授权读取凭证、降低事实阈值、重复发布或在结果不明确时重试。
+
+执行器应在运行记录中区分 `interactive_run`、`scheduled_run` 和 `schedule_setup`。门禁失败必须返回具体原因：配置无效、没有合格候选、事实/来源/版权不足、账号不匹配、重复或发布成功信号不明确；不能把所有失败都归类为人工确认未满足。
 
 ## 校验与合并
 
