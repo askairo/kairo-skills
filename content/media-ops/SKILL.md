@@ -1,6 +1,6 @@
 ---
 name: media-ops
-description: 依据可配置的平台账号、内容风格、数据源和执行策略，发现、核验、评分、改编并发布内容到 Twitter/X、小红书和抖音，支持人工确认、单次授权和显式启用的无人值守运行。Use when Codex needs to operate a configured content account, build a candidate pool from account-specific sources, assess whether a topic is worth publishing, adapt supplied material, prepare or run a scheduled editorial workflow, or publish through an available authenticated browser or connector. Do not use for credential management or simple verbatim cross-posting.
+description: 跨平台媒体运营总控：读取账号配置，发现并核验素材，评分选题，调用 X、小红书或抖音子技能完成平台化改编与发布，并统一执行人工确认、频率、版权、安全和数据复盘门禁。Use when Codex needs to run a multi-platform editorial workflow or coordinate a configured content account. Do not use for credential management or simple verbatim cross-posting.
 ---
 
 # Media Ops
@@ -23,14 +23,12 @@ description: 依据可配置的平台账号、内容风格、数据源和执行�
 
 - 按账号引用的数据源组采集；显式提供的素材作为本次运行附加来源。
 - 优先使用配置的可信名单、官方公告、原始研究和作者原文；仅在策略允许时扩展到主题搜索或趋势发现。
-- 对热点、平台规则、产品信息和其他时效性事实进行实时检索，不依赖记忆。
+- 对热点、平台规则、产品信息和其他时效性事实进行实时检索，不依赖记忆；平台专属规则交给对应子技能。
 - 为每项候选记录标题、发布者、发布日期、URL、来源类型、核心主张和与账号定位的关系。
 - 对视频、播客或访谈，优先取得带时间戳的原始转写；无法直接核对时降低置信度。
 - 遵守站点访问规则、平台 API 条款和版权边界，不绕过访问控制。
 
 热点发现的最小记录应包含：检索时间窗口、排序依据（浏览量、互动量、增长或平台明确的趋势信号）、原帖链接和可见指标。不要把搜索结果页的顺序直接等同于“热度最高”；优先选择官方账号或原始作者的帖子，并用独立来源交叉核对核心事件。
-
-对于 X 的增长型选题，读取 [x-growth.md](references/x-growth.md)。候选选择和成稿优化的目标不是堆叠点赞，而是提高被站外召回后产生有效阅读、回复、转发、点击、访问主页和关注的概率；不得把推测的算法权重写成平台承诺。
 
 ### 2. Normalize and deduplicate
 
@@ -57,9 +55,15 @@ description: 依据可配置的平台账号、内容风格、数据源和执行�
 - 优先选择能让陌生用户在首句理解“发生了什么、为什么重要、我能得到什么”的角度；每帖只解决一个问题。
 - 为每条 X 草稿同时设计“讨论入口”和“关注理由”：讨论入口应是具体问题、取舍或可验证判断；关注理由应体现账号持续提供的栏目、视角或方法，而不是泛泛求关注。
 
-### 5. Adapt by platform
+### 5. Delegate platform adaptation
 
-读取 [platform-guides.md](references/platform-guides.md)，只生成目标平台对应的版本。
+按目标平台读取对应子技能，只生成目标平台对应的版本：
+
+- X / Twitter：读取 [media-x](../media-x/SKILL.md)
+- 小红书：读取 [media-xiaohongshu](../media-xiaohongshu/SKILL.md)
+- 抖音：读取 [media-douyin](../media-douyin/SKILL.md)
+
+总控层只负责传递已核验的证据卡、账号定位、目标受众和发布边界；平台子技能负责结构、媒体、平台规则和平台发布交互。
 
 - 围绕同一事实核心重写结构、节奏、信息密度和行动引导，不机械复制同一正文。
 - 先应用账号级定位，再应用目标平台引用的风格配置；平台级风格优先于账号通用风格。
@@ -68,8 +72,6 @@ description: 依据可配置的平台账号、内容风格、数据源和执行�
 - 若精确字数、视频时长、链接或商业内容规则会影响交付，先查阅平台当前官方规则。
 - 封面、配图、字幕、配音或镜头仅提供可执行方案；除非用户明确要求，不自动生成媒体资产。
 - 若用户要求“翻译后转发/引用”，优先使用平台的引用/转发能力保留原作者归属和原帖媒体；只在用户明确要求且素材版权、来源和上传方式都可核实时重新上传。翻译不等于原创增量，必须补充事实边界或简短解释。
-- X 成稿默认按“事实钩子 → 关键证据 → 原创解释 → 具体讨论问题”组织；若为系列内容，首帖给出清晰承诺，后续每帖可独立阅读。
-- 发布前用 X 增长检查：首句是否可独立理解、是否只包含一个核心信息、是否有可保存的解释、是否有自然回复入口、是否能让读者知道关注后持续得到什么；同时检查字数、链接、媒体、标签和引用归属。
 
 ### 6. Apply the publishing gate
 
@@ -109,7 +111,7 @@ description: 依据可配置的平台账号、内容风格、数据源和执行�
 3. 最终发布控件只点击一次。等待平台明确的成功提示、帖子 URL 或账号时间线新内容；出现超时或错误时不得盲目重试。
 4. 发布成功后保留已发布页面或结果页供用户复核；若没有可直接取得的帖子 URL，至少报告成功提示和目标账号。
 
-对于 X 的引用帖，发布前必须再次确认引用的是预期原帖，且原帖视频/图片仍显示在编辑器中；不得因为“配图”要求而重复上传同一官方媒体。
+平台专属发布前必须再次确认目标平台、账号身份、媒体/引用对象和最终控件；不得因为“配图”要求而重复上传同一官方媒体。
 
 ## Deliver the editorial package
 
