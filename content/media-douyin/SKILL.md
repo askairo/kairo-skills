@@ -1,11 +1,18 @@
 ---
 name: media-douyin
-description: 抖音平台子技能：把已核验素材改写为适合短视频前三秒留存、口播节奏、字幕和互动的脚本，并在受控会话中发布和核验。Use when Codex needs to write, optimize, publish, or review content specifically for Douyin. Do not use for credentials or unverified claims.
+description: 抖音平台策略与发布子技能：根据账号目标、内容主体和抖音推荐机制设计素材发现策略，筛选并改写适合短视频前三秒留存、口播节奏、字幕和互动的脚本，并在受控会话中发布和核验。Use when Codex needs to discover, write, optimize, publish, or review content specifically for Douyin. Do not use for credentials or unverified claims.
 ---
 
 # Media Douyin
 
-本技能只处理抖音平台化工作。素材发现、事实核验、账号配置和跨平台调度由 `media-ops` 总控负责。
+本技能处理抖音平台策略、素材发现建议、平台筛选、改编和发布。`media-ops` 先传入账号目标、内容主体、受众、来源边界和发布策略；本技能据此生成抖音专属发现策略，再接收核验后的候选完成平台筛选和发布。
+
+## Build the discovery brief
+
+- 先判断账号是音乐视频、知识口播、生活方式、品牌或其他主体；不同主体使用不同来源和候选标准，不默认抓取全站热度最高的帖子。
+- 音乐视频账号优先发现适配音频、明确的前三秒/副歌记忆点、可视化和剪辑空间、可持续复用的音乐素材，并把版权、音源归属和二次使用权限作为硬门禁。
+- 知识或产品账号优先发现能在短时长内完成事实钩子、证据解释和行动建议的素材；热点只作为新鲜度信号。
+- 为每个候选记录来源、音频/视频权限、时长、画面可用性、前三秒钩子、完播潜力、互动入口和账号相关性；不得用阅读量替代视频适配度。
 
 ## Adapt content
 
