@@ -1,11 +1,17 @@
 ---
 name: media-xiaohongshu
-description: 小红书平台子技能：把已核验素材改写为适合中文图文笔记、收藏和搜索发现的标题、正文、封面与卡片结构，并在受控会话中发布和核验。Use when Codex needs to write, optimize, publish, or review content specifically for Xiaohongshu. Do not use for credentials or unverified claims.
+description: 小红书平台策略与发布子技能：根据账号目标、内容主体和小红书搜索/推荐机制设计素材发现策略，筛选并改写适合中文图文笔记、收藏和搜索发现的标题、正文、封面与卡片结构，并在受控会话中发布和核验。Use when Codex needs to discover, write, optimize, publish, or review content specifically for Xiaohongshu. Do not use for credentials or unverified claims.
 ---
 
 # Media Xiaohongshu
 
-本技能只处理小红书平台化工作。素材发现、事实核验、账号配置和跨平台调度由 `media-ops` 总控负责。
+本技能处理小红书平台策略、素材发现建议、平台筛选、改编和发布。`media-ops` 先传入账号目标、内容主体、受众、来源边界和发布策略；本技能据此生成小红书专属发现策略，再接收核验后的候选完成平台筛选和发布。
+
+## Build the discovery brief
+
+- 先明确账号的搜索意图、内容主体和读者收益，再决定发现关键词、来源类型和候选形式；不把其他平台的热门帖子直接搬运为选题。
+- 优先发现可被整理为清单、步骤、对比、避坑或经验框架的原始材料；用搜索相关性、收藏价值、信息密度和账号承接判断候选。
+- 为每个候选记录来源、核心事实、读者问题、可收藏结构、图片/截图权限和搜索词边界；热度只作为新鲜度和需求强度的辅助信号。
 
 ## Adapt content
 
