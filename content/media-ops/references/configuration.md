@@ -51,14 +51,38 @@ accounts:
         enabled: true
         accountRef: efficiency-x
         styleRef: x-concise
+        operation:
+          goal: 通过可靠的 AI 与自动化信息获得讨论、主页访问和关注转化
+          contentMode: 英文原帖发现与中文原创解释/引用帖
+          discoveryTopics:
+            - AI workflow
+            - developer tools
+          selectionSignals:
+            - reply
+            - repost
+            - profile_click
+            - follow_author
       xiaohongshu:
         enabled: true
         accountRef: efficiency-xhs
         styleRef: xhs-collectible
+        operation:
+          goal: 提供可搜索、可收藏的效率方法
+          contentMode: 清单、步骤和避坑图文
+          selectionSignals:
+            - search_intent
+            - save_value
       douyin:
         enabled: true
         accountRef: efficiency-douyin
         styleRef: douyin-explainer
+        operation:
+          goal: 通过短视频留存和完播建立账号栏目
+          contentMode: 竖屏口播
+          selectionSignals:
+            - first_three_seconds
+            - completion
+            - comment
 
 platformAccounts:
   efficiency-x:
@@ -144,6 +168,7 @@ strategies:
 
 - `vertical`、`audience`、`positioning` 和至少一个 `contentPillars` 必填。
 - `platforms` 只支持 `x`、`xiaohongshu` 和 `douyin`；每个平台必须引用匹配的 `platformAccounts`。
+- 每个平台可以声明 `operation.goal`、`operation.contentMode`、`operation.discoveryTopics`、`operation.selectionSignals` 和平台专属约束；这些字段用于生成发现策略，不得保存凭证。
 - `baseStyleRef`、`sourceGroupRefs` 和 `strategyRef` 必须指向已定义且启用的对象。
 
 ### platformAccounts
