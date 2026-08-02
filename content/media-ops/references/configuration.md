@@ -25,6 +25,49 @@ account
 
 所有对象都使用稳定 ID 引用。一个逻辑账号可以关联多个平台账号；同一风格、来源组或策略也可以被多个账号复用。
 
+## 配置结构与职责
+
+配置采用“账号共性 + 平台差异 + 运行策略”的三层结构：
+
+```text
+accounts.<account>
+├── vertical / audience / positioning / contentPillars  # 账号共性
+├── sourceGroupRefs / baseStyleRef                       # 默认来源与风格
+├── strategyRef                                          # 默认执行策略
+└── platforms.<platform>
+    ├── enabled / accountRef / styleRef                  # 平台身份
+    ├── strategyRef                                      # 可选的平台策略覆盖
+    └── operation                                        # 平台运营目标与发现策略
+        ├── goal
+        ├── contentMode
+        ├── discoveryTopics
+        ├── sourceGroupRefs
+        ├── selectionSignals
+        ├── exclusions
+        └── rightsPolicy
+```
+
+职责边界如下：
+
+- `accounts.<account>` 描述账号长期定位、受众和内容支柱，不描述某个平台的推荐技巧。
+- `platforms.<platform>.operation` 描述该账号在特定平台“想做什么、找什么、优先什么、排除什么”。例如 X 可以关注讨论、引用、主页访问和关注转化；音乐类抖音账号可以关注音频适配、前三秒记忆点、完播潜力和版权。
+- `sourceGroupRefs` 定义允许寻找的来源；平台级配置可以缩小账号默认来源范围，不得绕过来源和版权门禁。
+- `selectionSignals` 是运营目标和观察指标，不是平台算法的固定权重；平台子技能将其转换为自己的发现 brief 和候选评分。
+- `strategyRef` 定义数量、时间和发布门禁；平台级覆盖只影响该平台，不改变不可关闭的事实、版权、安全和人工确认规则。
+
+### Runtime context
+
+`media-ops` 读取配置后，向平台子技能传递统一的运行上下文：
+
+```text
+accountId, platform, goal, contentMode, audience,
+contentPillars, discoveryTopics, sourceGroups,
+selectionSignals, exclusions, rightsPolicy,
+lookback, publishingMode, approvalBoundary
+```
+
+平台子技能先依据上下文生成 `discoveryBrief`，再参与素材发现和平台专属筛选；`media-ops` 负责合并、核验、调度和发布门禁，不把不同平台压成同一套“热门内容”规则。
+
 ## YAML 示例
 
 ```yaml
@@ -62,6 +105,10 @@ accounts:
             - repost
             - profile_click
             - follow_author
+          exclusions:
+            - 未经核验的传闻
+            - 与账号内容支柱无关的短期热搜
+          rightsPolicy: 保留原作者归属，引用帖优先使用平台原生引用能力
       xiaohongshu:
         enabled: true
         accountRef: efficiency-xhs
@@ -83,6 +130,9 @@ accounts:
             - first_three_seconds
             - completion
             - comment
+          exclusions:
+            - 无法确认版权的音乐或视频
+          rightsPolicy: 仅使用已获授权或平台可合法使用的音频与画面
 
 platformAccounts:
   efficiency-x:
@@ -169,6 +219,8 @@ strategies:
 - `vertical`、`audience`、`positioning` 和至少一个 `contentPillars` 必填。
 - `platforms` 只支持 `x`、`xiaohongshu` 和 `douyin`；每个平台必须引用匹配的 `platformAccounts`。
 - 每个平台可以声明 `operation.goal`、`operation.contentMode`、`operation.discoveryTopics`、`operation.selectionSignals` 和平台专属约束；这些字段用于生成发现策略，不得保存凭证。
+- `operation.sourceGroupRefs`、`operation.exclusions` 和 `operation.rightsPolicy` 用于收窄来源与安全边界；缺少 `goal` 或 `contentMode` 且会改变选材结论时，应请求补充。
+- `platforms.<platform>.strategyRef` 可覆盖账号默认策略；合并顺序为“请求覆盖 → 平台配置 → 账号默认 → Skill 默认”。
 - `baseStyleRef`、`sourceGroupRefs` 和 `strategyRef` 必须指向已定义且启用的对象。
 
 ### platformAccounts
