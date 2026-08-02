@@ -1,11 +1,19 @@
 ---
 name: media-x
-description: X / Twitter 平台子技能：把已核验素材改写为适合 X 推荐分发和关注转化的单帖、Thread 或引用帖，并通过受控登录会话发布和核验结果。Use when Codex needs to write, optimize, publish, or review content specifically for X. Do not use for account credentials or unverified claims.
+description: X / Twitter 平台策略与发布子技能：根据账号目标和 X 推荐机制设计英文原帖发现策略，筛选并改写适合 X 推荐分发和关注转化的单帖、Thread 或引用帖，并通过受控登录会话发布和核验结果。Use when Codex needs to discover, write, optimize, publish, or review content specifically for X. Do not use for account credentials or unverified claims.
 ---
 
 # Media X
 
-本技能只处理 X 平台化工作。素材发现、事实核验、账号配置和跨平台调度由 `media-ops` 总控负责；本技能接收证据卡、账号定位、受众和发布边界。
+本技能处理 X 平台策略、素材发现建议、平台筛选、改编和发布。`media-ops` 先传入账号目标、内容主体、受众、来源边界和发布策略；本技能据此生成 X 专属发现策略，再接收核验后的候选完成平台筛选和发布。
+
+## Build the discovery brief
+
+- 先读取账号定位、平台目标、内容主体、受众、时间窗口和来源边界，再决定搜索主题与原帖类型。
+- 默认优先发现可信的英文原始作者、官方账号、开发者社区和与账号内容支柱相邻的讨论；同时检查账号首页近期候选，避免只围绕一个关键词或一个品牌搜索。
+- X 的平台目标优先观察讨论、引用、转发、点击、主页访问、停留和关注作者潜力；总阅读量只是规模信号，不是唯一选题标准。
+- 为每个候选记录原帖 URL、作者、时间、可见指标、绝对量与归一化互动率、核心主张、账号相关性和可加入的原创增量。
+- 排除只有热度、没有事实边界或与账号内容主体无关的候选；不把翻译或摘要本身当作原创增量。
 
 ## Read references
 
