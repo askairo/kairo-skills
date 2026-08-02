@@ -20,7 +20,7 @@ account
   -> platformAccounts：各平台公开身份，不含凭证
   -> styles：账号通用风格及平台风格
   -> sourceGroups：可信名单和发现边界
-  -> strategies：候选数量、阈值、频率和人工门禁
+  -> strategies：候选数量、阈值、频率和发布门禁
 ```
 
 所有对象都使用稳定 ID 引用。一个逻辑账号可以关联多个平台账号；同一风格、来源组或策略也可以被多个账号复用。
@@ -132,6 +132,8 @@ strategies:
       times:
         - "09:00"
       timezone: Asia/Shanghai
+    publishingMode: reviewed
+    maxPublishedPerRun: 1
     humanApprovalRequired: true
     autoPublish: false
 ```
@@ -167,7 +169,9 @@ strategies:
 - `lookback` 使用 ISO 8601 duration；`maxCandidates`、`minScore` 和 `selectLimit` 控制单次运行。
 - `schedule` 只声明期望频率、时间和时区。Skill 被调用时执行一次，不因读取配置而自动建立计划任务。
 - `targetPlatforms` 只能选择账号已启用的平台。
-- `humanApprovalRequired` 必须为 `true`，`autoPublish` 必须为 `false`。
+- `publishingMode: reviewed` 要求 `humanApprovalRequired: true` 且 `autoPublish: false`。
+- `publishingMode: unattended` 要求 `humanApprovalRequired: false`、`autoPublish: true`、`selectLimit: 1`、`maxPublishedPerRun: 1`，并配置有效 `schedule`。
+- 无人值守模式只授权计划运行按内容门禁发布，不授权读取凭证、降低事实阈值、重复发布或在结果不明确时重试。
 
 ## 校验与合并
 
@@ -179,6 +183,6 @@ strategies:
 - 至少存在一个启用的数据源和目标平台；
 - 数量和阈值合理，时区有效；
 - 不含疑似凭证字段；
-- 人工门禁未被关闭。
+- 发布模式、人工确认和自动发布字段组合合法；无人值守模式具备限额和调度。
 
 校验失败时列出具体字段路径和修复建议，不带着部分配置继续创作。

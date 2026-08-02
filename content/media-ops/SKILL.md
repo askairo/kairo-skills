@@ -1,11 +1,11 @@
 ---
 name: media-ops
-description: 依据可配置的平台账号、内容风格、数据源和执行策略，发现、核验、评分、改编并在明确授权后发布内容到 Twitter/X、小红书和抖音。Use when Codex needs to operate a configured content account, build a candidate pool from account-specific sources, assess whether a topic is worth publishing, adapt supplied material, prepare a scheduled editorial run, or publish an approved draft through an available authenticated browser or connector. Do not use for credential management, unattended automatic publishing, or simple verbatim cross-posting.
+description: 依据可配置的平台账号、内容风格、数据源和执行策略，发现、核验、评分、改编并发布内容到 Twitter/X、小红书和抖音，支持人工确认、单次授权和显式启用的无人值守运行。Use when Codex needs to operate a configured content account, build a candidate pool from account-specific sources, assess whether a topic is worth publishing, adapt supplied material, prepare or run a scheduled editorial workflow, or publish through an available authenticated browser or connector. Do not use for credential management or simple verbatim cross-posting.
 ---
 
 # Media Ops
 
-把可信素材转化为可核验、有原创增量、适合不同平台的内容，并在用户明确授权后完成发布。把能力规则保留在 Skill 中，把账号、风格、来源和频率保留在用户配置中，并始终保留动作前人工确认门禁。
+把可信素材转化为可核验、有原创增量、适合不同平台的内容，并按账号配置选择人工确认或无人值守发布。把能力规则保留在 Skill 中，把账号、风格、来源和频率保留在用户配置中。
 
 ## Resolve configuration
 
@@ -27,6 +27,8 @@ description: 依据可配置的平台账号、内容风格、数据源和执行�
 - 为每项候选记录标题、发布者、发布日期、URL、来源类型、核心主张和与账号定位的关系。
 - 对视频、播客或访谈，优先取得带时间戳的原始转写；无法直接核对时降低置信度。
 - 遵守站点访问规则、平台 API 条款和版权边界，不绕过访问控制。
+
+热点发现的最小记录应包含：检索时间窗口、排序依据（浏览量、互动量、增长或平台明确的趋势信号）、原帖链接和可见指标。不要把搜索结果页的顺序直接等同于“热度最高”；优先选择官方账号或原始作者的帖子，并用独立来源交叉核对核心事件。
 
 ### 2. Normalize and deduplicate
 
@@ -61,14 +63,29 @@ description: 依据可配置的平台账号、内容风格、数据源和执行�
 - 不捏造数据、引语、体验、人物反应或画面。无法确认的素材位置使用明确占位符。
 - 若精确字数、视频时长、链接或商业内容规则会影响交付，先查阅平台当前官方规则。
 - 封面、配图、字幕、配音或镜头仅提供可执行方案；除非用户明确要求，不自动生成媒体资产。
+- 若用户要求“翻译后转发/引用”，优先使用平台的引用/转发能力保留原作者归属和原帖媒体；只在用户明确要求且素材版权、来源和上传方式都可核实时重新上传。翻译不等于原创增量，必须补充事实边界或简短解释。
 
-### 6. Apply the human gate
+### 6. Apply the publishing gate
 
-默认停止在草稿和发布准备阶段。即使配置声明执行频率，也只把它解释为本次运行的计划上下文，不自行创建常驻任务。只有用户明确要求时，才使用当前环境的自动化能力另行建立调度。
+默认使用人工确认模式并停止在草稿和发布准备阶段。只有用户明确要求建立定时任务时，才使用当前环境的自动化能力创建或更新调度；不要因为配置中存在 `schedule` 就自行创建常驻任务。
 
-不要读取、填写或保存密码、Cookie、令牌和验证码。可以复用用户已建立的受控登录会话。`autoPublish` 必须为 `false`；单次明确授权发布不视为自动发布，出现其他值时仍将配置判为无效。
+不要读取、填写或保存密码、Cookie、令牌和验证码。可以复用用户已建立的受控登录会话。
 
-发布前要求人工确认：
+只接受以下发布模式：
+
+- `publishingMode: reviewed`：要求 `humanApprovalRequired: true` 且 `autoPublish: false`。用户明确授权具体账号和完整内容后，可以完成单次发布。
+- `publishingMode: unattended`：要求 `humanApprovalRequired: false`、`autoPublish: true`、`selectLimit: 1`、`maxPublishedPerRun: 1`，并存在有效 `schedule`。用户启用此模式并明确创建定时任务后，后续计划运行无需逐条确认。
+
+无人值守运行必须执行以下硬门禁：
+
+- 实际登录账号必须与配置中的平台 handle 一致；不一致时停止。
+- 没有候选达到 `minScore` 时跳过，不为满足频率降低阈值。
+- 关键事实、来源链接、版权归属或商业披露存在缺口时跳过。
+- 高影响、争议性或无法区分事实与传闻的内容不自动发布。
+- 发布前检查近期账号时间线，避免重复事件、近似正文和重复链接。
+- 每次运行最多发布 1 条；发布成功信号不明确时不重试。
+
+人工确认模式发布前要求核对：
 
 - 事实与引用可回溯；
 - 标题和钩子没有超出证据；
@@ -77,9 +94,16 @@ description: 依据可配置的平台账号、内容风格、数据源和执行�
 - 每个平台版本确实针对该平台重写；
 - 链接、标签、画面和口播占位符已补全。
 
-当用户明确要求代理发布时，在动作发生前说明目标平台、账号和将要发布的完整内容。只有用户对这些具体信息作出明确授权后，才点击最终发布或发送控件；不得把早期的宽泛授权解释为对后续不同内容的持续授权。
+人工确认模式下，在动作发生前说明目标平台、账号和将要发布的完整内容。只有用户对这些具体信息作出明确授权后，才点击最终发布或发送控件；不得把早期的宽泛授权解释为对后续不同内容的持续授权。
 
-发布后核对平台成功提示、帖子 URL 或账号时间线中的新内容。若无法取得明确成功信号，不要重复点击发布；报告当前状态并保留页面供人工检查。
+使用已登录浏览器发布时，按以下低自由度顺序执行：
+
+1. 核对当前登录身份与配置中的平台 handle 一致，再打开目标原帖或发布入口。
+2. 创建草稿后重新读取页面状态，确认正文、引用对象、媒体、受众和发布按钮均正确；交互控件优先用可访问名称定位，并先核对数量与可用状态。
+3. 最终发布控件只点击一次。等待平台明确的成功提示、帖子 URL 或账号时间线新内容；出现超时或错误时不得盲目重试。
+4. 发布成功后保留已发布页面或结果页供用户复核；若没有可直接取得的帖子 URL，至少报告成功提示和目标账号。
+
+对于 X 的引用帖，发布前必须再次确认引用的是预期原帖，且原帖视频/图片仍显示在编辑器中；不得因为“配图”要求而重复上传同一官方媒体。
 
 ## Deliver the editorial package
 
