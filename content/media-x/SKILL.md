@@ -1,6 +1,6 @@
 ---
 name: media-x
-description: X / Twitter 平台策略与发布子技能：根据账号目标和 X 推荐机制设计英文原帖发现策略，筛选并改写适合 X 推荐分发和关注转化的单帖、Thread 或引用帖，并通过受控登录会话发布和核验结果。Use when Codex needs to discover, write, optimize, publish, or review content specifically for X. Do not use for account credentials or unverified claims.
+description: X / Twitter 平台策略与发布子技能：根据账号目标和 X 推荐机制设计英文原帖发现策略，筛选并改写适合 X 推荐分发和关注转化的单帖、Thread 或引用帖，并通过官方 X API 发布和核验结果。Use when Codex needs to discover, write, optimize, publish, or review content specifically for X. Do not use for account credentials or unverified claims.
 ---
 
 # Media X
@@ -19,7 +19,7 @@ description: X / Twitter 平台策略与发布子技能：根据账号目标和 
 
 - 增长策略与推荐机制：读取 [x-growth.md](references/x-growth.md)
 - 通用来源评分：需要评分或核验时读取 [source-quality.md](../media-ops/references/source-quality.md)
-- 浏览器发布：涉及 Chrome 时遵守 `chrome:control-chrome` 技能的受控会话和低自由度发布流程。
+- X API 规范与接口：需要 API 发现、用户上下文 OAuth、发帖、引用帖或错误处理时读取 [x-api.md](references/x-api.md)。
 
 ## Adapt content
 
@@ -40,6 +40,7 @@ description: X / Twitter 平台策略与发布子技能：根据账号目标和 
 ## Publish
 
 1. 核对当前登录身份与配置 handle 一致。
-2. 创建草稿后重新读取正文、受众、引用对象、媒体和发布按钮。
-3. 最终发布按钮只点击一次，等待明确成功提示、帖子 URL 或时间线新内容。
-4. X 引用帖必须确认引用的是预期原帖，且原帖媒体在编辑器中仍显示；不得重复上传同一官方媒体。
+2. 只能通过官方 X API 完成身份核验、候选读取、发帖、引用和结果核验；不得脚本化操作 x.com 网页，不得使用浏览器自动点击发布。
+3. 创建请求前在内存中完成正文、受众、引用对象、媒体和去重检查；请求只提交一次，使用幂等运行记录避免超时重试造成重复发帖。
+4. `POST /2/tweets` 返回成功数据、帖子 ID 和可核验 URL 后才记录为已发布；超时、挑战页、403/429 或响应不明确时停止，不重试。
+5. X 引用帖优先使用 API 的 `quote_tweet_id` 保留原作者和原帖媒体；若当前 API 套餐不支持引用帖，必须明确跳过或降级为带原帖链接的普通原创帖，不得回退到网页自动化。
