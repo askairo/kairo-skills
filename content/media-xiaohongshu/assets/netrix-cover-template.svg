@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1254" height="1254" viewBox="0 0 1254 1254">
-  <!-- Netrix fixed cover template: keep geometry, colors and type hierarchy unchanged. -->
+  <!-- Netrix fixed-width cover template: renderer may increase height with content; keep geometry, colors and type hierarchy unchanged. -->
   <rect width="1254" height="1254" fill="#F5F1E8"/>
   <rect x="26" y="26" width="1202" height="1202" rx="24" fill="#143B3A"/>
   <circle cx="1080" cy="220" r="150" fill="#C9A15F"/>
