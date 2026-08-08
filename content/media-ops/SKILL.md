@@ -1,11 +1,11 @@
 ---
 name: media-ops
-description: 跨平台媒体运营总控：读取账号配置，发现并核验素材，评分选题，调用 X、小红书或抖音子技能完成平台化改编与发布，并统一执行人工确认、频率、版权、安全和数据复盘门禁。Use when Codex needs to run a multi-platform editorial workflow or coordinate a configured content account. Do not use for credential management or simple verbatim cross-posting.
+description: 跨平台媒体执行总控：读取账号配置和 media-loop 的策略反馈，发现并核验素材，评分选题，调用 X、小红书或抖音子技能完成平台化改编与发布，并统一执行人工确认、频率、版权、安全和成功核验门禁。Use when Codex needs to execute a configured multi-platform editorial workflow or coordinate a content account. Use media-loop for account-health monitoring, performance analysis, diagnosis, experiments, and strategy feedback. Do not use for credential management or simple verbatim cross-posting.
 ---
 
 # Media Ops
 
-把账号目标、平台机制和内容主体转化为可执行的素材发现与发布任务，并协调平台子技能完成核验、筛选、改编和发布。把能力规则保留在 Skill 中，把账号、风格、来源和频率保留在用户配置中。
+把账号目标、平台机制和内容主体转化为可执行的素材发现与发布任务，并协调平台子技能完成核验、筛选、改编和发布。把能力规则保留在 Skill 中，把账号、风格、来源和频率保留在用户配置中。运营反馈由独立的 `media-loop` 负责；`media-ops` 只消费其经过证据支持的策略覆盖，不在发布流程中自行猜测效果原因。
 
 ## Resolve configuration
 
@@ -22,6 +22,8 @@ description: 跨平台媒体运营总控：读取账号配置，发现并核验�
 5. 不读取或保存密码、Cookie、访问令牌等凭证。平台账号配置只描述内容身份，不承担登录。
 
 6. 形成运行上下文：账号定位、平台、运营目标、内容主体、受众、来源边界、平台目标和发布策略。上下文不完整且会改变选材结论时停止，不用通用热点替代。
+
+7. 若存在有效的 `media-loop` 反馈，读取最近一次健康状态、策略版本、实验状态和未决门禁。账号被标记、限流或发布状态不明确时，先执行反馈中的暂停/降频要求；不得用新一轮内容覆盖账号健康风险。
 
 ## Run the workflow
 
@@ -151,6 +153,12 @@ description: 跨平台媒体运营总控：读取账号配置，发现并核验�
 4. 发布成功后保留已发布页面或结果页供用户复核；若没有可直接取得的帖子 URL，至少报告成功提示和目标账号。
 
 平台专属发布前必须再次确认目标平台、账号身份、媒体/引用对象和最终控件；不得因为“配图”要求而重复上传同一官方媒体。
+
+### 8. Hand off feedback
+
+发布、跳过、失败和不确定结果完成记录后，调用 `media-loop` 进行账号健康与运营效果复盘。传递平台、账号、内容支柱、格式、来源、发布时间、可见指标、发布状态和本轮策略版本；不得把凭证或隐私数据传给反馈技能。
+
+`media-loop` 返回的 `strategyOverrides` 只作为下一轮运行的临时覆盖，除非用户明确要求修改常驻配置。`media-ops` 不自行修改策略、不把单条内容表现当作稳定规律，也不因反馈建议绕过事实、版权、安全、去重、限额和发布成功核验。
 
 ## Deliver the editorial package
 

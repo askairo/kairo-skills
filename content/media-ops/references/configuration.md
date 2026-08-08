@@ -55,6 +55,9 @@ accounts.<account>
 - `sourceGroups.<group>.priorityAccounts` 是可选的重点账号白名单。每项使用 `sourceId` 引用同一来源组中已启用的 X 来源，并填写规范化 `handle`；平台子技能应优先扫描和排序命中白名单的候选，但不得因此跳过事实、版权、相关性、原创增量、重复和安全门禁。
 - `docsRoot` 可选，指向 Agent 本地的外部运营文档根目录；它不进入技能源码。建议按 `<docsRoot>/<platform>/<account>/` 组织账号的队列、发布历史、运行记录和复盘。
 - `selectionSignals` 是运营目标和观察指标，不是平台算法的固定权重；平台子技能将其转换为自己的发现 brief 和候选评分。
+- `media-loop` 使用独立的 `<AGENT_HOME>/local-config/media-loop/config.json` 保存监测窗口、健康门禁、最小可比样本量、实验规则和写回开关；不得把这些运行数据塞进 `media-ops` 账号配置。
+- `media-ops` 在运行开始时读取 `media-loop` 最近一次有效反馈，运行结束后将发布结果交给 `media-loop`；反馈中的 `strategyOverrides` 只覆盖本轮或下一轮上下文，除非用户明确授权，不回写常驻账号配置。
+- 账号健康状态优先于内容优化：标签、限流、连续发布失败、账号不匹配和不确定发布状态会触发暂停或降频，不能被 `minScore`、发布时间或热点权重覆盖。
 - `strategyRef` 定义数量、时间和发布门禁；平台级覆盖只影响该平台，不改变不可关闭的事实、版权、安全和人工确认规则。
 
 ### Runtime context
