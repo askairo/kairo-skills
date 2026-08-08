@@ -16,6 +16,8 @@
 ## 概念关系
 
 ```text
+browserProfiles
+  -> 本机 Chrome Profile 路由，不含凭证
 account
   -> platformAccounts：各平台公开身份，不含凭证
   -> styles：账号通用风格及平台风格
@@ -27,9 +29,14 @@ account
 
 ## 配置结构与职责
 
-配置采用“账号共性 + 平台差异 + 运行策略”的三层结构：
+配置采用“Chrome Profile 路由 + 账号共性 + 平台差异 + 运行策略”的四层结构：
 
 ```text
+browserProfiles.<profile>
+├── browser: chrome
+├── profileName                         # Chrome 中显示的 Profile 名称
+├── switchMethod: computer-use | current-session
+└── status: verified | needs-verification
 accounts.<account>
 ├── vertical / audience / positioning / contentPillars  # 账号共性
 ├── sourceGroupRefs / baseStyleRef                       # 默认来源与风格
@@ -51,6 +58,7 @@ accounts.<account>
 职责边界如下：
 
 - `accounts.<account>` 描述账号长期定位、受众和内容支柱，不描述某个平台的推荐技巧。
+- `browserProfiles.<profile>` 描述本机可见的 Chrome Profile 路由，不保存密码、Cookie、令牌、浏览器用户数据目录或其他认证材料；`profileName` 必须是用户在 Chrome Profile 菜单中看到的名称。
 - `accounts.<account>` 是运营隔离边界，不是用户或设备边界。若一个科技 X 账号和一个音乐抖音账号的定位不同，应建立两个 `accounts` 条目，即使由同一人管理。
 - `platforms.<platform>.operation` 描述该账号在特定平台“想做什么、找什么、优先什么、排除什么”。例如 X 可以关注讨论、引用、主页访问和关注转化；音乐类抖音账号可以关注音频适配、前三秒记忆点、完播潜力和版权。
 - `sourceGroupRefs` 定义允许寻找的来源；平台级配置可以缩小账号默认来源范围，不得绕过来源和版权门禁。
@@ -67,7 +75,7 @@ accounts.<account>
 `media-ops` 读取配置后，向平台子技能传递统一的运行上下文：
 
 ```text
-accountId, platform, goal, contentMode, audience,
+accountId, platform, platformAccountRef, browserProfileRef, goal, contentMode, audience,
 contentPillars, discoveryTopics, sourceGroups,
 selectionSignals, exclusions, rightsPolicy,
 lookback, publishingMode, approvalBoundary
@@ -146,6 +154,7 @@ platformAccounts:
     platform: x
     handle: <x-handle>
     locale: zh-CN
+    browserProfileRef: chrome-efficiency-x
   efficiency-xhs:
     platform: xiaohongshu
     handle: <xiaohongshu-handle>
@@ -232,11 +241,14 @@ strategies:
 - 当 `scheduledSkill: media-x` 且策略是有效 `publishingMode: unattended` 时，`scheduledTransport: controlled-browser-session` 与 `browserAutomation: allowed-when-publishingMode-unattended` 表示触发后直接执行，不要求逐条人工确认；仍必须执行账号、事实、版权、重复、限额和发布成功核验。
 - `platforms.<platform>.strategyRef` 可覆盖账号默认策略；合并顺序为“请求覆盖 → 平台配置 → 账号默认 → Skill 默认”。
 - `baseStyleRef`、`sourceGroupRefs` 和 `strategyRef` 必须指向已定义且启用的对象。
+- 浏览器平台的 `platformAccounts.<accountRef>.browserProfileRef` 必须指向已定义的 `browserProfiles.<profile>`；同一平台的不同账号不得引用同一个 Profile。`switchMethod: current-session` 只适合单账号当前会话，不能授权同平台多账号无人值守切换。
+- `switchMethod: computer-use` 表示先通过电脑操作切换到 `profileName`，再用平台页面核对 handle；Profile 名称缺失、状态不是 `verified` 或切换后 handle 不一致时，执行器必须返回 `profile_route_missing` 或 `account_mismatch` 并停止。
 - 同一 `accounts.<account>` 下的所有平台必须通过定位、受众和内容支柱一致性检查；不一致时拆分逻辑账号，不得混合基线和反馈。
 
 ### platformAccounts
 
 - 只保存平台、公开 handle、地区、语言等内容身份信息。
+- 浏览器平台可以增加 `browserProfileRef`，但只能引用 `browserProfiles` 中的本机环境标识；API 平台不需要该字段。
 - 禁止保存密码、Cookie、令牌、恢复码、浏览器配置或其他认证材料。
 - 发布连接器或浏览器会话属于执行环境，不属于此配置。
 
