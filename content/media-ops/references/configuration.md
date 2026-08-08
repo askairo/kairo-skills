@@ -23,7 +23,7 @@ account
   -> strategies：候选数量、阈值、频率和发布门禁
 ```
 
-所有对象都使用稳定 ID 引用。一个逻辑账号可以关联多个平台账号；同一风格、来源组或策略也可以被多个账号复用。
+所有对象都使用稳定 ID 引用。一个逻辑账号代表一个独立的品牌/运营主体，可以关联多个平台账号，但这些平台账号必须共享同一定位、受众和内容支柱。不同主题、受众、内容形态或运营目标的账号必须拆成不同逻辑账号；不能因为属于同一用户或同一团队就合并。风格、来源组或策略可以被多个逻辑账号复用，但账号健康、历史基线、实验结果和发布频率必须隔离。
 
 ## 配置结构与职责
 
@@ -50,6 +50,7 @@ accounts.<account>
 职责边界如下：
 
 - `accounts.<account>` 描述账号长期定位、受众和内容支柱，不描述某个平台的推荐技巧。
+- `accounts.<account>` 是运营隔离边界，不是用户或设备边界。若一个科技 X 账号和一个音乐抖音账号的定位不同，应建立两个 `accounts` 条目，即使由同一人管理。
 - `platforms.<platform>.operation` 描述该账号在特定平台“想做什么、找什么、优先什么、排除什么”。例如 X 可以关注讨论、引用、主页访问和关注转化；音乐类抖音账号可以关注音频适配、前三秒记忆点、完播潜力和版权。
 - `sourceGroupRefs` 定义允许寻找的来源；平台级配置可以缩小账号默认来源范围，不得绕过来源和版权门禁。
 - `sourceGroups.<group>.priorityAccounts` 是可选的重点账号白名单。每项使用 `sourceId` 引用同一来源组中已启用的 X 来源，并填写规范化 `handle`；平台子技能应优先扫描和排序命中白名单的候选，但不得因此跳过事实、版权、相关性、原创增量、重复和安全门禁。
@@ -229,6 +230,7 @@ strategies:
 - 当 `scheduledSkill: media-x` 且策略是有效 `publishingMode: unattended` 时，`scheduledTransport: controlled-browser-session` 与 `browserAutomation: allowed-when-publishingMode-unattended` 表示触发后直接执行，不要求逐条人工确认；仍必须执行账号、事实、版权、重复、限额和发布成功核验。
 - `platforms.<platform>.strategyRef` 可覆盖账号默认策略；合并顺序为“请求覆盖 → 平台配置 → 账号默认 → Skill 默认”。
 - `baseStyleRef`、`sourceGroupRefs` 和 `strategyRef` 必须指向已定义且启用的对象。
+- 同一 `accounts.<account>` 下的所有平台必须通过定位、受众和内容支柱一致性检查；不一致时拆分逻辑账号，不得混合基线和反馈。
 
 ### platformAccounts
 
