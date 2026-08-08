@@ -44,6 +44,7 @@ description: X / Twitter 平台策略与发布子技能：根据账号目标和 
 ## Publish
 
 1. 核对当前登录身份与配置 handle 一致。
+   若由 `media-ops` 传入 `browserProfileRef`，先确认已切换到该 Profile；Profile 路由缺失或切换后账号身份不一致时停止。
 2. 发布前解析当前账号对应的 `media-ops` 本地配置；若目标策略为有效的 `publishingMode: unattended`（同时满足 `humanApprovalRequired: false`、`autoPublish: true`、`selectLimit: 1`、`maxPublishedPerRun: 1` 和有效 `schedule`），且本次调用是已触发的自动化运行，则直接进入发布，不再请求逐条人工确认。若策略缺失、无效、账号不明确或为 `reviewed`，才停在草稿并请求确认。不要因为没有调用 `media-x-api` 就拒绝有效的 `media-x` 无人值守运行。
 3. 创建草稿后重新读取正文、受众、引用对象、媒体、来源 URL/来源卡片和发布按钮；无论是否需要人工确认，都必须完成这些检查。无人值守策略只跳过确认，不跳过事实、版权、账号、重复和成功核验门禁。
 4. 最终发布按钮只点击一次，等待明确成功提示、帖子 URL 或时间线新内容；遇到挑战页或不明确结果停止，不重试。
