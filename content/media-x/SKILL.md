@@ -1,6 +1,6 @@
 ---
 name: media-x
-description: X / Twitter 平台策略与发布子技能：根据账号目标和 X 推荐机制设计英文原帖发现策略，筛选并改写适合 X 推荐分发和关注转化的单帖、Thread 或引用帖，并在人工触发的受控会话中辅助准备和核验发布。Use when Codex needs to discover, write, optimize, publish, or review content specifically for X. Do not use for account credentials or unverified claims.
+description: X / Twitter 平台策略与发布子技能：根据账号目标和 X 推荐机制设计英文原帖发现策略，筛选并改写适合 X 推荐分发和关注转化的单帖、Thread 或引用帖，并按 reviewed 或有效 unattended 配置完成受控发布和核验。Use when Codex needs to discover, write, optimize, publish, or review content specifically for X. Do not use for account credentials or unverified claims.
 ---
 
 # Media X
@@ -22,7 +22,7 @@ description: X / Twitter 平台策略与发布子技能：根据账号目标和 
 
 - 增长策略与推荐机制：读取 [x-growth.md](references/x-growth.md)
 - 通用来源评分：需要评分或核验时读取 [source-quality.md](../media-ops/references/source-quality.md)
-- 浏览器发布：人工触发时遵守 `chrome:control-chrome` 技能的受控会话和低自由度发布流程；不得作为无人值守定时任务使用。
+- 浏览器发布：遵守 `chrome:control-chrome` 技能的受控会话和低自由度发布流程。`reviewed` 模式在最终动作前等待用户确认；有效 `unattended` 模式由已触发的自动化任务直接执行，不再次请求逐条确认，但仍必须完成账号、来源、事实、版权、重复、媒体和成功结果核验。
 
 ## Adapt content
 
@@ -44,7 +44,7 @@ description: X / Twitter 平台策略与发布子技能：根据账号目标和 
 ## Publish
 
 1. 核对当前登录身份与配置 handle 一致。
-2. 发布前解析当前账号对应的 `media-ops` 本地配置；若目标策略为有效的 `publishingMode: unattended`（同时满足 `humanApprovalRequired: false`、`autoPublish: true`、`selectLimit: 1`、`maxPublishedPerRun: 1` 和有效 `schedule`），则不再请求逐条人工确认。若策略缺失、无效、账号不明确或为 `reviewed`，才停在草稿并请求确认。
+2. 发布前解析当前账号对应的 `media-ops` 本地配置；若目标策略为有效的 `publishingMode: unattended`（同时满足 `humanApprovalRequired: false`、`autoPublish: true`、`selectLimit: 1`、`maxPublishedPerRun: 1` 和有效 `schedule`），且本次调用是已触发的自动化运行，则直接进入发布，不再请求逐条人工确认。若策略缺失、无效、账号不明确或为 `reviewed`，才停在草稿并请求确认。不要因为没有调用 `media-x-api` 就拒绝有效的 `media-x` 无人值守运行。
 3. 创建草稿后重新读取正文、受众、引用对象、媒体、来源 URL/来源卡片和发布按钮；无论是否需要人工确认，都必须完成这些检查。无人值守策略只跳过确认，不跳过事实、版权、账号、重复和成功核验门禁。
 4. 最终发布按钮只点击一次，等待明确成功提示、帖子 URL 或时间线新内容；遇到挑战页或不明确结果停止，不重试。
 5. X 引用帖必须确认引用的是预期原帖，且原帖媒体在编辑器中仍显示；不得重复上传同一官方媒体。
