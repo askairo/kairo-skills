@@ -45,6 +45,7 @@ accounts.<account>
         ├── selectionSignals
         ├── exclusions
         └── rightsPolicy
+        └── allowDownload                 # 抖音发布时是否允许下载，默认 false
 ```
 
 职责边界如下：
@@ -225,6 +226,7 @@ strategies:
 - `vertical`、`audience`、`positioning` 和至少一个 `contentPillars` 必填。
 - `platforms` 只支持 `x`、`xiaohongshu` 和 `douyin`；每个平台必须引用匹配的 `platformAccounts`。
 - 每个平台可以声明 `operation.goal`、`operation.contentMode`、`operation.discoveryTopics`、`operation.selectionSignals` 和平台专属约束；这些字段用于生成发现策略，不得保存凭证。
+- 抖音可以声明 `operation.allowDownload`，布尔值默认是 `false`；`false` 表示发布前关闭“允许下载”（等价于“不允许下载”）。该配置只是期望状态，平台子技能仍必须在最终发布前重新读取页面控件；状态不明或仍允许下载时停止。
 - `operation.sourceGroupRefs`、`operation.exclusions` 和 `operation.rightsPolicy` 用于收窄来源与安全边界；缺少 `goal` 或 `contentMode` 且会改变选材结论时，应请求补充。
 - 平台可以声明 `operation.transport`、`operation.interactiveSkill`、`operation.scheduledSkill`、`operation.interactiveTransport`、`operation.scheduledTransport` 和 `operation.browserAutomation`；X 的无人值守策略若选择 `media-x`，不得被默认改写为 `media-x-api`。
 - 当 `scheduledSkill: media-x` 且策略是有效 `publishingMode: unattended` 时，`scheduledTransport: controlled-browser-session` 与 `browserAutomation: allowed-when-publishingMode-unattended` 表示触发后直接执行，不要求逐条人工确认；仍必须执行账号、事实、版权、重复、限额和发布成功核验。
