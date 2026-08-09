@@ -21,6 +21,7 @@ description: 媒体内容核心层：把来源证据、编辑判断、媒体资�
 <docsRoot>/<contentRoot>/
   registry.md
   pipelines/<pipeline-id>/
+    editorial-framework.md       # 可选的主题/编辑知识
     queue.md
     published.md
     runs/<run-id>.md
@@ -50,6 +51,7 @@ adaptationNotes        # 平台改编时必须保留、可以压缩或不得出�
 distributionTargets[]  # 平台、平台账号、风格、策略、计划时间
 lifecycleState         # candidate | verified | adapted | ready | published | retired
 feedbackRefs[]         # 发布记录、平台指标和 media-loop 反馈
+editorialContextRefs[]  # 可复用的主题知识、栏目框架和编辑边界
 ```
 
 来源证据、事实边界和版权状态属于内容资产的共同真相；平台版本可以改变语言、节奏、画面和互动入口，但不得改变已核验事实、人物原意、授权范围或核心编辑判断。
@@ -57,8 +59,8 @@ feedbackRefs[]         # 发布记录、平台指标和 media-loop 反馈
 ## Content-first workflow
 
 1. **Ingest**：接收原始帖子、网页、视频、访谈或用户素材，记录来源和权限线索。
-2. **Normalize**：拆分事实、原作者观点、编辑推断和待核验主张，聚合同一事件的重复来源。
-3. **Define**：确定一个编辑主线、受众收益和内容支柱；不能用“热度高”替代账号相关性。
+2. **Normalize**：读取目标内容流水线的 `editorial-framework.md`（如有），拆分事实、原作者观点、编辑推断和待核验主张，聚合同一事件的重复来源。
+3. **Define**：依据主题框架确定一个编辑主线、受众收益和内容支柱；不能用“热度高”替代账号相关性。
 4. **Verify**：完成事实、来源、版权、隐私、重复和媒体可用性门禁，生成可追溯证据卡。
 5. **Adapt**：按照每个分发目标调用对应平台技能，生成独立的标题、正文、脚本、画面、引用方式和互动入口。
 6. **Distribute**：把已适配版本交给 `media-ops`，由它执行账号、Chrome Profile、频率、人工确认、发布和成功核验。
@@ -104,6 +106,7 @@ publishState
 ## Boundaries
 
 - `media-core`：定义内容资产、证据卡、适配契约、生命周期和内容层版本。
+- `media-core` 外部内容文档：保存主题知识、栏目框架、归因等级和跨平台编辑门禁；它们通过 `editorialContextRefs` 被内容资产或平台适配读取。
 - `media-ops`：读取账号配置和内容资产，调度目标，执行 Profile 路由、发布门禁、外部记录回写和浏览器清理。
 - `media-loop`：监测账号健康、内容指标和实验结果，提出有证据的策略覆盖。
 - `platform/x`、`platform/x-api`、`platform/douyin`、`platform/xiaohongshu`：负责平台推荐机制、平台发现、平台化改编、平台发布和平台指标解释。
