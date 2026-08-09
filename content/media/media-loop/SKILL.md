@@ -54,6 +54,7 @@ description: 媒体运营反馈闭环总控：读取 media-ops 的账号配置�
 
 ```text
 accountRef, platform, observedAt, window, dataQuality,
+contentRef, distributionTargetRef,
 healthStatus, healthSignals[], baseline,
 diagnoses[], strategyOverrides[], experimentPlan[],
 pauseOrRateLimit, confidence, nextReviewAt

@@ -36,11 +36,15 @@
 每次运行保存一个不可变快照，至少包括：
 
 ```text
-runId, accountRef, platform, observedAt, window,
+runId, contentRef, distributionTargetRef, accountRef, platform,
+browserProfileRef, profileBatchRef,
+observedAt, window,
 sourceRefs[], sampleCount, missingFields[], dataFreshness,
 healthStatus, healthSignals[], publishFailures[],
 metrics[], baselineRef, diagnosisRefs[], strategyVersion
 ```
+
+`browserProfileRef` 和 `profileBatchRef` 只用于解释执行环境与 Profile 聚合效率，不是内容质量指标，也不得替代平台账号身份核验。
 
 ## 指标记录
 
