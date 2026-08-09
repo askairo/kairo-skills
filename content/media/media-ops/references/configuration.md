@@ -65,7 +65,8 @@ accounts.<account>
 - `platforms.<platform>.operation` 描述该账号在特定平台“想做什么、找什么、优先什么、排除什么”。例如 X 可以关注讨论、引用、主页访问和关注转化；音乐类抖音账号可以关注音频适配、前三秒记忆点、完播潜力和版权。
 - `sourceGroupRefs` 定义允许寻找的来源；平台级配置可以缩小账号默认来源范围，不得绕过来源和版权门禁。
 - `sourceGroups.<group>.priorityAccounts` 是可选的重点账号白名单。每项使用 `sourceId` 引用同一来源组中已启用的 X 来源，并填写规范化 `handle`；平台子技能应优先扫描和排序命中白名单的候选，但不得因此跳过事实、版权、相关性、原创增量、重复和安全门禁。
-- `docsRoot` 可选，指向 Agent 本地的外部运营文档根目录；它不进入技能源码。建议按 `<docsRoot>/<platform>/<account>/` 组织账号的队列、发布历史、运行记录和复盘。
+- `docsRoot` 可选，指向 Agent 本地的外部运营文档根目录；它不进入技能源码。平台发布文档仍按 `<docsRoot>/<platform>/<account>/` 组织。跨平台内容源、内容资产和源流水线不放在这里，而由 `media-core` 的 `<AGENT_HOME>/local-config/media-core/config.json` 指向 `<docsRoot>/content/` 独立管理。
+- `media-ops` 读取 `contentRef` 或 `distributionTargetRef` 时，先按 `media-core` 的内容文档规范读取来源证据、事实边界、版权状态和目标状态；平台目录只作为发布、指标和账号运行历史，不得覆盖内容层共同真相。
 - `selectionSignals` 是运营目标和观察指标，不是平台算法的固定权重；平台子技能将其转换为自己的发现 brief 和候选评分。
 - `media-loop` 使用独立的 `<AGENT_HOME>/local-config/media-loop/config.json` 保存监测窗口、健康门禁、最小可比样本量、实验规则和写回开关；不得把这些运行数据塞进 `media-ops` 账号配置。
 - `media-ops` 在运行开始时读取 `media-loop` 最近一次有效反馈，运行结束后将发布结果交给 `media-loop`；反馈中的 `strategyOverrides` 只覆盖本轮或下一轮上下文，除非用户明确授权，不回写常驻账号配置。
