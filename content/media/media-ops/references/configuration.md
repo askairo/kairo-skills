@@ -113,6 +113,8 @@ eligible(target) =
 
 其中账号、平台、策略和失败退避按 `target.strategyRef` 独立解析；同一内容的其他目标不共享这些计数。若策略缺少必要的频率约束，目标只能保持待调度，不能用全局扫描周期代替缺失的发布上限。配置中的 `schedule` 和 `dispatchScheduler` 都只是规范与运行参数，不会单独创建常驻系统任务。
 
+内容驱动的 unattended 策略必须同时声明 `publishPolicy.minIntervalMinutes`、`publishPolicy.maxPublishedPerDay` 和 `publishPolicy.platformLimitBackoffHours`；任一缺失时返回“策略频率约束缺失”，不得进入浏览器。`media-ops/config` 是发布节奏的唯一配置真相：账号 README、队列说明和外部调度定义若与其时间或上限不一致，记录为 `schedule_document_mismatch` 并停止该目标，直到显式同步；不得在扫描时猜测哪个旧记录优先。
+
 ### Runtime context
 
 `media-ops` 读取配置后，向平台子技能传递统一的运行上下文：
