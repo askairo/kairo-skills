@@ -22,6 +22,7 @@ description: 媒体内容核心层：把来源证据、编辑判断、媒体资�
   registry.md
   pipelines/<pipeline-id>/
     editorial-framework.md       # 可选的主题/编辑知识
+    source-protocol.md           # 来源特有的发现、采集与验收规则（如适用）
     queue.md
     published.md
     runs/<run-id>.md
@@ -37,12 +38,11 @@ description: 媒体内容核心层：把来源证据、编辑判断、媒体资�
 
 ### Authorized media acquisition
 
-仅当 `sourcePipelines.<pipeline-id>.mediaAcquisition.enabled` 为真，且每条候选均已通过来源、授权和去重门禁时，producer 才能采集媒体。配置至少明确：`transport`、`resourceRoot`、`requireFreshDownloadEvent`、`requirePlayableVideoAndAudio`、`retainSourceEvidence` 与 `prohibitDirectMediaUrl`。
+仅当 `sourcePipelines.<pipeline-id>.mediaAcquisition.enabled` 为真，且每条候选均已通过来源、授权和去重门禁时，producer 才能采集媒体。配置声明资源根目录、通用验收要求及 `sourceProtocolRef`；来源协议单独定义该来源的发现顺序、允许的交互方式、重试与备选路径、完成判定及游标语义。
 
-- 对需要既有登录态的来源，使用受控浏览器的可见会话核验页面；不导出、读取或保存 Cookie、密码、令牌或会话数据。无状态 CLI 的登录拦截不能作为浏览器会话失效的结论。
-- 使用下载服务时，只操作页面可见的解析、下载和备用下载控件；不得复制、拼接或直接打开签名媒体 URL。
-- 在触发下载前记录受控下载目录的清单。浏览器下载事件缺失或超时并不自动等于失败：只要本轮前后清单能唯一识别新文件，且该文件通过完整性、视频轨、音频轨、时长和可播放性验收，仍可作为本轮采集结果；`.crdownload`、预览页、媒体新标签或旧文件一律不算。
-- 验收合格后，将文件以稳定名称移入 `resourceRoot`，记录大小、时长、轨道信息、内容哈希、作者和原始 URL。下载成功本身不得推进源顺序游标；只有已核验的下游结果回写后才推进。
+- 来源协议不得要求导出、读取或保存 Cookie、密码、令牌或会话数据，也不得绕过来源或下载服务的访问控制。
+- 采集结果必须具有本轮来源证据、作者与原始链接、稳定媒体指纹和协议要求的可用性验收；旧文件、临时文件或无法关联至本轮候选的资源一律不算。
+- 验收合格后，将文件以稳定名称移入 `resourceRoot`，记录大小、时长、轨道信息（如适用）、内容哈希、作者和原始 URL。下载成功本身不得推进源顺序游标；只有来源协议定义的已核验下游结果回写后才推进。
 
 ## Canonical content asset
 
@@ -71,7 +71,7 @@ editorialContextRefs[]  # 可复用的主题知识、栏目框架和编辑边界
 1. **Ingest**：接收原始帖子、网页、视频、访谈或用户素材，记录来源和权限线索。
 2. **Normalize**：读取目标内容流水线的 `editorial-framework.md`（如有），拆分事实、原作者观点、编辑推断和待核验主张，聚合同一事件的重复来源。
 3. **Define**：依据主题框架确定一个编辑主线、受众收益和内容支柱；不能用“热度高”替代账号相关性。
-4. **Verify**：完成事实、来源、版权、隐私、重复和媒体可用性门禁，生成可追溯证据卡。
+4. **Verify**：完成事实、来源、版权、隐私、重复和媒体可用性门禁；如有 `source-protocol.md`，按其来源特有规则完成采集与验收，生成可追溯证据卡。
 5. **Adapt**：按照每个分发目标调用对应平台技能，生成独立的标题、正文、脚本、画面、引用方式和互动入口。
 6. **Distribute**：把已适配版本交给 `media-ops`，由它执行账号、Chrome Profile、频率、人工确认、发布和成功核验。
 7. **Learn**：接收 `media-loop` 的内容表现反馈，区分内容问题、平台适配问题和账号分发/健康问题，再创建新版本或实验，不覆盖原始资产。
@@ -121,7 +121,7 @@ publishState
 - `media-loop`：监测账号健康、内容指标和实验结果，提出有证据的策略覆盖。
 - `platform/x`、`platform/x-api`、`platform/douyin`、`platform/xiaohongshu`：负责平台推荐机制、平台发现、平台化改编、平台发布和平台指标解释。
 
-`media-core` 不读取密码、Cookie、令牌或浏览器会话，不直接点击发布按钮，不自行决定某个平台的算法权重，也不把跨平台绝对阅读量当作统一成功指标。显式配置的 `mediaAcquisition` 只允许为已授权候选执行可见浏览器下载和资源入库，不构成发布权限。
+`media-core` 不读取密码、Cookie、令牌或浏览器会话，不直接点击发布按钮，不自行决定某个平台的算法权重，也不把跨平台绝对阅读量当作统一成功指标。显式配置的 `mediaAcquisition` 只允许按照对应来源协议为已授权候选采集和入库资源，不构成发布权限。
 
 ## Hard gates
 
