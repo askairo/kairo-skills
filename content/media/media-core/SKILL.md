@@ -29,11 +29,20 @@ description: 媒体内容核心层：把来源证据、编辑判断、媒体资�
 
 `registry.md` 登记内容源、内容流水线与目标映射；`queue.md` 登记候选和内容资产状态；`runs/` 记录每次发现、核验、生成和跳过；`published.md` 只记录内容资产及其分发目标的最终状态。平台目录中的文档继续保留平台适配、平台发布和平台指标历史，不再成为内容源的唯一事实来源。
 
-本地配置中的每个 `sourcePipelines.<pipeline-id>` 至少声明 `sourceGroupRef`、`schedule`、`dispatchMode`、`targetAccounts` 和 `dedupKeys`。源定时任务默认使用 `dispatchMode: producer-only`：只发现、核验并登记可复用内容资产，不直接点击平台发布；后续由内容分发目标或 `media-ops` 执行发布。只有明确配置为内容分发任务时，才允许进入发布流程，并且仍需经过平台、账号、版权、频率和成功核验门禁。
+本地配置中的每个 `sourcePipelines.<pipeline-id>` 至少声明 `sourceGroupRef`、`schedule`、`dispatchMode`、`targetAccounts` 和 `dedupKeys`。源定时任务默认使用 `dispatchMode: producer-only`：发现、核验、登记可复用内容资产；不直接点击平台发布。若显式声明 `mediaAcquisition`，producer 可以取得已授权候选的媒体并入库，但仍不上传或发布；后续由内容分发目标或 `media-ops` 执行发布。只有明确配置为内容分发任务时，才允许进入发布流程，并且仍需经过平台、账号、版权、频率和成功核验门禁。
 
 统一分发扫描器使用同一份配置中的 `dispatchScheduler`。它只规定扫描周期、单轮资源上限和排序方式，不规定所有平台的发布时间，也不覆盖各目标引用的 `strategyRef`。扫描器被外部调度器触发后，才形成一次 `scheduled_run`；读取配置本身不会创建常驻任务。
 
 内容源迁移时不删除平台历史文档，也不重复复制历史帖子；在内容流水线文档中登记来源映射和迁移起点，之后新增内容以 `contentId` 为唯一内容资产 ID，以 `contentId + targetId` 为分发幂等键。
+
+### Authorized media acquisition
+
+仅当 `sourcePipelines.<pipeline-id>.mediaAcquisition.enabled` 为真，且每条候选均已通过来源、授权和去重门禁时，producer 才能采集媒体。配置至少明确：`transport`、`resourceRoot`、`requireFreshDownloadEvent`、`requirePlayableVideoAndAudio`、`retainSourceEvidence` 与 `prohibitDirectMediaUrl`。
+
+- 对需要既有登录态的来源，使用受控浏览器的可见会话核验页面；不导出、读取或保存 Cookie、密码、令牌或会话数据。无状态 CLI 的登录拦截不能作为浏览器会话失效的结论。
+- 使用下载服务时，只操作页面可见的解析、下载和备用下载控件；不得复制、拼接或直接打开签名媒体 URL。
+- 在触发下载前记录受控下载目录的清单。浏览器下载事件缺失或超时并不自动等于失败：只要本轮前后清单能唯一识别新文件，且该文件通过完整性、视频轨、音频轨、时长和可播放性验收，仍可作为本轮采集结果；`.crdownload`、预览页、媒体新标签或旧文件一律不算。
+- 验收合格后，将文件以稳定名称移入 `resourceRoot`，记录大小、时长、轨道信息、内容哈希、作者和原始 URL。下载成功本身不得推进源顺序游标；只有已核验的下游结果回写后才推进。
 
 ## Canonical content asset
 
@@ -46,6 +55,7 @@ factBoundary           # 已核验事实、作者原意、编辑推断、待核�
 editorialThesis        # 这一内容只回答的一个核心问题
 audiencePromise        # 读者/观众能获得什么
 mediaAssets[]          # 图片、视频、音频、封面及其权限和归属
+mediaFingerprint        # 已验收媒体的内容哈希；未取得媒体时为空
 rightsStatus           # confirmed | pending | restricted | rejected
 adaptationNotes        # 平台改编时必须保留、可以压缩或不得出现的内容
 distributionTargets[]  # 平台、平台账号、风格、策略、计划时间
@@ -111,7 +121,7 @@ publishState
 - `media-loop`：监测账号健康、内容指标和实验结果，提出有证据的策略覆盖。
 - `platform/x`、`platform/x-api`、`platform/douyin`、`platform/xiaohongshu`：负责平台推荐机制、平台发现、平台化改编、平台发布和平台指标解释。
 
-`media-core` 不读取密码、Cookie、令牌或浏览器会话，不直接点击发布按钮，不自行决定某个平台的算法权重，也不把跨平台绝对阅读量当作统一成功指标。
+`media-core` 不读取密码、Cookie、令牌或浏览器会话，不直接点击发布按钮，不自行决定某个平台的算法权重，也不把跨平台绝对阅读量当作统一成功指标。显式配置的 `mediaAcquisition` 只允许为已授权候选执行可见浏览器下载和资源入库，不构成发布权限。
 
 ## Hard gates
 
@@ -121,3 +131,4 @@ publishState
 - 发布结果不明确时保持 `publishState: uncertain`，不得推进生命周期或盲目重试。
 - 任何策略优化都创建新版本，保留原始证据、旧文案、发布结果和回滚依据。
 - 同一内容的多个分发目标必须分别记录 `publishState`；一个平台失败或账号暂停时，不得把其他目标错误标记为失败或成功。
+- 任何资源文件没有可追溯的本轮下载证据、作者/原始链接、媒体指纹或音视频验收时，不得进入 `verified`，不得交给下游分发任务。
