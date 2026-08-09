@@ -1,4 +1,0 @@
-interface:
-  display_name: "跨平台自媒体运营"
-  short_description: "核验并发布多平台内容，支持受控定时运行"
-  default_prompt: "Use $media-ops to prepare and publish verified platform-specific content according to the configured reviewed or unattended publishing mode."
