@@ -23,6 +23,8 @@ account
   -> styles：账号通用风格及平台风格
   -> sourceGroups：可信名单和发现边界
   -> strategies：候选数量、阈值、频率和发布门禁
+content asset
+  -> distributionTargets：内容版本、目标平台、平台账号、格式和目标时间
 ```
 
 所有对象都使用稳定 ID 引用。一个逻辑账号代表一个独立的品牌/运营主体，可以关联多个平台账号，但这些平台账号必须共享同一定位、受众和内容支柱。不同主题、受众、内容形态或运营目标的账号必须拆成不同逻辑账号；不能因为属于同一用户或同一团队就合并。风格、来源组或策略可以被多个逻辑账号复用，但账号健康、历史基线、实验结果和发布频率必须隔离。
@@ -69,6 +71,14 @@ accounts.<account>
 - `media-ops` 在运行开始时读取 `media-loop` 最近一次有效反馈，运行结束后将发布结果交给 `media-loop`；反馈中的 `strategyOverrides` 只覆盖本轮或下一轮上下文，除非用户明确授权，不回写常驻账号配置。
 - 账号健康状态优先于内容优化：标签、限流、连续发布失败、账号不匹配和不确定发布状态会触发暂停或降频，不能被 `minScore`、发布时间或热点权重覆盖。
 - `strategyRef` 定义数量、时间和发布门禁；平台级覆盖只影响该平台，不改变不可关闭的事实、版权、安全和人工确认规则。
+
+### 内容驱动调度与 Profile 聚合
+
+内容驱动模式下，`media-core` 内容资产生成一个或多个 `distributionTargets`，每个目标引用 `platformAccountRef`、`styleRef`、`strategyRef`、格式和 `plannedAt` 或 `preferredWindow`。执行器再从 `platformAccounts.<accountRef>.browserProfileRef` 解析登录环境。
+
+因此，内容配置不重复保存 Profile；Profile 仍是账号登录环境配置。一个内容可以在不同平台目标上解析到同一个 Profile，执行器可以按 Profile 聚合这些目标以减少切换，但必须为每个平台目标单独核对公开账号身份，并分别记录发布状态。
+
+`schedule` 在迁移期间仍可保留在 strategy 中，表示平台/账号的频率、可发布时间窗口和限额约束；内容驱动调度器将其作为目标约束，而不是把“执行某个平台技能”作为定时器的唯一任务对象。未完成调度器迁移前，不应仅修改字段名就宣称已切换为内容驱动。
 
 ### Runtime context
 
@@ -268,6 +278,7 @@ strategies:
 
 - `lookback` 使用 ISO 8601 duration；`maxCandidates`、`minScore` 和 `selectLimit` 控制单次运行。
 - `schedule` 只声明期望频率、时间和时区。Skill 被调用时执行一次，不因读取配置而自动建立计划任务；“执行一次”与“创建常驻调度”是两个不同的操作。
+- 内容驱动调度时，`schedule` 约束由到期的 `distributionTarget` 继承；调度器应以 `contentId + targetId` 作为幂等运行键，不以平台技能名作为唯一运行键。
 - `targetPlatforms` 只能选择账号已启用的平台。
 - `publishingMode: reviewed` 要求 `humanApprovalRequired: true` 且 `autoPublish: false`。
 - `publishingMode: unattended` 要求 `humanApprovalRequired: false`、`autoPublish: true`、`selectLimit: 1`、`maxPublishedPerRun: 1`，并配置有效 `schedule`。配置校验通过后，已有调度触发的一次运行无需人工确认；用户明确要求按该配置执行一次时，也不应被再次拦截。只有创建或更新常驻调度需要单独的用户请求。

@@ -36,7 +36,19 @@ description: 跨平台媒体执行总控：读取账号配置和 media-loop 的�
 - Chrome 控制接口不能直接切换 Profile；Profile 切换由电脑操作完成，页面读取和发布仍交给对应平台技能。切换后重新获取页面状态，不假设旧 Tab 或旧页面绑定仍属于目标 Profile。
 - `switchMethod: current-session` 只表示沿用当前已打开的会话，不能用于同平台多账号无人值守路由；新增账号必须使用已验证的独立 Profile 名称和 `computer-use` 切换方式，或使用官方 API。
 
+### Content-driven dispatch and Profile batching
+
+当任务由内容分发计划触发时，先读取 `media-core` 内容资产和到期的 `distributionTargets`，再解析每个目标的 `platformAccountRef`、平台策略和 `browserProfileRef`。定时器的执行对象是内容目标，不是某个平台技能本身。
+
+- 同一内容的多个目标可以覆盖不同平台、账号、格式和发布时间窗口；平台策略中的时间仍作为目标级约束，不应被解释为内容资产的唯一发布时间。
+- 解析完目标后，按 `browserProfileRef` 分组并在同一 Profile 内尽量连续处理不同平台目标，减少 Profile 切换；分组只改变执行顺序，不改变目标边界。
+- 即使多个目标使用同一个 Profile，每个目标进入平台后仍必须重新核对公开账号身份。不能因为 Profile 已确认，就跳过 `platformAccountRef → platform handle` 校验。
+- 一个 Profile 可以承载用户已确认登录的不同平台账号；同一平台的不同账号不得默认共用 Profile，除非平台支持可靠的账号切换且配置明确授权。账号不匹配、Profile 不明或切换后页面仍是旧账号时，立即停止该目标，不影响其他目标按独立状态处理。
+- 每个目标独立写入 `publishState`、帖子 URL、指标和失败原因。不能把“同一内容部分平台成功”汇总成一次全局成功，也不能把一个平台失败扩散为所有目标失败。
+
 ## Run the workflow
+
+如果调用上下文已经提供 `contentRef` 或 `distributionTargetRef`，先读取 `media-core` 内容资产和目标状态，不重新做与该内容无关的平台热点发现；只在证据、目标窗口或平台适配信息缺失时补充发现。只有没有现成内容资产时，才从候选发现开始，并在核验通过后建立内容资产和分发目标。
 
 ### 1. Build the discovery brief
 
