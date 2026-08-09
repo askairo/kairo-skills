@@ -51,6 +51,8 @@ accounts.<account>
         ├── contentMode
         ├── discoveryTopics
         ├── sourceGroupRefs
+        ├── editorialFrameworkRef       # 指向 media-core 内容层主题框架
+        ├── coverSpecRef                 # 平台/账号视觉适配文档
         ├── selectionSignals
         ├── exclusions
         └── rightsPolicy
@@ -67,6 +69,7 @@ accounts.<account>
 - `sourceGroups.<group>.priorityAccounts` 是可选的重点账号白名单。每项使用 `sourceId` 引用同一来源组中已启用的 X 来源，并填写规范化 `handle`；平台子技能应优先扫描和排序命中白名单的候选，但不得因此跳过事实、版权、相关性、原创增量、重复和安全门禁。
 - `docsRoot` 可选，指向 Agent 本地的外部运营文档根目录；它不进入技能源码。平台发布文档仍按 `<docsRoot>/<platform>/<account>/` 组织。跨平台内容源、内容资产和源流水线不放在这里，而由 `media-core` 的 `<AGENT_HOME>/local-config/media-core/config.json` 指向 `<docsRoot>/content/` 独立管理。
 - `media-ops` 读取 `contentRef` 或 `distributionTargetRef` 时，先按 `media-core` 的内容文档规范读取来源证据、事实边界、版权状态和目标状态；平台目录只作为发布、指标和账号运行历史，不得覆盖内容层共同真相。
+- `editorialFrameworkRef` 只指向 `media-core` 内容层的主题知识、栏目框架和编辑边界；`coverSpecRef` 只指向平台/账号的视觉适配文档。前者可以被多个平台复用，后者不得反向写入内容层主题框架。
 - `selectionSignals` 是运营目标和观察指标，不是平台算法的固定权重；平台子技能将其转换为自己的发现 brief 和候选评分。
 - `media-loop` 使用独立的 `<AGENT_HOME>/local-config/media-loop/config.json` 保存监测窗口、健康门禁、最小可比样本量、实验规则和写回开关；不得把这些运行数据塞进 `media-ops` 账号配置。
 - `media-ops` 在运行开始时读取 `media-loop` 最近一次有效反馈，运行结束后将发布结果交给 `media-loop`；反馈中的 `strategyOverrides` 只覆盖本轮或下一轮上下文，除非用户明确授权，不回写常驻账号配置。
@@ -277,6 +280,7 @@ strategies:
 - 每个平台可以声明 `operation.goal`、`operation.contentMode`、`operation.discoveryTopics`、`operation.selectionSignals` 和平台专属约束；这些字段用于生成发现策略，不得保存凭证。
 - 抖音可以声明 `operation.allowDownload`，布尔值默认是 `false`；`false` 表示发布前关闭“允许下载”（等价于“不允许下载”）。该配置只是期望状态，平台子技能仍必须在最终发布前重新读取页面控件；状态不明或仍允许下载时停止。
 - `operation.sourceGroupRefs`、`operation.exclusions` 和 `operation.rightsPolicy` 用于收窄来源与安全边界；缺少 `goal` 或 `contentMode` 且会改变选材结论时，应请求补充。
+- `operation.editorialFrameworkRef` 是相对于 `docsRoot` 的外部内容文档路径，必须指向 `media-core` 内容目录中的主题框架；`operation.coverSpecRef` 是相对于 `docsRoot` 的平台/账号视觉规范路径。两者都不保存凭证。
 - 平台可以声明 `operation.transport`、`operation.interactiveSkill`、`operation.scheduledSkill`、`operation.interactiveTransport`、`operation.scheduledTransport` 和 `operation.browserAutomation`；X 的无人值守策略若选择 `x`，不得被默认改写为 `x-api`。
 - 当 `scheduledSkill: x` 且策略是有效 `publishingMode: unattended` 时，`scheduledTransport: controlled-browser-session` 与 `browserAutomation: allowed-when-publishingMode-unattended` 表示触发后直接执行，不要求逐条人工确认；仍必须执行账号、事实、版权、重复、限额和发布成功核验。
 - `platforms.<platform>.strategyRef` 可覆盖账号默认策略；合并顺序为“请求覆盖 → 平台配置 → 账号默认 → Skill 默认”。
