@@ -15,10 +15,10 @@ description: 媒体内容核心层：把来源证据、编辑判断、媒体资�
 <AGENT_HOME>/local-config/media-core/config.json
 ```
 
-配置只保存本机文档根目录、内容源流水线和调度定义，不保存密码、Cookie、令牌或浏览器会话。`docsRoot` 下的结构由本技能固定：
+配置只保存本机文档根目录、内容层子目录、内容源流水线和调度定义，不保存密码、Cookie、令牌或浏览器会话。`<docsRoot>/<contentRoot>` 下的结构由本技能固定：
 
 ```text
-<docsRoot>/
+<docsRoot>/<contentRoot>/
   registry.md
   pipelines/<pipeline-id>/
     queue.md
