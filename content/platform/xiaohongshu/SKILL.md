@@ -9,6 +9,8 @@ description: 小红书平台策略与发布子技能：根据账号目标、内�
 
 文本改编前必须读取 [copy-framework.md](references/copy-framework.md)。视觉质量不能替代文字的点击、读完和收藏理由；标题、开头、正文结构、结尾和标签必须作为一个整体校验。
 
+若 `media-ops` 或 `media-core` 传入 `editorialContextRefs` / `editorialFrameworkRef`，先读取对应的主题编辑框架，再进行小红书平台化改编。主题框架只提供事实边界、人物原意、栏目知识和内容门禁；标题长度、正文结构、搜索/收藏目标、封面和发布控件仍以本技能及账号的 `coverSpecRef` 为准。不要把小红书规则写回主题框架。
+
 ## Build the discovery brief
 
 - 先明确账号的搜索意图、内容主体和读者收益，再决定发现关键词、来源类型和候选形式；不把其他平台的热门帖子直接搬运为选题。
