@@ -1,0 +1,4 @@
+interface:
+  display_name: "Media Core"
+  short_description: "Content assets, platform adaptation, distribution, and feedback"
+  default_prompt: "Use $media-core to normalize a content asset and prepare platform-specific distribution targets without publishing."
