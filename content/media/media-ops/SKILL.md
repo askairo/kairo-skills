@@ -40,6 +40,9 @@ description: 跨平台媒体执行总控：读取账号配置和 media-loop 的�
 
 当任务由内容分发计划触发时，先读取 `media-core` 内容资产和到期的 `distributionTargets`，再解析每个目标的 `platformAccountRef`、平台策略和 `browserProfileRef`。定时器的执行对象是内容目标，不是某个平台技能本身。
 
+- 统一分发定时器只负责周期性扫描到期目标，不代表每个平台都按同一频率发布；扫描周期由 `media-core.dispatchScheduler` 控制，目标是否可发布由该目标的 `plannedAt` / `preferredWindow` 和 `strategyRef` 共同决定。
+- 对每个目标依次检查发布时间窗口、`minIntervalMinutes`、`maxPublishedPerDay`、`maxPublishedPerRun`、平台失败退避和 `media-loop` 健康门禁。任何一项不满足时只保留该目标为 `pending` / `deferred`，不能把整轮或同一内容的其他目标标记为失败。
+- 同一平台不同账号分别计数；同一账号不同平台也分别计数。全局扫描器的 `maxTargetsPerRun` 只是资源保护，不得替代平台/账号频率上限。
 - 同一内容的多个目标可以覆盖不同平台、账号、格式和发布时间窗口；平台策略中的时间仍作为目标级约束，不应被解释为内容资产的唯一发布时间。
 - 解析完目标后，按 `browserProfileRef` 分组并在同一 Profile 内尽量连续处理不同平台目标，减少 Profile 切换；分组只改变执行顺序，不改变目标边界。
 - 即使多个目标使用同一个 Profile，每个目标进入平台后仍必须重新核对公开账号身份。不能因为 Profile 已确认，就跳过 `platformAccountRef → platform handle` 校验。

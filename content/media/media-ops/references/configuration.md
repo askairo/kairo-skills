@@ -81,6 +81,35 @@ accounts.<account>
 
 `schedule` 在迁移期间仍可保留在 strategy 中，表示平台/账号的频率、可发布时间窗口和限额约束；内容驱动调度器将其作为目标约束，而不是把“执行某个平台技能”作为定时器的唯一任务对象。未完成调度器迁移前，不应仅修改字段名就宣称已切换为内容驱动。
 
+统一分发扫描器由 `media-core` 本地配置声明：
+
+```json
+{
+  "dispatchScheduler": {
+    "mode": "content-target-scanner",
+    "frequency": "interval",
+    "intervalMinutes": 10,
+    "timezone": "Asia/Shanghai",
+    "maxTargetsPerRun": 3,
+    "ordering": ["plannedAt", "strategyPriority", "browserProfileRef"]
+  }
+}
+```
+
+它只表示“每 10 分钟检查一次”，不表示每个平台每 10 分钟发布。一次扫描必须对每个到期目标重新计算有效性：
+
+```text
+eligible(target) =
+  target.plannedAt/window 已到
+  AND strategy.schedule 窗口允许
+  AND now - lastPublishedAt >= strategy.publishPolicy.minIntervalMinutes
+  AND todayPublishedCount < strategy.publishPolicy.maxPublishedPerDay
+  AND currentRunCount < strategy.maxPublishedPerRun
+  AND account/platform health gates pass
+```
+
+其中账号、平台、策略和失败退避按 `target.strategyRef` 独立解析；同一内容的其他目标不共享这些计数。若策略缺少必要的频率约束，目标只能保持待调度，不能用全局扫描周期代替缺失的发布上限。配置中的 `schedule` 和 `dispatchScheduler` 都只是规范与运行参数，不会单独创建常驻系统任务。
+
 ### Runtime context
 
 `media-ops` 读取配置后，向平台子技能传递统一的运行上下文：
