@@ -1,21 +1,17 @@
 ---
 name: x
-description: X / Twitter 平台策略与发布子技能：根据账号目标和 X 推荐机制设计英文原帖发现策略，筛选并改写适合 X 推荐分发和关注转化的单帖、Thread 或引用帖，并按 reviewed 或有效 unattended 配置完成受控发布和核验。Use when Codex needs to discover, write, optimize, publish, or review content specifically for X. Do not use for account credentials or unverified claims.
+description: X / Twitter 平台策略与发布子技能：对已核验内容资产完成 X 平台筛选、英文改编、受控发布与核验。Use when Codex needs to adapt, publish, or review content specifically for X. Source retrieval, account data, and asset acquisition belong to media-core external records and local configuration. Do not use for credentials or unverified claims.
 ---
 
 # X
 
-本技能处理 X 平台策略、素材发现建议、平台筛选、改编和发布。`media-ops` 先传入账号目标、内容主体、受众、来源边界和发布策略；本技能据此生成 X 专属发现策略，再接收核验后的候选完成平台筛选和发布。
+本技能处理 X 平台筛选、改编、发布和核验。`media-core` 负责来源发现、证据、版权、去重和媒体资产；`media-ops` 传入已核验资产、目标账号和本机策略。本技能不获取来源，不维护账号、来源组、资源路径或游标。
 
-## Build the discovery brief
+## Assess platform fit
 
-- 先读取账号定位、平台目标、内容主体、受众、时间窗口和来源边界，再决定搜索主题与原帖类型。
-- 读取当前账号来源组中的 `priorityAccounts` 白名单；先检查白名单账号的近期动态，再检查账号首页、主题搜索和其他配置来源。白名单只改变发现与排序优先级，不改变事实、版权、相关性、原创增量和重复内容门禁。
-- `priorityAccounts` 必须引用同一来源组中已启用的来源 `id`，并记录规范化 `handle`；它是账号来源白名单，不保存凭证、Cookie、令牌或浏览器会话。白名单为空或不存在时，按普通来源发现流程执行。
-- 默认优先发现可信的英文原始作者、官方账号、开发者社区和与账号内容支柱相邻的讨论；同时检查账号首页近期候选，避免只围绕一个关键词或一个品牌搜索。
+- 读取内容资产的事实边界、编辑主线、受众收益和目标约束，判断适合原帖、Thread、引用帖或不适合 X。
 - X 的平台目标优先观察讨论、引用、转发、点击、主页访问、停留和关注作者潜力；总阅读量只是规模信号，不是唯一选题标准。
-- 为每个候选记录原帖 URL、作者、时间、可见指标、绝对量与归一化互动率、核心主张、账号相关性、是否命中 `priorityAccounts` 及可加入的原创增量。命中白名单的候选在其他条件接近时拥有最高来源优先级，但仍须达到整体评分阈值。
-- 排除只有热度、没有事实边界或与账号内容主体无关的候选；不把翻译或摘要本身当作原创增量。
+- 为每个适配判断记录拟采用的载体、核心主张、原创增量和平台风险；不把翻译或摘要本身当作原创增量。
 - 事实型网页、公告、论文或报告作为依据时，来源链接默认属于公开内容的一部分；不得只留在内部记录。若用户明确要求不放链接，才可省略，并在发布前再次确认该选择。
 
 ## Read references
