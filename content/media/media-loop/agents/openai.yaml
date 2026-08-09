@@ -1,0 +1,4 @@
+interface:
+  display_name: "Media Loop"
+  short_description: "监测账号健康与运营效果，分析反馈并调整跨平台内容策略"
+  default_prompt: "运行媒体运营反馈闭环：读取账号配置与历史数据，检查账号健康和内容表现，定位问题，提出并记录下一轮平台化发布策略调整。"
