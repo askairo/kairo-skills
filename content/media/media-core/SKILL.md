@@ -44,15 +44,23 @@ feedbackRefs[]         # 发布记录、平台指标和 media-loop 反馈
 ```text
 platform
 platformAccountRef
-browserProfileRef or apiContext
 styleRef
 strategyRef
 format
 adaptationBrief
+plannedAt or preferredWindow
 publishState
 ```
 
-同一内容可以有多个目标，例如 X 原生引用、小红书收藏型图文和抖音知识短视频；每个目标都必须经过目标平台技能的专属筛选与改编。平台账号不是内容资产的拥有者，内容资产也不能绕过账号健康和发布门禁。
+`browserProfileRef` 或 `apiContext` 由执行时根据 `platformAccountRef` 解析，不要求在内容资产中重复保存登录环境。这样同一内容可以生成多个目标，例如 X 原生引用、小红书收藏型图文和抖音知识短视频；每个目标都必须经过目标平台技能的专属筛选与改编。平台账号不是内容资产的拥有者，内容资产也不能绕过账号健康和发布门禁。
+
+## Content-driven dispatch
+
+定时器的主对象是“到期的内容分发目标”，不是某个平台技能。`media-core` 负责表达内容何时准备好、哪些目标到期、目标之间是否有顺序依赖；平台的发布时间窗口、频率上限和健康限制仍作为目标级约束保留。
+
+当一个内容的多个目标同时到期时，执行器可以按解析后的 `browserProfileRef` 分组，优先连续处理同一 Profile 下的不同平台目标，减少 Profile 切换。分组只优化执行顺序，不合并账号身份，也不合并发布结果：每个目标仍要单独核对平台账号、事实、版权、重复和成功状态。
+
+同一 Chrome Profile 可以承载用户已确认登录的多个不同平台账号；同一平台的多个账号是否共用 Profile 仍遵守 `media-ops` 的隔离规则。Profile 是账号登录环境，不是内容资产 ID；内容只引用平台账号，执行时再解析 Profile。
 
 ## Boundaries
 
@@ -70,3 +78,4 @@ publishState
 - 平台版本必须保留必要的来源归属和披露；翻译或引用本身不构成原创增量。
 - 发布结果不明确时保持 `publishState: uncertain`，不得推进生命周期或盲目重试。
 - 任何策略优化都创建新版本，保留原始证据、旧文案、发布结果和回滚依据。
+- 同一内容的多个分发目标必须分别记录 `publishState`；一个平台失败或账号暂停时，不得把其他目标错误标记为失败或成功。
