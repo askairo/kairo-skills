@@ -7,6 +7,31 @@ description: 媒体内容核心层：把来源证据、编辑判断、媒体资�
 
 `media-core` 把“内容”作为跨平台运营的第一类对象。它维护一份可核验的内容事实和编辑主线，再为不同平台、账号和策略生成独立的分发目标；它不直接操作平台，也不把同一份原稿机械同步到所有渠道。
 
+## External content records
+
+内容源、内容资产和源流水线必须有独立的外部文档，不再寄存在某个平台账号的 `queue.md`、`runs/` 或 `published.md` 中。启动内容发现、内容资产生成或源流水线定时任务前，读取 Agent 本地配置：
+
+```text
+<AGENT_HOME>/local-config/media-core/config.json
+```
+
+配置只保存本机文档根目录、内容源流水线和调度定义，不保存密码、Cookie、令牌或浏览器会话。`docsRoot` 下的结构由本技能固定：
+
+```text
+<docsRoot>/
+  registry.md
+  pipelines/<pipeline-id>/
+    queue.md
+    published.md
+    runs/<run-id>.md
+```
+
+`registry.md` 登记内容源、内容流水线与目标映射；`queue.md` 登记候选和内容资产状态；`runs/` 记录每次发现、核验、生成和跳过；`published.md` 只记录内容资产及其分发目标的最终状态。平台目录中的文档继续保留平台适配、平台发布和平台指标历史，不再成为内容源的唯一事实来源。
+
+本地配置中的每个 `sourcePipelines.<pipeline-id>` 至少声明 `sourceGroupRef`、`schedule`、`dispatchMode`、`targetAccounts` 和 `dedupKeys`。源定时任务默认使用 `dispatchMode: producer-only`：只发现、核验并登记可复用内容资产，不直接点击平台发布；后续由内容分发目标或 `media-ops` 执行发布。只有明确配置为内容分发任务时，才允许进入发布流程，并且仍需经过平台、账号、版权、频率和成功核验门禁。
+
+内容源迁移时不删除平台历史文档，也不重复复制历史帖子；在内容流水线文档中登记来源映射和迁移起点，之后新增内容以 `contentId` 为唯一内容资产 ID，以 `contentId + targetId` 为分发幂等键。
+
 ## Canonical content asset
 
 每个内容资产至少包含以下对象；缺失会改变事实、版权或选材结论的字段必须先补齐：
