@@ -68,6 +68,10 @@ editorialContextRefs[]  # 可复用的主题知识、栏目框架和编辑边界
 
 来源证据、事实边界和版权状态属于内容资产的共同真相；平台版本可以改变语言、节奏、画面和互动入口，但不得改变已核验事实、人物原意、授权范围或核心编辑判断。
 
+### Ready admission check
+
+从 `verified` 写为 `ready` 前，逐项核对并在内容资产中实际写入 `factBoundary`、`audiencePromise`、`adaptationNotes`、`editorialContextRefs` 和 `feedbackRefs`；不得因为媒体已经验收就跳过这些字段。每个待分发目标还必须已有 `plannedAt` 或 `preferredWindow`。缺任一字段时保持 `verified` / `pending`，在来源流水线或内容编辑记录中补齐后再提升；统一扫描器只判断既有资产，不能替资产补造到期时间或把不完整资产直接发布。
+
 ## Content-first workflow
 
 1. **Ingest**：接收原始帖子、网页、视频、访谈或用户素材，记录来源和权限线索；动态来源按来源协议使用只读页面访问核验最新窗口和原始上下文。
@@ -128,6 +132,7 @@ publishState
 ## Hard gates
 
 - 事实边界不清、来源不可追溯、版权状态不明或媒体不可用时，内容资产不得进入 `ready`。
+- `ready` 不是媒体文件验收的同义词；缺少受众承诺、平台改编边界、编辑上下文、反馈引用，或任一目标缺少 `plannedAt` / `preferredWindow` 时，必须阻止提升并返回缺失字段。
 - 同一事件的转载、翻译和摘要不能被登记为多个独立原创资产。
 - 平台版本必须保留必要的来源归属和披露；翻译或引用本身不构成原创增量。
 - 发布结果不明确时保持 `publishState: uncertain`，不得推进生命周期或盲目重试。
