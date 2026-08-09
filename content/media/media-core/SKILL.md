@@ -30,6 +30,8 @@ description: 媒体内容核心层：把来源证据、编辑判断、媒体资�
 
 本地配置中的每个 `sourcePipelines.<pipeline-id>` 至少声明 `sourceGroupRef`、`schedule`、`dispatchMode`、`targetAccounts` 和 `dedupKeys`。源定时任务默认使用 `dispatchMode: producer-only`：只发现、核验并登记可复用内容资产，不直接点击平台发布；后续由内容分发目标或 `media-ops` 执行发布。只有明确配置为内容分发任务时，才允许进入发布流程，并且仍需经过平台、账号、版权、频率和成功核验门禁。
 
+统一分发扫描器使用同一份配置中的 `dispatchScheduler`。它只规定扫描周期、单轮资源上限和排序方式，不规定所有平台的发布时间，也不覆盖各目标引用的 `strategyRef`。扫描器被外部调度器触发后，才形成一次 `scheduled_run`；读取配置本身不会创建常驻任务。
+
 内容源迁移时不删除平台历史文档，也不重复复制历史帖子；在内容流水线文档中登记来源映射和迁移起点，之后新增内容以 `contentId` 为唯一内容资产 ID，以 `contentId + targetId` 为分发幂等键。
 
 ## Canonical content asset
@@ -77,11 +79,23 @@ plannedAt or preferredWindow
 publishState
 ```
 
+目标的发布时间和频率必须分开表达：`plannedAt` 或 `preferredWindow` 表示这一条内容目标何时可以发布；`strategyRef` 指向的平台/账号策略则提供发布窗口、最小间隔、每日上限、失败退避和账号健康约束。内容层不复制这些策略字段，也不把一个平台的频率传播到其他目标。
+
 `browserProfileRef` 或 `apiContext` 由执行时根据 `platformAccountRef` 解析，不要求在内容资产中重复保存登录环境。这样同一内容可以生成多个目标，例如 X 原生引用、小红书收藏型图文和抖音知识短视频；每个目标都必须经过目标平台技能的专属筛选与改编。平台账号不是内容资产的拥有者，内容资产也不能绕过账号健康和发布门禁。
 
 ## Content-driven dispatch
 
 定时器的主对象是“到期的内容分发目标”，不是某个平台技能。`media-core` 负责表达内容何时准备好、哪些目标到期、目标之间是否有顺序依赖；平台的发布时间窗口、频率上限和健康限制仍作为目标级约束保留。
+
+统一分发扫描器可以每 10 分钟运行一次，但“扫描一次”不等于“发布一次”。每轮按以下顺序筛选：
+
+1. 只取 `lifecycleState: ready` 且 `publishState` 未完成的目标。
+2. 检查目标自己的 `plannedAt` / `preferredWindow` 是否到期。
+3. 解析 `strategyRef`，应用平台/账号的时间窗口、最小间隔、每日上限、单轮上限和失败退避。
+4. 读取 `media-loop` 健康状态；限流、标签、账号不匹配或不确定发布状态优先阻断目标。
+5. 按到期时间、策略优先级和 Profile 分组排序，再交给 `media-ops`；每个目标独立记账和回写。
+
+同一内容的多个目标因此可以错峰发布：一个目标因尚未到窗口或账号已达上限而保持 `pending`，不能连带改变其他目标的状态。统一扫描器的周期是资源调度参数；平台发布频率仍由各目标的 `strategyRef` 控制。
 
 当一个内容的多个目标同时到期时，执行器可以按解析后的 `browserProfileRef` 分组，优先连续处理同一 Profile 下的不同平台目标，减少 Profile 切换。分组只优化执行顺序，不合并账号身份，也不合并发布结果：每个目标仍要单独核对平台账号、事实、版权、重复和成功状态。
 
