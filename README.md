@@ -77,7 +77,12 @@ kairo-skills/
 │   ├── dialogue-refine/
 │   └── hexo-push/
 ├── content/
-│   └── media-ops/
+│   ├── media-ops/
+│   ├── media-loop/
+│   ├── x/
+│   ├── x-api/
+│   ├── douyin/
+│   └── xiaohongshu/
 └── tools/
     ├── excel2sql/
     ├── mac-clean/
@@ -187,7 +192,12 @@ kairo-skills/
 │   ├── dialogue-refine/
 │   └── hexo-push/
 ├── content/
-│   └── media-ops/
+│   ├── media-ops/
+│   ├── media-loop/
+│   ├── x/
+│   ├── x-api/
+│   ├── douyin/
+│   └── xiaohongshu/
 └── tools/
     ├── excel2sql/
     ├── mac-clean/
