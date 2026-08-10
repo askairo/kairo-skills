@@ -1,4 +1,4 @@
 interface:
   display_name: "Media Core"
-  short_description: "Content assets, platform adaptation, distribution, and feedback"
-  default_prompt: "Use $media-core to normalize a content asset and prepare platform-specific distribution targets without publishing."
+  short_description: "Produce verified content assets and distribution targets"
+  default_prompt: "Use $media-core to fulfill a bounded production request, verify source and media, create a ready content asset, and prepare platform targets without publishing."

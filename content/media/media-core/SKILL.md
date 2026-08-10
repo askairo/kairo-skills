@@ -1,6 +1,6 @@
 ---
 name: media-core
-description: 媒体内容核心层：把来源证据、编辑判断、媒体资产、平台适配和分发目标组织成可复用的内容资产，并管理从候选、核验、改编到发布后反馈的生命周期。Use when Codex needs to design a content-first media workflow, normalize one source into reusable content, prepare multiple platform variants, or reconcile content and distribution state. Do not publish content, manage credentials, or replace platform-specific rules.
+description: 媒体内容生产与核心资产层：接收来源流水线或 media-loop 的有界生产请求，发现并验收来源和媒体，把证据、编辑判断、媒体资产、平台适配与分发目标组织成可复用内容资产，并管理完整生命周期。Use when Codex needs to recover an empty content supply, produce a verified asset from a configured source pipeline, normalize content, prepare distribution targets, or reconcile content state. Do not publish content, manage credentials, or replace platform-specific rules.
 ---
 
 # Media Core
@@ -82,6 +82,19 @@ editorialContextRefs[]  # 可复用的主题知识、栏目框架和编辑边界
 6. **Distribute**：把已适配版本交给 `media-ops`，由它执行账号、Chrome Profile、频率、人工确认、发布和成功核验。
 7. **Learn**：接收 `media-loop` 的内容表现反馈，区分内容问题、平台适配问题和账号分发/健康问题，再创建新版本或实验，不覆盖原始资产。
 
+## Produce on demand
+
+`media-core` 可以被来源调度器直接调用，也可以接收 `media-loop.productionRequest` 主动补充供给。后者不是绕过 producer-only 边界，而是在同一内容层执行一次有界生产：
+
+1. 校验 `pipelineRef` 存在且目标账号、内容支柱、来源组和策略引用一致。
+2. 读取 pipeline 的状态、协议、队列、已发布记录和最近 run；先处理明确的顺序候选或可恢复阻塞，不从平台历史猜测素材。
+3. 按来源协议发现候选，完成来源、事实、授权、肖像、隐私和去重门禁；只有配置允许时才采集媒体。
+4. 对媒体执行稳定文件、指纹、可播放性、时长、画面和音视频轨验收，并将合格文件写入资源根目录。
+5. 补齐 canonical asset、ready admission 字段和目标自己的 `plannedAt` / `preferredWindow`；调用目标平台技能生成适配版本，但不执行平台写入。
+6. 返回 `asset_ready`、`production_blocked` 或 `no_qualified_candidate`，记录具体原因和下一可恢复动作。
+
+单次 production request 默认最多生成 1 个 ready 资产；同一 run、同一 `requestId + pipelineRef` 只能执行一次。失败不得回退旧 Downloads、已发布资产或低于门禁的候选，也不得无限刷新或循环采集。只有 `asset_ready` 才能交回 `media-ops` 重新扫描；生产成功本身不等于发布成功，顺序游标仍按来源协议规定的下游结果推进。
+
 ## Distribution target contract
 
 每个目标至少明确：
@@ -112,6 +125,8 @@ publishState
 3. 解析 `strategyRef`，应用平台/账号的时间窗口、最小间隔、每日上限、单轮上限和失败退避。
 4. 读取 `media-loop` 健康状态；限流、标签、账号不匹配或不确定发布状态优先阻断目标。
 5. 按到期时间、策略优先级和 Profile 分组排序，再交给 `media-ops`；每个目标独立记账和回写。
+
+若扫描结果为空，返回结构化库存状态给 `media-loop`，不要只返回终止消息。`media-loop` 判定为 `ready_supply_starved` 并给出有效 `productionRequest` 后，`media-core` 可在同一轮执行一次 `Produce on demand`；若生成 `asset_ready`，调用方必须重新运行 ready admission 和到期扫描，不能把“生产完成”直接当作“允许发布”。
 
 同一内容的多个目标因此可以错峰发布：一个目标因尚未到窗口或账号已达上限而保持 `pending`，不能连带改变其他目标的状态。统一扫描器的周期是资源调度参数；平台发布频率仍由各目标的 `strategyRef` 控制。
 
