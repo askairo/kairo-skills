@@ -1,6 +1,6 @@
 ---
 name: media-ops
-description: 跨平台媒体执行总控：读取账号配置和 media-loop 的策略反馈，发现并核验素材，评分选题，调用 X、小红书或抖音子技能完成平台化改编与发布，并统一执行人工确认、频率、版权、安全和成功核验门禁。Use when Codex needs to execute a configured multi-platform editorial workflow or coordinate a content account. Use media-loop for account-health monitoring, performance analysis, diagnosis, experiments, and strategy feedback. Do not use for credential management or simple verbatim cross-posting.
+description: 跨平台媒体执行总控：扫描可发布目标；供给不足时调用 media-loop 诊断并委托 media-core 生成和验收最多一个新资产，再调用 X、小红书或抖音子技能完成平台化改编与发布，统一执行账号、频率、版权、安全和成功核验门禁。Use when Codex needs to execute a configured editorial workflow, recover an empty ready queue, or coordinate content production through publishing. Do not manage credentials or perform simple verbatim cross-posting.
 ---
 
 # Media Ops
@@ -200,6 +200,18 @@ description: 跨平台媒体执行总控：读取账号配置和 media-loop 的�
 发布、跳过、失败和不确定结果完成记录后，调用 `media-loop` 进行账号健康与运营效果复盘。传递平台、账号、内容支柱、格式、来源、发布时间、可见指标、发布状态和本轮策略版本；不得把凭证或隐私数据传给反馈技能。
 
 `media-loop` 返回的 `strategyOverrides` 只作为下一轮运行的临时覆盖，除非用户明确要求修改常驻配置。`media-ops` 不自行修改策略、不把单条内容表现当作稳定规律，也不因反馈建议绕过事实、版权、安全、去重、限额和发布成功核验。
+
+### 9.1 Recover an empty ready queue
+
+`no-ready-unfinished-due-distribution-targets` 是一次扫描结果，不一定是整轮终点。对配置允许内容生产的执行上下文，按以下低自由度流程处理：
+
+1. 把账号、平台、策略窗口、队列库存、候选阻塞、最近发布/审核状态和最近反馈交给 `media-loop`。
+2. 若 loop 返回 `ready_not_due`、账号暂停、结果不确定、已有足量 ready 库存或无生产请求，记录具体原因并结束；不得提前发布或重试审核中目标。
+3. 若 loop 返回有效 `productionRequest`，调用 `media-core` 对指定 pipeline 生产并验收最多 1 个资产。来源发现、下载、版权、去重、资源路径和游标全部属于 core 及其外部协议；ops 不自行补造候选。
+4. core 返回 `asset_ready` 后，在同一轮重新扫描一次 ready admission、目标到期和平台门禁；符合条件才交给平台子技能。生产出的目标尚未到期时保留为 ready，不为了“本轮必须发布”改写时间。
+5. core 返回 `production_blocked` 或 `no_qualified_candidate` 时写入内容层和平台运行记录，停止；同一 `requestId + pipelineRef` 本轮不得再次调用。
+
+每轮最多执行 1 次供给恢复、生成 1 个 ready 资产并发布 1 条。不得形成 `ops → loop → core → ops` 的无界递归；重新扫描后仍无到期目标即结束。`published_pending_review`、`uncertain`、账号健康暂停、授权失败和媒体失败均不能通过供给恢复绕过。
 
 ### 10. Apply an authorized optimization
 
