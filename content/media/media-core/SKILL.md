@@ -46,6 +46,17 @@ description: 媒体内容生产与核心资产层：接收来源流水线或 med
 - 采集结果必须具有本轮来源证据、作者与原始链接、稳定媒体指纹和协议要求的可用性验收；旧文件、临时文件或无法关联至本轮候选的资源一律不算。
 - 验收合格后，将文件以稳定名称移入 `resourceRoot`，记录大小、时长、轨道信息（如适用）、内容哈希、作者和原始 URL。下载成功本身不得推进源顺序游标；只有来源协议定义的已核验下游结果回写后才推进。
 
+### Sequential source cursor
+
+当 pipeline 声明顺序消费时，`media-core` 是唯一选材游标所有者；平台技能和平台发布记录只回传结果，不计算下一候选。配置至少声明 `order`、`cursorStateFile`、`candidateStart`、`advanceCondition` 和空游标恢复策略。
+
+- `oldest_to_newest` 必须基于来源的完整可核验顺序或已持久化顺序索引，选择“最后一个顺序释放项的直接后继”；不得从频道最新窗口、推荐列表、热度排序或搜索结果中任选未发布项。
+- `nextVideoId` 非空时只处理该项；该项阻塞时保持不变，不能跳过到更新内容。
+- `nextVideoId` 为空但存在 `lastReleasedVideoId` 时，先恢复来源顺序并定位其直接后继，再写入 `nextVideoId`；恢复完成前返回 `cursor_recovery_required`，不得创建资产或发布。
+- 初始化时没有 `lastReleasedVideoId`，才从来源完整顺序中的最早合格项开始。
+- 越序发布必须登记为 `outOfOrderReleased[]` 并参与永久去重，但不得覆盖 `lastReleasedVideoId`、不得改变顺序索引，也不得成为后续游标基线。
+- 只有 `advanceCondition` 的下游结果明确且状态成功写回后，才将当前 `nextVideoId` 设为新的 `lastReleasedVideoId`，并计算其直接后继。来源列表变化或直接后继无法核验时停止，不猜测。
+
 ## Canonical content asset
 
 每个内容资产至少包含以下对象；缺失会改变事实、版权或选材结论的字段必须先补齐：
@@ -87,7 +98,7 @@ editorialContextRefs[]  # 可复用的主题知识、栏目框架和编辑边界
 `media-core` 可以被来源调度器直接调用，也可以接收 `media-loop.productionRequest` 主动补充供给。后者不是绕过 producer-only 边界，而是在同一内容层执行一次有界生产：
 
 1. 校验 `pipelineRef` 存在且目标账号、内容支柱、来源组和策略引用一致。
-2. 读取 pipeline 的状态、协议、队列、已发布记录和最近 run；先处理明确的顺序候选或可恢复阻塞，不从平台历史猜测素材。
+2. 读取 pipeline 的状态、协议、队列、已发布记录和最近 run；顺序源先执行 `Sequential source cursor`，只处理当前 `nextVideoId` 或经完整顺序恢复得到的直接后继，不从平台历史、近期窗口或推荐列表猜测素材。
 3. 按来源协议发现候选，完成来源、事实、授权、肖像、隐私和去重门禁；只有配置允许时才采集媒体。
 4. 对媒体执行稳定文件、指纹、可播放性、时长、画面和音视频轨验收，并将合格文件写入资源根目录。
 5. 补齐 canonical asset、ready admission 字段和目标自己的 `plannedAt` / `preferredWindow`；调用目标平台技能生成适配版本，但不执行平台写入。
