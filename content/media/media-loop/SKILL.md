@@ -1,11 +1,11 @@
 ---
 name: media-loop
-description: 媒体运营反馈闭环总控：读取 media-ops 的账号配置、发布记录、平台数据和账号健康信号，监测跨平台账号状态与内容效果，区分分发限制和内容问题，形成可验证的诊断、策略调整与实验计划，并把结果反馈给 media-ops 及各平台子技能。Use when Codex needs to monitor media account health, review content performance, diagnose operational problems, adjust discovery or publishing strategy, or run a feedback loop across configured X, Xiaohongshu, and Douyin accounts. Do not publish content, manage credentials, or silently change permanent configuration.
+description: 媒体运营反馈与供给闭环总控：读取 media-ops 的账号配置、内容队列、发布记录、平台数据和账号健康信号，区分内容供给、分发限制与内容表现问题，形成可验证的诊断、生产请求、策略调整和实验计划，并反馈给 media-core、media-ops 及平台子技能。Use when Codex needs to monitor account health, diagnose an empty or stalled content queue, request new verified content assets, review performance, or run a feedback loop across configured platforms. Do not publish content, manage credentials, acquire media itself, or silently change permanent configuration.
 ---
 
 # Media Loop
 
-`media-loop` 负责“发布之后发生什么”，不负责发现素材、改写文案或点击发布按钮。它读取 `media-ops` 的运行上下文和平台结果，输出有证据的诊断与下一轮策略覆盖。一个逻辑账号必须代表一个独立的品牌/运营主体；不同定位的账号必须分别建立基线、健康状态、实验和反馈，不得合并统计。
+`media-loop` 负责“运营状态下一步需要什么”：既处理发布后的健康与效果反馈，也识别 `ready` 队列为空、候选长期卡住或计划窗口即将缺货等供给问题。它不发现或下载素材、不改写平台文案、不点击发布按钮；它输出有证据的诊断、策略覆盖，以及交给 `media-core` 的结构化生产请求。一个逻辑账号必须代表一个独立的品牌/运营主体；不同定位的账号必须分别建立基线、健康状态、实验和反馈，不得合并统计。
 
 涉及内容资产版本、平台适配版本或内容生命周期时，读取 [media-core](../media-core/SKILL.md)；反馈应区分内容问题、平台适配问题和账号分发/健康问题。
 
@@ -33,9 +33,28 @@ description: 媒体运营反馈闭环总控：读取 media-ops 的账号配置�
 3. **整理内容指标**：按平台、账号、内容支柱、来源类型、格式、发布时间、是否引用/原创和互动入口聚合表现。至少区分绝对量与归一化指标：曝光/阅读、互动率、收藏率、转发率、评论率、完播率、关注转化率、主页访问转化率或点击率。只使用平台实际提供的指标，并标记不可比的指标。
 4. **建立可比基线**：优先与同账号、同平台、同格式、同内容支柱的历史中位数和分位数比较；样本不足时降低结论等级。不要直接横比 X、小红书和抖音的绝对阅读量。
 5. **归因诊断**：至少在“账号分发/健康、选题相关性、来源与可信度、首句/标题/封面、正文结构、媒体质量、发布时间、互动入口、版权或平台合规”之间做区分。一个指标下降不能直接证明某个因素是原因。
-6. **生成策略调整**：给出下一轮 `discoveryBrief`、候选排序、内容结构、发布频率或发布时间的具体覆盖项，并说明证据、预期信号、风险和回滚条件。平台细节交给 `x`、`xiaohongshu` 或 `douyin`。
-7. **设计单变量实验**：一次只改变一个主要变量；规定实验周期、最小样本、成功指标、对照组和停止条件。没有足够样本时只提出假设，不宣称结论。
-8. **写回反馈**：将健康快照、指标汇总、诊断、策略版本、实验结果和未决问题写入 `docsRoot/<platform>/<account>/loop/`。不得覆盖原始发布记录；策略调整使用新版本并保留来源和时间。
+6. **检查内容供给**：读取内容层队列和未来发布窗口，区分 `no_source_candidate`、`candidate_blocked`、`asset_incomplete`、`ready_not_due`、`ready_supply_starved` 与 `published_pending_review`。审核中目标不是供给，不得重试；仍有足量 ready 目标时不额外生产。
+7. **生成生产请求**：仅在账号健康允许、策略存在未来窗口且 ready 供给不足时，向 `media-core` 输出一个有界 `productionRequest`；它描述需要什么，不替 core 选择或验收素材。
+8. **生成策略调整**：给出下一轮 `discoveryBrief`、候选排序、内容结构、发布频率或发布时间的具体覆盖项，并说明证据、预期信号、风险和回滚条件。平台细节交给 `x`、`xiaohongshu` 或 `douyin`。
+9. **设计单变量实验**：一次只改变一个主要变量；规定实验周期、最小样本、成功指标、对照组和停止条件。没有足够样本时只提出假设，不宣称结论。
+10. **写回反馈**：将健康快照、供给诊断、生产请求、指标汇总、策略版本、实验结果和未决问题写入 `docsRoot/<platform>/<account>/loop/`。不得覆盖原始发布记录；策略调整使用新版本并保留来源和时间。
+
+## Supply recovery contract
+
+当调用方报告 `no-ready-unfinished-due-distribution-targets` 时，不得直接把它解释成“本轮无需动作”。先判断是否存在可恢复的内容供给缺口。输出给 `media-core` 的 `productionRequest` 至少包含：
+
+```text
+requestId, accountRef, targetPlatform, pipelineRef,
+reason, requestedAt, desiredReadyBy,
+contentPillars[], discoveryBrief, targetCount,
+requiredRights, requiredMediaChecks[], dedupScope,
+strategyRefs[], feedbackRefs[], stopConditions[]
+```
+
+- 单次执行默认 `targetCount: 1`；不得为追求发布频率要求降低事实、版权、去重或媒体门禁。
+- 只有 `ready_supply_starved` 或可恢复的 `candidate_blocked` 才生成请求；`ready_not_due`、账号暂停、发布结果不确定或已有足量 ready 库存时不生成。
+- `productionRequest` 是对 `media-core` 的生产委托，不是发布授权，也不是对某个候选已合格的结论。
+- `media-core` 返回 `asset_ready`、`production_blocked` 或 `no_qualified_candidate` 后，`media-loop` 记录供给结果；不得在同一轮对同一 pipeline 无限循环请求。
 
 ## Health gates
 
@@ -59,6 +78,7 @@ accountRef, platform, observedAt, window, dataQuality,
 contentRef, distributionTargetRef,
 healthStatus, healthSignals[], baseline,
 diagnoses[], strategyOverrides[], experimentPlan[],
+inventoryStatus, productionRequest,
 pauseOrRateLimit, confidence, nextReviewAt
 ```
 
@@ -66,10 +86,10 @@ pauseOrRateLimit, confidence, nextReviewAt
 
 ## Platform boundaries
 
-- `media-core`：定义内容资产、证据卡、平台适配契约和内容生命周期。
+- `media-core`：接收生产请求，发现并验收来源，定义内容资产、证据卡、平台适配契约和内容生命周期。
 - `media-ops`：读取账号配置、调度平台子技能和执行发布门禁。
-- `media-loop`：读取结果、监测状态、分析效果、归因、提出策略覆盖和管理实验记录。
-- `x`、`xiaohongshu`、`douyin`：负责各自平台的推荐机制、素材发现、内容制作、发布和平台专属指标解释。
+- `media-loop`：读取结果与队列，监测健康和供给，提出生产请求、策略覆盖并管理实验记录。
+- `x`、`xiaohongshu`、`douyin`：负责各自平台的适配、发布和平台专属指标解释，不承担来源获取。
 
 不得把跨平台总阅读量当作统一目标；每个平台必须依据账号目标和平台行为信号评价。不同逻辑账号之间不得混用基线、策略反馈或健康状态。不得把“热度高”直接等同于“适合该账号”。
 
