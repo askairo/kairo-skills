@@ -1,11 +1,13 @@
 ---
 name: media-ops
-description: 跨平台媒体执行总控：扫描可发布目标；供给不足时调用 media-loop 诊断并委托 media-core 生成和验收最多一个新资产，再调用 X、小红书或抖音子技能完成平台化改编与发布，统一执行账号、频率、版权、安全和成功核验门禁。Use when Codex needs to execute a configured editorial workflow, recover an empty ready queue, or coordinate content production through publishing. Do not manage credentials or perform simple verbatim cross-posting.
+description: 跨平台媒体发布执行总控：扫描可发布目标；供给不足时调用 media-loop 诊断并委托 media-core 生成和验收最多一个新资产，再调用 X、小红书或抖音子技能完成平台化改编与发布，统一执行账号、频率、版权、安全和成功核验门禁。Use when Codex needs to directly publish a configured content target, execute an approved editorial workflow, recover an empty ready queue, or coordinate content production through publishing. For vague operating problems or permanent strategy changes, media-loop is the default entrypoint. Do not manage credentials or perform simple verbatim cross-posting.
 ---
 
 # Media Ops
 
 把账号目标、平台机制和内容主体转化为可执行的素材发现与发布任务，并协调平台子技能完成核验、筛选、改编和发布。把能力规则保留在 Skill 中，把账号、风格、来源和频率保留在用户配置中。运营反馈由独立的 `media-loop` 负责；`media-ops` 只消费其经过证据支持的策略覆盖，不在发布流程中自行猜测效果原因。
+
+`media-ops` 是发布执行层总控，不是运营策略层总控。直接发布请求、已明确的目标级执行任务和由 `media-loop` 路由来的配置落地任务进入本技能；“为什么效果差”“应该改哪个配置”这类未分类问题先交给 `media-loop` 诊断。`media-ops` 只能在用户明确授权长期生效时修改常驻执行配置，其他反馈只作为本轮或下一轮的临时覆盖。
 
 涉及可复用内容资产时，先读取 [media-core](../media-core/SKILL.md) 的内容资产、证据卡、生命周期和分发目标规范；`media-ops` 负责调度和发布，不把平台账号配置写回内容资产的共同真相。
 
