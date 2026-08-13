@@ -94,7 +94,15 @@ accounts.<account>
     "intervalMinutes": 10,
     "timezone": "Asia/Shanghai",
     "maxTargetsPerRun": 3,
-    "ordering": ["plannedAt", "strategyPriority", "browserProfileRef"]
+    "ordering": ["plannedAt", "strategyPriority", "browserProfileRef"],
+    "targetSelection": {
+      "mode": "oldest_due_unfinished_eligible",
+      "ordering": ["plannedAt", "targetCreatedAt", "sourceObservedAt", "targetId"],
+      "neverPreferLatest": true,
+      "preserveUnfinishedTargets": true,
+      "blockedTargetHandling": "leave_and_consider_next_eligible",
+      "accountLevelBlockHandling": "pause_account"
+    }
   }
 }
 ```
@@ -114,6 +122,8 @@ eligible(target) =
 其中账号、平台、策略和失败退避按 `target.strategyRef` 独立解析；同一内容的其他目标不共享这些计数。若策略缺少必要的频率约束，目标只能保持待调度，不能用全局扫描周期代替缺失的发布上限。配置中的 `schedule` 和 `dispatchScheduler` 都只是规范与运行参数，不会单独创建常驻系统任务。
 
 内容驱动的 unattended 策略必须同时声明 `publishPolicy.minIntervalMinutes`、`publishPolicy.maxPublishedPerDay` 和 `publishPolicy.platformLimitBackoffHours`；任一缺失时返回“策略频率约束缺失”，不得进入浏览器。`media-ops/config` 是发布节奏的唯一配置真相：账号 README、队列说明和外部调度定义若与其时间或上限不一致，记录为 `schedule_document_mismatch` 并停止该目标，直到显式同步；不得在扫描时猜测哪个旧记录优先。
+
+同一 `platformAccountRef` 的目标选择默认采用 `oldest_due_unfinished_eligible`：`plannedAt` 最早者优先，随后使用 `targetCreatedAt`、`sourceObservedAt`、`targetId` 打破平局。`neverPreferLatest: true` 禁止用“最新资源”覆盖历史未完成目标；目标级阻塞只保留并记录该目标，账号级健康阻断则暂停该账号队列。
 
 ### Runtime context
 

@@ -54,6 +54,7 @@ description: 跨平台媒体执行总控：扫描可发布目标；供给不足�
 - 即使多个目标使用同一个 Profile，每个目标进入平台后仍必须重新核对公开账号身份。不能因为 Profile 已确认，就跳过 `platformAccountRef → platform handle` 校验。
 - 一个 Profile 可以承载用户已确认登录的不同平台账号；同一平台的不同账号不得默认共用 Profile，除非平台支持可靠的账号切换且配置明确授权。账号不匹配、Profile 不明或切换后页面仍是旧账号时，立即停止该目标，不影响其他目标按独立状态处理。
 - 每个目标独立写入 `publishState`、帖子 URL、指标和失败原因。不能把“同一内容部分平台成功”汇总成一次全局成功，也不能把一个平台失败扩散为所有目标失败。
+- 同一账号的多个未完成目标按 `media-core.dispatchScheduler.targetSelection` 处理：选择最早 `plannedAt` 的到期、未完成且 eligible 目标；同一时间再按 `targetCreatedAt`、`sourceObservedAt`、`targetId` 排序。不得因为新资源刚在另一个平台成功，就改选最新资源；已在小红书完成的目标不影响同一内容在抖音上的独立未完成目标。目标级不 ready/未到期/适配失败可以保留并检查下一条 eligible 目标，账号级健康阻断则暂停该账号队列。
 
 ## Run the workflow
 
