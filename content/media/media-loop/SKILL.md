@@ -63,7 +63,7 @@ description: 媒体运营反馈与供给闭环总控，也是运营问题、执�
 10. **设计单变量实验**：一次只改变一个主要变量；规定实验周期、最小样本、成功指标、对照组和停止条件。没有足够样本时只提出假设，不宣称结论。
 11. **写回反馈**：将健康快照、供给诊断、适配请求、生产请求、指标汇总、策略版本、实验结果和未决问题写入 `docsRoot/<platform>/<account>/loop/`。不得覆盖原始发布记录；策略调整使用新版本并保留来源和时间。
 
-每轮报告还要写出 `schedulerAuthority`、`activeTriggerSchedulers`、`runLock`、`readyInventoryByTarget` 和 `manualOverrideLeases`。这些字段用于识别“系统重复执行”“库存缺货”和“临时越限”三类不同问题，不能合并成一个笼统的跳过原因。
+每轮报告还要写出 `schedulerAuthority`、`activeTriggerSchedulers`（含当前自动化任务的实际 RRULE）、`runLock`、`readyInventoryByTarget` 和 `manualOverrideLeases`。这些字段用于识别“系统重复执行”“库存缺货”和“临时越限”三类不同问题，不能合并成一个笼统的跳过原因。`media-loop` 不得把固定扫描周期写入自动化定义；只有发现多个实际来源生产者或触发器绕过全局决策时，才报告调度架构错误。
 
 ## Adaptation-first supply recovery contract
 
