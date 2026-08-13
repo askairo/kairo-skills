@@ -101,14 +101,25 @@ editorialContextRefs[]  # 可复用的主题知识、栏目框架和编辑边界
 
 ## Produce on demand
 
+### Adaptation backlog recovery
+
+内容源生产和平台适配是两个不同阶段。收到 `media-loop.adaptationRequest`，或扫描到 `verified` 资产存在 `pending_content_completion` 目标时，先按以下顺序恢复适配积压：
+
+1. 按 `plannedAt`、目标创建时间、来源核验时间和 `targetId` 选择最早的、未被用户争议且未完成的资产；跳过 `published_pending_review`、`uncertain` 和账号健康阻断目标。
+2. 读取内容层编辑框架、该资产的事实边界和反馈引用，再分别调用目标平台技能。小红书、抖音等平台必须各自产出标题、正文/脚本、互动入口和独立媒体，不得机械复用另一平台的成稿或来源截图。
+3. 将目标级适配版本、媒体指纹、版权/授权证据和 `adaptationNotes` 写回内容队列；只有目标字段完整且已有 `plannedAt` / `preferredWindow` 时，才把目标从 `pending_content_completion` 提升为 `ready`。
+4. 每轮最多完成 1 个内容资产的适配；完成后重新执行 ready admission 和分发扫描。适配完成不等于平台发布成功。
+5. 只要仍存在可恢复的适配积压，就返回 `adaptation_backlog_present`，阻止新的来源生产；不得通过继续创建 `verified` 资产来掩盖适配缺口。
+
 `media-core` 可以被来源调度器直接调用，也可以接收 `media-loop.productionRequest` 主动补充供给。后者不是绕过 producer-only 边界，而是在同一内容层执行一次有界生产：
 
-1. 校验 `pipelineRef` 存在且目标账号、内容支柱、来源组和策略引用一致。
-2. 读取 pipeline 的状态、协议、队列、已发布记录和最近 run；顺序源先执行 `Sequential source cursor`，只处理当前 `nextVideoId` 或经完整顺序恢复得到的直接后继，不从平台历史、近期窗口或推荐列表猜测素材。
-3. 按来源协议发现候选，完成来源、事实、授权、肖像、隐私和去重门禁；只有配置允许时才采集媒体。
-4. 对媒体执行稳定文件、指纹、可播放性、时长、画面和音视频轨验收，并将合格文件写入资源根目录。
-5. 补齐 canonical asset、ready admission 字段和目标自己的 `plannedAt` / `preferredWindow`；调用目标平台技能生成适配版本，但不执行平台写入。
-6. 返回 `asset_ready`、`production_blocked` 或 `no_qualified_candidate`，记录具体原因和下一可恢复动作。
+1. 先执行 `Adaptation backlog recovery`；只有没有可恢复适配积压时，才校验 `pipelineRef` 并进入新的来源生产。
+2. 校验 `pipelineRef` 存在且目标账号、内容支柱、来源组和策略引用一致。
+3. 读取 pipeline 的状态、协议、队列、已发布记录和最近 run；顺序源先执行 `Sequential source cursor`，只处理当前 `nextVideoId` 或经完整顺序恢复得到的直接后继，不从平台历史、近期窗口或推荐列表猜测素材。
+4. 按来源协议发现候选，完成来源、事实、授权、肖像、隐私和去重门禁；只有配置允许时才采集媒体。
+5. 对媒体执行稳定文件、指纹、可播放性、时长、画面和音视频轨验收，并将合格文件写入资源根目录。
+6. 补齐 canonical asset、ready admission 字段和目标自己的 `plannedAt` / `preferredWindow`；调用目标平台技能生成适配版本，但不执行平台写入。
+7. 返回 `asset_ready`、`production_blocked`、`adaptation_backlog_present` 或 `no_qualified_candidate`，记录具体原因和下一可恢复动作。
 
 单次 production request 默认最多生成 1 个 ready 资产；同一 run、同一 `requestId + pipelineRef` 只能执行一次。失败不得回退旧 Downloads、已发布资产或低于门禁的候选，也不得无限刷新或循环采集。只有 `asset_ready` 才能交回 `media-ops` 重新扫描；生产成功本身不等于发布成功，顺序游标仍按来源协议规定的下游结果推进。
 
