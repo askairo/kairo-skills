@@ -24,7 +24,7 @@ description: 媒体运营反馈与供给闭环总控：读取 media-ops 的账�
 
 ## Check operating-system integrity first
 
-在分析内容表现前，先核对内容优先架构是否真的生效：每条启用的内容 pipeline 最多只能有一个来源生产调度器，每个 Agent 最多只能有一个统一分发调度器；旧的平台专属发布定时器必须处于停用状态。若发现来源调度器、统一分发器和旧平台定时器同时运行，返回 `scheduler_authority_mismatch`，暂停平台写入并给出修复对象，不把重复运行造成的密度问题归因于文案。
+在分析内容表现前，先核对内容优先架构是否真的生效：每条启用的内容 pipeline 最多只能有一个来源事实写入者，所有统一扫描器和平台定时器都可以作为触发器，但必须调用同一个 `media-ops` 决策入口，并共享 `contentId + targetId` 运行锁。平台定时器不是被废弃的能力，而是平台执行适配器；它不得绕过内容层自行发现、补造或重复发布。若发现触发器未经过全局决策、锁冲突或来源事实写入者重复，返回 `scheduler_authority_mismatch`，暂停该目标写入并给出修复对象。
 
 健康、供给和人工覆盖也必须分开记账：
 
@@ -49,7 +49,7 @@ description: 媒体运营反馈与供给闭环总控：读取 media-ops 的账�
 9. **设计单变量实验**：一次只改变一个主要变量；规定实验周期、最小样本、成功指标、对照组和停止条件。没有足够样本时只提出假设，不宣称结论。
 10. **写回反馈**：将健康快照、供给诊断、生产请求、指标汇总、策略版本、实验结果和未决问题写入 `docsRoot/<platform>/<account>/loop/`。不得覆盖原始发布记录；策略调整使用新版本并保留来源和时间。
 
-每轮报告还要写出 `schedulerAuthority`、`activeLegacySchedulers`、`readyInventoryByTarget` 和 `manualOverrideLeases`。这些字段用于识别“系统重复执行”“库存缺货”和“临时越限”三类不同问题，不能合并成一个笼统的跳过原因。
+每轮报告还要写出 `schedulerAuthority`、`activeTriggerSchedulers`、`runLock`、`readyInventoryByTarget` 和 `manualOverrideLeases`。这些字段用于识别“系统重复执行”“库存缺货”和“临时越限”三类不同问题，不能合并成一个笼统的跳过原因。
 
 ## Supply recovery contract
 
