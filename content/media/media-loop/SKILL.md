@@ -1,6 +1,6 @@
 ---
 name: media-loop
-description: 媒体运营反馈与供给闭环总控：读取 media-ops 的账号配置、内容队列、发布记录、平台数据和账号健康信号，区分内容供给、分发限制与内容表现问题，形成可验证的诊断、生产请求、策略调整和实验计划，并反馈给 media-core、media-ops 及平台子技能。Use when Codex needs to monitor account health, diagnose an empty or stalled content queue, request new verified content assets, review performance, or run a feedback loop across configured platforms. Do not publish content, manage credentials, acquire media itself, or silently change permanent configuration.
+description: 媒体运营反馈与供给闭环总控，也是运营问题、执行异常和配置调整的默认入口：读取 media-ops 的账号配置、内容队列、发布记录、平台数据和账号健康信号，区分内容供给、分发限制与内容表现问题，协调 media-core、media-ops 及平台子技能完成处理，并形成可验证的诊断、策略调整和实验计划。Use when Codex needs to triage a media-operation problem, monitor account health, diagnose an empty or stalled content queue, request new verified content assets, review performance, or coordinate configuration ownership across platforms. Do not publish content, manage credentials, acquire media itself, or silently change permanent configuration.
 ---
 
 # Media Loop
@@ -8,6 +8,19 @@ description: 媒体运营反馈与供给闭环总控：读取 media-ops 的账�
 `media-loop` 负责“运营状态下一步需要什么”：既处理发布后的健康与效果反馈，也识别 `ready` 队列为空、候选长期卡住或计划窗口即将缺货等供给问题。它不发现或下载素材、不改写平台文案、不点击发布按钮；它输出有证据的诊断、策略覆盖，以及交给 `media-core` 的结构化生产请求。一个逻辑账号必须代表一个独立的品牌/运营主体；不同定位的账号必须分别建立基线、健康状态、实验和反馈，不得合并统计。
 
 涉及内容资产版本、平台适配版本或内容生命周期时，读取 [media-core](../media-core/SKILL.md)；反馈应区分内容问题、平台适配问题和账号分发/健康问题。
+
+## Operations entrypoint and routing
+
+当用户只说“执行遇到问题”“帮我判断并改配置”或要求根据运营结果调整体系时，先由 `media-loop` 作为运营入口：建立快照、定位问题、判断配置归属，再协调责任技能处理。它负责全局判断和路由，不代替责任技能直接写入所有配置。
+
+按问题类型路由：
+
+- 内容源、内容资产、事实/版权、`ready` 状态或分发目标：协调 `media-core`。
+- 发布频率、人工确认、自动发布、账号策略、Chrome Profile、调度与执行门禁：协调 `media-ops`。
+- X、小红书或抖音的推荐机制、平台化文案、格式和发布流程：协调对应平台技能（`x`、`xiaohongshu`、`douyin` 或 `x-api`）。
+- `SKILL.md`、技能工作流、技能同步和运行目录一致性：协调 `skills-loop`；技能内容设计先遵守 `skill-creator`。
+
+用户明确要求直接发布现成内容时，入口可以是 `media-ops`；用户明确要求修改技能本身时，入口是 `skills-loop`。永久配置只有在用户明确授权长期生效时才修改；否则输出一次性 `strategyOverride` 或实验方案，并保留回滚条件。
 
 ## Resolve configuration and inputs
 
@@ -102,8 +115,8 @@ pauseOrRateLimit, confidence, nextReviewAt
 ## Platform boundaries
 
 - `media-core`：接收生产请求，发现并验收来源，定义内容资产、证据卡、平台适配契约和内容生命周期。
-- `media-ops`：读取账号配置、调度平台子技能和执行发布门禁。
-- `media-loop`：读取结果与队列，监测健康和供给，提出生产请求、策略覆盖并管理实验记录。
+- `media-ops`：作为发布执行总控，读取账号配置、调度内容目标和平台子技能，执行发布门禁、结果回写和浏览器清理。
+- `media-loop`：作为运营总控入口，读取结果与队列，监测健康和供给，诊断问题，协调责任技能，提出生产请求、策略覆盖并管理实验记录；不直接发布。
 - `x`、`xiaohongshu`、`douyin`：负责各自平台的适配、发布和平台专属指标解释，不承担来源获取。
 
 不得把跨平台总阅读量当作统一目标；每个平台必须依据账号目标和平台行为信号评价。不同逻辑账号之间不得混用基线、策略反馈或健康状态。不得把“热度高”直接等同于“适合该账号”。
