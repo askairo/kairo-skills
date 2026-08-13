@@ -141,6 +141,8 @@ publishState
 4. 读取 `media-loop` 健康状态；限流、标签、账号不匹配或不确定发布状态优先阻断目标。
 5. 按到期时间、策略优先级和 Profile 分组排序，再交给 `media-ops`；每个目标独立记账和回写。
 
+同一 `platformAccountRef` 存在多个未完成目标时，必须按目标队列选择“最早到期、仍未完成且当前 eligible”的目标，而不是按来源最新、内容热度或最近创建时间抢占。排序键依次为 `plannedAt`、`targetCreatedAt`、`sourceObservedAt`、`targetId`；`targetSelection.neverPreferLatest` 默认必须为 true。目标自己的内容未 ready、尚未到期或目标级适配/版权门禁失败时，保留该目标并记录原因，同时可以继续处理下一条 eligible 目标；账号级限流、标签、不确定发布状态或账号不匹配则暂停该账号的后续目标。这样同一内容在小红书已发布而抖音未发布时，抖音会优先补发最早一条未完成的抖音目标，不会被后来新增且已在小红书发布的内容抢走。
+
 若扫描结果为空，返回结构化库存状态给 `media-loop`，不要只返回终止消息。`media-loop` 判定为 `ready_supply_starved` 并给出有效 `productionRequest` 后，`media-core` 可在同一轮执行一次 `Produce on demand`；若生成 `asset_ready`，调用方必须重新运行 ready admission 和到期扫描，不能把“生产完成”直接当作“允许发布”。
 
 同一内容的多个目标因此可以错峰发布：一个目标因尚未到窗口或账号已达上限而保持 `pending`，不能连带改变其他目标的状态。统一扫描器的周期是资源调度参数；平台发布频率仍由各目标的 `strategyRef` 控制。
