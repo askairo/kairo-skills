@@ -22,6 +22,16 @@ description: 媒体运营反馈与供给闭环总控：读取 media-ops 的账�
 
 如果没有可靠数据，输出“数据不足”，不得用搜索顺序、单条爆文或模型猜测替代指标。
 
+## Check operating-system integrity first
+
+在分析内容表现前，先核对内容优先架构是否真的生效：每条启用的内容 pipeline 最多只能有一个来源生产调度器，每个 Agent 最多只能有一个统一分发调度器；旧的平台专属发布定时器必须处于停用状态。若发现来源调度器、统一分发器和旧平台定时器同时运行，返回 `scheduler_authority_mismatch`，暂停平台写入并给出修复对象，不把重复运行造成的密度问题归因于文案。
+
+健康、供给和人工覆盖也必须分开记账：
+
+- 用户对单条内容的频率豁免是一次性的 `targetId` 级 lease，不改变常驻策略、每日上限或下一轮资格。
+- `published_pending_review`、`uncertain` 和账号健康暂停都不能通过生产请求或人工覆盖绕过。
+- 供给库存按目标统计，而不是按账号或 pipeline 的总资产统计；一条内容只有目标适配完成的一侧可以进入 `ready`，不能因为另一平台可发布而连带放行。
+
 平台明确显示“发布成功”、新条目可与目标关联且状态为“审核中”时，记录 `published_pending_review`：这表示提交结果明确，可供内容层写回和顺序游标推进，但不等同于公开分发完成，也不得对它重复发布。此时指标数据质量为低，等待审核状态或可见指标变化后再做表现归因。只有成功提示与新条目无法关联、状态缺失或冲突时才是 `uncertain` 并触发暂停/不重试门禁。
 
 ## Run the feedback loop
@@ -39,6 +49,8 @@ description: 媒体运营反馈与供给闭环总控：读取 media-ops 的账�
 9. **设计单变量实验**：一次只改变一个主要变量；规定实验周期、最小样本、成功指标、对照组和停止条件。没有足够样本时只提出假设，不宣称结论。
 10. **写回反馈**：将健康快照、供给诊断、生产请求、指标汇总、策略版本、实验结果和未决问题写入 `docsRoot/<platform>/<account>/loop/`。不得覆盖原始发布记录；策略调整使用新版本并保留来源和时间。
 
+每轮报告还要写出 `schedulerAuthority`、`activeLegacySchedulers`、`readyInventoryByTarget` 和 `manualOverrideLeases`。这些字段用于识别“系统重复执行”“库存缺货”和“临时越限”三类不同问题，不能合并成一个笼统的跳过原因。
+
 ## Supply recovery contract
 
 当调用方报告 `no-ready-unfinished-due-distribution-targets` 时，不得直接把它解释成“本轮无需动作”。先判断是否存在可恢复的内容供给缺口。输出给 `media-core` 的 `productionRequest` 至少包含：
@@ -52,6 +64,7 @@ strategyRefs[], feedbackRefs[], stopConditions[]
 ```
 
 - 单次执行默认 `targetCount: 1`；不得为追求发布频率要求降低事实、版权、去重或媒体门禁。
+- 当库存低于目标的 `minReadyTargets` 时才允许补货；达到目标后停止生产，不为“多准备一些”无限生成。
 - 只有 `ready_supply_starved` 或可恢复的 `candidate_blocked` 才生成请求；`ready_not_due`、账号暂停、发布结果不确定或已有足量 ready 库存时不生成。
 - `productionRequest` 是对 `media-core` 的生产委托，不是发布授权，也不是对某个候选已合格的结论。
 - `media-core` 返回 `asset_ready`、`production_blocked` 或 `no_qualified_candidate` 后，`media-loop` 记录供给结果；不得在同一轮对同一 pipeline 无限循环请求。
@@ -83,6 +96,8 @@ pauseOrRateLimit, confidence, nextReviewAt
 ```
 
 `strategyOverrides` 只能覆盖配置允许的运营字段，例如 `discoveryTopics`、`selectionSignals`、`minScore`、`contentMode`、`schedule` 或平台风格引用；不得关闭事实、版权、安全、去重、限额和发布成功核验门禁。永久修改配置、暂停常驻调度或发布新内容，必须由调用方明确授权。
+
+对于经过用户明确授权的优化，优先把一次性实验写成带版本号的 override；只有用户明确要求长期生效时，才修改常驻配置。每次常驻变更必须同时记录旧值、新值、生效时间、预期指标和回滚条件。
 
 ## Platform boundaries
 
