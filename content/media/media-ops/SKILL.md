@@ -17,7 +17,7 @@ description: 跨平台媒体执行总控：扫描可发布目标；供给不足�
 
 若平台 operation 提供 `editorialFrameworkRef`，先读取 `media-core` 内容层主题框架，再交给平台子技能做适配；若提供 `coverSpecRef`，只在需要生成或核验该平台账号视觉资产时读取。主题框架和平台视觉规范职责分离，不能把平台规则回写到内容层。
 
-先做调度权威检查：内容优先模式下，每个内容 pipeline 只能由一个来源生产任务写入候选，每个 Agent 只能由一个统一内容分发扫描器消费 `ready` 目标。发现旧的平台专属定时器仍为 ACTIVE、同一 pipeline 存在两个生产者，或内容层游标与平台队列互相宣称拥有顺序权时，返回 `scheduler_authority_mismatch`，不打开发布页、不上传、不点击发布；修复调度定义后再运行。
+先做调度权威检查：内容优先模式下，每个内容 pipeline 只能由一个来源生产任务写入候选；统一扫描器和现有平台定时器都可以触发，但必须进入同一个 `media-ops` 决策入口，并共享 `contentId + targetId` 运行锁。平台定时器保留原有发布能力，资源为空时应调用 `media-loop → media-core` 有界补货，再回到对应平台子技能发布。发现触发器绕过全局决策、同一 pipeline 存在两个生产者、未持锁写入或内容层游标与平台队列互相宣称拥有顺序权时，返回 `scheduler_authority_mismatch`，不打开发布页、不上传、不点击发布。
 
 配置采用“账号共性 → 平台 operation → 执行 strategy”的层级。`media-ops` 只负责解析和校验这套结构；平台推荐机制、发现关键词、候选信号和内容形态由对应子技能根据运行上下文决定。
 
@@ -216,7 +216,7 @@ description: 跨平台媒体执行总控：扫描可发布目标；供给不足�
 4. core 返回 `asset_ready` 后，在同一轮重新扫描一次 ready admission、目标到期和平台门禁；符合条件才交给平台子技能。生产出的目标尚未到期时保留为 ready，不为了“本轮必须发布”改写时间。
 5. core 返回 `production_blocked` 或 `no_qualified_candidate` 时写入内容层和平台运行记录，停止；同一 `requestId + pipelineRef` 本轮不得再次调用。
 
-每轮最多执行 1 次供给恢复、生成 1 个 ready 资产并发布 1 条。不得形成 `ops → loop → core → ops` 的无界递归；重新扫描后仍无到期目标即结束。`published_pending_review`、`uncertain`、账号健康暂停、授权失败和媒体失败均不能通过供给恢复绕过。
+每轮最多执行 1 次供给恢复、生成 1 个 ready 资产并发布 1 条。平台定时器和统一扫描器都必须遵守这一上限，并先取得运行锁；不得形成 `ops → loop → core → ops` 的无界递归。重新扫描后仍无到期目标即结束。`published_pending_review`、`uncertain`、账号健康暂停、授权失败和媒体失败均不能通过供给恢复绕过。
 
 ### 10. Apply an authorized optimization
 
