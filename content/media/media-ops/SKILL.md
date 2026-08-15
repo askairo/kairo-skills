@@ -218,7 +218,7 @@ description: 跨平台媒体发布执行总控：扫描可发布目标；供给�
 3. 若 loop 返回 `ready_not_due`、账号暂停、结果不确定、已有足量 ready 库存或无生产请求，记录具体原因并结束；不得提前发布或重试审核中目标。
 4. 仅当 loop 明确返回 `productionRequest` 时，调用 `media-core` 对指定 pipeline 生产并验收最多 1 个资产。来源发现、下载、版权、去重、资源路径和游标全部属于 core 及其外部协议；ops 不自行补造候选。
 5. core 返回 `asset_ready` 或适配完成后，在同一轮重新扫描一次 ready admission、目标到期和平台门禁；符合条件才交给平台子技能。生产出的目标尚未到期时保留为 ready，不为了“本轮必须发布”改写时间。
-6. core 返回 `production_blocked`、`adaptation_backlog_present` 或 `no_qualified_candidate` 时写入内容层和平台运行记录，停止；同一 `requestId + pipelineRef` 本轮不得再次调用。
+6. core 返回 `production_blocked`、`adaptation_backlog_present` 或 `no_qualified_candidate` 时写入内容层和平台运行记录，停止；同一 `requestId + pipelineRef` 本轮不得再次调用。若返回 `adaptation_backlog_unchanged`，按成功的轻量 no-op 记录，禁止重新访问来源、调用 Chrome、发起生产或发布；只有队列指纹变化、适配写回或配置声明的 preferred schedule window 到达后才恢复。
 
 每轮最多执行 1 次供给恢复、生成 1 个 ready 资产并发布 1 条。平台定时器和统一扫描器都必须遵守这一上限，并先取得运行锁；不得形成 `ops → loop → core → ops` 的无界递归。重新扫描后仍无到期目标即结束。`published_pending_review`、`uncertain`、账号健康暂停、授权失败和媒体失败均不能通过供给恢复绕过。
 
