@@ -40,6 +40,8 @@ description: 媒体内容生产与核心资产层：接收来源流水线或 med
 
 统一分发扫描器使用同一份配置中的 `dispatchScheduler`。配置只规定单轮资源上限、排序方式和适配/补货边界；实际触发频率由外部自动化任务自身的 RRULE 控制。技能不得把建议周期写死进自动化定义，也不得因为自动化 RRULE 与文档中的建议窗口不同就自行创建新定时器或判定执行失败。扫描器被外部调度器触发后，才形成一次 `scheduled_run`；读取配置本身不会创建常驻任务。
 
+当来源 pipeline 配置了 `backlogGate` 或 `dispatchScheduler.adaptationBacklog.suppression` 时，来源任务必须在读取来源协议或打开浏览器前计算适配积压指纹。指纹至少由 eligible 内容 ID、目标 `publishState` 和 `selectionStatus` 的稳定排序组成。若上一次结果是 `adaptation_backlog_present` 且指纹未变化、没有适配写回，则返回 `adaptation_backlog_unchanged`：只写轻量 run 记录，不访问来源、不发现候选、不创建资产、不推进游标。队列指纹变化、适配写回或配置声明的 `preferred_schedule_window` 到达后，才恢复正常检查。该门禁是状态去重，不是写死新的扫描频率；外部自动化 RRULE 仍是唯一触发权威。
+
 内容源迁移时不删除平台历史文档，也不重复复制历史帖子；在内容流水线文档中登记来源映射和迁移起点，之后新增内容以 `contentId` 为唯一内容资产 ID，以 `contentId + targetId` 为分发幂等键。
 
 ### Authorized media acquisition
@@ -110,6 +112,12 @@ editorialContextRefs[]  # 可复用的主题知识、栏目框架和编辑边界
 3. 将目标级适配版本、媒体指纹、版权/授权证据和 `adaptationNotes` 写回内容队列；只有目标字段完整且已有 `plannedAt` / `preferredWindow` 时，才把目标从 `pending_content_completion` 提升为 `ready`。
 4. 每轮最多完成 1 个内容资产的适配；完成后重新执行 ready admission 和分发扫描。适配完成不等于平台发布成功。
 5. 只要仍存在可恢复的适配积压，就返回 `adaptation_backlog_present`，阻止新的来源生产；不得通过继续创建 `verified` 资产来掩盖适配缺口。
+
+若积压指纹自上一次有效检查后没有变化，按上述门禁返回 `adaptation_backlog_unchanged`，不得重复执行来源访问或生产尝试。适配回写后必须刷新指纹，下一次扫描重新进入最早未完成目标选择。
+
+### Visual asset rendering fallback
+
+平台适配生成 SVG 等源文件时，SVG 不是可上传的最终媒体。若目标要求 PNG，按 `media-core.visualRenderer.fallbacks` 的顺序探测可用渲染器；macOS 上 `/usr/bin/qlmanage` 是受支持的 SVG→PNG 回退，不得因为未安装 `rsvg-convert` 或 ImageMagick 就直接判定渲染能力不可用。渲染后必须用配置的尺寸工具核验像素尺寸、用哈希工具记录 `mediaFingerprint`，并保留 SVG 源文件与 PNG 成品的对应关系。所有渲染器都不可用时，返回 `platform_asset_render_blocked` 并保留具体能力缺口，不得用来源截图替代或反复创建同一来源资产。
 
 `media-core` 可以被来源调度器直接调用，也可以接收 `media-loop.productionRequest` 主动补充供给。后者不是绕过 producer-only 边界，而是在同一内容层执行一次有界生产：
 
