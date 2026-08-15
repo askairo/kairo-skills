@@ -84,6 +84,15 @@ feedbackRefs[], stopConditions[]
 - 适配完成后必须重新执行 ready admission；适配成功本身不等于发布成功。
 - 单轮最多处理 1 个内容资产；适配积压存在时，来源生产任务返回 `adaptation_backlog_present`，保持源游标，不新增资产。
 
+### Unchanged backlog suppression
+
+`adaptation_backlog_present` 只表示“当前仍有积压”，不代表每次触发都需要重新检查来源。对配置启用 `suppression` 的来源，先计算稳定的队列指纹，至少包含 eligible 内容 ID、目标发布状态和选择状态：
+
+- 上一次结果为 `adaptation_backlog_present`，队列指纹未变化，且没有适配写回时，返回 `adaptation_backlog_unchanged`。
+- 该结果是成功的轻量 no-op，不访问来源主页、不打开 Chrome、不生成 `productionRequest`、不创建内容资产、不推进来源游标，也不调用平台发布写操作。
+- 只有队列指纹变化、适配写回或配置声明的 preferred schedule window 到达时，才重新评估积压并恢复适配/来源决策。
+- 轻量记录仍需保留 runId、队列指纹、上次有效结果和下一恢复条件；不得把状态未变化写成来源访问失败。
+
 ## Supply recovery contract
 
 当调用方报告 `no-ready-unfinished-due-distribution-targets` 时，不得直接把它解释成“本轮无需动作”。先判断是否存在可恢复的内容供给缺口。输出给 `media-core` 的 `productionRequest` 至少包含：
