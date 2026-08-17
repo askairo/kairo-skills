@@ -25,7 +25,7 @@ description: 跨平台媒体发布执行总控：扫描可发布目标；供给�
 
 1. 选择一个逻辑账号；一个逻辑账号只能代表一个品牌/运营主体。若存在多个账号且用户未指定，不要混合运行，先询问选择；不同定位、受众或内容支柱的账号即使属于同一用户，也必须分别运行。
 2. 解析该账号启用的平台身份、平台风格、数据源组和执行策略。
-3. 解析 `platformAccounts.<accountRef>.browserProfileRef`；浏览器平台必须先路由到绑定的 Chrome Profile，再核对平台公开身份。API 平台不需要 Chrome Profile。
+3. 解析 `platformAccounts.<accountRef>.browserProfileRef` 和平台 operation 的执行传输；浏览器平台必须先路由到绑定的 Chrome Profile，再核对平台公开身份。API 平台不需要 Chrome Profile。
 4. 允许用户在本次请求中覆盖配置；仅覆盖本次运行，不自动回写配置文件。
    - 频率或每日上限覆盖必须登记为本次 `targetId` 的一次性 lease；不得继承到下一轮，也不得把“用户这次要求发布”解释为关闭健康、事实、版权、去重或成功核验门禁。
 5. 若缺少的信息只影响表现形式，采用保守默认值并列明；若缺少账号定位、来源、目标平台或浏览器 Profile 路由会改变执行对象，停止并返回具体缺失字段。
@@ -43,6 +43,15 @@ description: 跨平台媒体发布执行总控：扫描可发布目标；供给�
 - Chrome 控制接口不能直接切换 Profile；Profile 切换由电脑操作完成，页面读取和发布仍交给对应平台技能。切换后重新获取页面状态，不假设旧 Tab 或旧页面绑定仍属于目标 Profile。
 - `switchMethod: current-session` 只表示沿用当前已打开的会话，不能用于同平台多账号无人值守路由；新增账号必须使用已验证的独立 Profile 名称和 `computer-use` 切换方式，或使用官方 API。
 
+### Resolve the execution transport
+
+- `operation.transport` 标识平台适配器；`interactiveSkill` / `scheduledSkill` 标识交给哪个平台子技能；`interactiveTransport` / `scheduledTransport` 标识该次运行实际使用的执行通道。
+- `scheduledTransport` 对所有需要写入外部平台的定时任务都是必填。允许值为 `computer-use`、`controlled-browser-session` 或已接入的 `official-api`；平台子技能可以进一步限制可用值。
+- `computer-use` 表示 Profile 路由、页面读取、输入、上传和发布控件都通过 Computer Use 执行；`controlled-browser-session` 表示使用 Chrome 控制连接；`official-api` 不打开 Chrome，必须由对应 API 子技能完成身份和结果核验。
+- `switchMethod: computer-use` 只规定如何切换 Chrome Profile，不能推断页面发布也使用 Computer Use。两者必须分别配置和分别写入运行快照。
+- 缺少、拼写错误或当前平台不支持的传输不得静默回退；返回 `scheduled_transport_missing` 或 `scheduled_transport_unsupported`，不打开发布页、不上传、不点击发布。
+- 运行记录必须写入 `activeTransport`、`interactiveTransport` / `scheduledTransport` 和 `browserProfileRef`，便于区分配置门禁、浏览器连接问题和平台发布问题。
+
 ### Content-driven dispatch and Profile batching
 
 当任务由内容分发计划触发时，先读取 `media-core` 内容资产和到期的 `distributionTargets`，再解析每个目标的 `platformAccountRef`、平台策略和 `browserProfileRef`。定时器的执行对象是内容目标，不是某个平台技能本身。
@@ -52,7 +61,7 @@ description: 跨平台媒体发布执行总控：扫描可发布目标；供给�
 - 对每个目标依次检查发布时间窗口、`minIntervalMinutes`、`maxPublishedPerDay`、`maxPublishedPerRun`、平台失败退避和 `media-loop` 健康门禁。任何一项不满足时只保留该目标为 `pending` / `deferred`，不能把整轮或同一内容的其他目标标记为失败。
 - 同一平台不同账号分别计数；同一账号不同平台也分别计数。全局扫描器的 `maxTargetsPerRun` 只是资源保护，不得替代平台/账号频率上限。
 - 同一内容的多个目标可以覆盖不同平台、账号、格式和发布时间窗口；平台策略中的时间仍作为目标级约束，不应被解释为内容资产的唯一发布时间。
-- 解析完目标后，按 `browserProfileRef` 分组并在同一 Profile 内尽量连续处理不同平台目标，减少 Profile 切换；分组只改变执行顺序，不改变目标边界。
+- 解析完目标后，先按 `scheduledTransport`，再按 `browserProfileRef` 分组，并在同一传输和 Profile 内尽量连续处理不同平台目标，减少路由切换；分组只改变执行顺序，不改变目标边界。
 - 即使多个目标使用同一个 Profile，每个目标进入平台后仍必须重新核对公开账号身份。不能因为 Profile 已确认，就跳过 `platformAccountRef → platform handle` 校验。
 - 一个 Profile 可以承载用户已确认登录的不同平台账号；同一平台的不同账号不得默认共用 Profile，除非平台支持可靠的账号切换且配置明确授权。账号不匹配、Profile 不明或切换后页面仍是旧账号时，立即停止该目标，不影响其他目标按独立状态处理。
 - 每个目标独立写入 `publishState`、帖子 URL、指标和失败原因。不能把“同一内容部分平台成功”汇总成一次全局成功，也不能把一个平台失败扩散为所有目标失败。
@@ -147,7 +156,7 @@ description: 跨平台媒体发布执行总控：扫描可发布目标；供给�
 只接受以下发布模式：
 
 - `publishingMode: reviewed`：要求 `humanApprovalRequired: true` 且 `autoPublish: false`。用户明确授权具体账号和完整内容后，可以完成单次发布。
-- `publishingMode: unattended`：要求 `humanApprovalRequired: false`、`autoPublish: true`、`selectLimit: 1`、`maxPublishedPerRun: 1`，并存在有效 `schedule`。配置校验通过后，`scheduled_run` 以及用户明确要求按该配置执行的 `interactive_run` 可以直接进入发现、改编和发布，不再等待逐条人工确认。
+- `publishingMode: unattended`：要求 `humanApprovalRequired: false`、`autoPublish: true`、`selectLimit: 1`、`maxPublishedPerRun: 1`，并存在有效 `schedule` 与 `scheduledTransport`。配置校验通过后，`scheduled_run` 以及用户明确要求按该配置执行的 `interactive_run` 可以直接进入发现、改编和发布，不再增加业务层逐条确认；仍必须遵守所选执行通道的运行时安全策略。
 
 门禁结果必须按实际原因返回，不得笼统返回“未满足人工确认门禁”：
 
@@ -182,7 +191,7 @@ description: 跨平台媒体发布执行总控：扫描可发布目标；供给�
 
 使用已登录浏览器发布时，按以下低自由度顺序执行：
 
-1. 解析并锁定目标 `platformAccountRef` 与 `browserProfileRef`；完成 Profile 路由后，核对当前登录身份与配置中的平台 handle 一致，再打开目标原帖或发布入口。
+1. 解析并锁定目标 `platformAccountRef`、`browserProfileRef` 和 `scheduledTransport`；确认执行器与配置通道一致，完成 Profile 路由后，核对当前登录身份与配置中的平台 handle 一致，再打开目标原帖或发布入口。
 2. 创建草稿后重新读取页面状态，确认正文、引用对象、媒体、受众和发布按钮均正确；交互控件优先用精确可访问名称定位，并先核对数量与可用状态。若编辑器追加文本而非替换，必须全选后重填并复读最终内容；抖音公开字段默认不得出现外部链接。
 3. 最终发布控件只点击一次。等待平台明确的成功提示、帖子 URL 或账号时间线新内容；出现超时或错误时不得盲目重试。
 4. 发布成功后保留已发布页面或结果页供用户复核；若没有可直接取得的帖子 URL，至少报告成功提示和目标账号。

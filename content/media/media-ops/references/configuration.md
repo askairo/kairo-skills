@@ -55,7 +55,11 @@ accounts.<account>
         ├── coverSpecRef                 # 平台/账号视觉适配文档
         ├── selectionSignals
         ├── exclusions
-        └── rightsPolicy
+        ├── rightsPolicy
+        ├── transport                         # 平台适配器标识
+        ├── interactiveSkill / scheduledSkill
+        ├── interactiveTransport / scheduledTransport
+        ├── browserAutomation
         └── allowDownload                 # 抖音发布时是否允许下载，默认 false
 ```
 
@@ -65,6 +69,7 @@ accounts.<account>
 - `browserProfiles.<profile>` 描述本机可见的 Chrome Profile 路由，不保存密码、Cookie、令牌、浏览器用户数据目录或其他认证材料；`profileName` 必须是用户在 Chrome Profile 菜单中看到的名称。
 - `accounts.<account>` 是运营隔离边界，不是用户或设备边界。若一个科技 X 账号和一个音乐抖音账号的定位不同，应建立两个 `accounts` 条目，即使由同一人管理。
 - `platforms.<platform>.operation` 描述该账号在特定平台“想做什么、找什么、优先什么、排除什么”。例如 X 可以关注讨论、引用、主页访问和关注转化；音乐类抖音账号可以关注音频适配、前三秒记忆点、完播潜力和版权。
+- `operation.transport`、`interactiveSkill`、`scheduledSkill` 和对应 transport 字段定义执行路由，不保存凭证。`scheduledTransport` 是定时写操作的必填字段，不能依赖默认值。
 - `sourceGroupRefs` 定义允许寻找的来源；平台级配置可以缩小账号默认来源范围，不得绕过来源和版权门禁。
 - `sourceGroups.<group>.priorityAccounts` 是可选的重点账号白名单。每项使用 `sourceId` 引用同一来源组中已启用的 X 来源，并填写规范化 `handle`；平台子技能应优先扫描和排序命中白名单的候选，但不得因此跳过事实、版权、相关性、原创增量、重复和安全门禁。
 - `docsRoot` 可选，指向 Agent 本地的外部运营文档根目录；它不进入技能源码。平台发布文档仍按 `<docsRoot>/<platform>/<account>/` 组织。跨平台内容源、内容资产和源流水线不放在这里，而由 `media-core` 的 `<AGENT_HOME>/local-config/media-core/config.json` 指向 `<docsRoot>/content/` 独立管理。
@@ -289,16 +294,17 @@ strategies:
 
 - `vertical`、`audience`、`positioning` 和至少一个 `contentPillars` 必填。
 - `platforms` 只支持 `x`、`xiaohongshu` 和 `douyin`；每个平台必须引用匹配的 `platformAccounts`。
-- 每个平台可以声明 `operation.goal`、`operation.contentMode`、`operation.discoveryTopics`、`operation.selectionSignals` 和平台专属约束；这些字段用于生成发现策略，不得保存凭证。
+- 每个平台可以声明 `operation.goal`、`operation.contentMode`、`operation.discoveryTopics`、`operation.selectionSignals`、执行传输和平台专属约束；这些字段用于生成发现策略和执行路由，不得保存凭证。
 - 抖音可以声明 `operation.allowDownload`，布尔值默认是 `false`；`false` 表示发布前关闭“允许下载”（等价于“不允许下载”）。该配置只是期望状态，平台子技能仍必须在最终发布前重新读取页面控件；状态不明或仍允许下载时停止。
 - `operation.sourceGroupRefs`、`operation.exclusions` 和 `operation.rightsPolicy` 用于收窄来源与安全边界；缺少 `goal` 或 `contentMode` 且会改变选材结论时，应请求补充。
 - `operation.editorialFrameworkRef` 是相对于 `docsRoot` 的外部内容文档路径，必须指向 `media-core` 内容目录中的主题框架；`operation.coverSpecRef` 是相对于 `docsRoot` 的平台/账号视觉规范路径。两者都不保存凭证。
-- 平台可以声明 `operation.transport`、`operation.interactiveSkill`、`operation.scheduledSkill`、`operation.interactiveTransport`、`operation.scheduledTransport` 和 `operation.browserAutomation`；X 的无人值守策略若选择 `x`，不得被默认改写为 `x-api`。
-- 当 `scheduledSkill: x` 且策略是有效 `publishingMode: unattended` 时，`scheduledTransport: controlled-browser-session` 与 `browserAutomation: allowed-when-publishingMode-unattended` 表示触发后直接执行，不要求逐条人工确认；仍必须执行账号、事实、版权、重复、限额和发布成功核验。
+- 平台可以声明 `operation.transport`、`operation.interactiveSkill`、`operation.scheduledSkill`、`operation.interactiveTransport`、`operation.scheduledTransport` 和 `operation.browserAutomation`；浏览器平台的 `scheduledTransport` 必须显式选择 `computer-use` 或 `controlled-browser-session`，API 平台必须选择已接入的 `official-api`。X 的无人值守策略若选择 `x`，不得被默认改写为 `x-api`。
+- `computer-use` 表示 Profile 路由、页面读取、输入、上传和发布控件都通过 Computer Use 执行；`controlled-browser-session` 表示使用 Chrome 控制连接；`official-api` 不打开 Chrome。`switchMethod: computer-use` 只规定 Profile 切换，不替代页面执行传输。
+- 当策略是有效 `publishingMode: unattended` 时，传输字段只决定如何执行，不会关闭事实、版权、账号、重复、结果核验或运行时安全策略；缺少、拼写错误或平台不支持的 `scheduledTransport` 必须返回 `scheduled_transport_missing` 或 `scheduled_transport_unsupported`，不得静默回退。
 - `platforms.<platform>.strategyRef` 可覆盖账号默认策略；合并顺序为“请求覆盖 → 平台配置 → 账号默认 → Skill 默认”。
 - `baseStyleRef`、`sourceGroupRefs` 和 `strategyRef` 必须指向已定义且启用的对象。
 - 浏览器平台的 `platformAccounts.<accountRef>.browserProfileRef` 必须指向已定义的 `browserProfiles.<profile>`；同一平台的不同账号不得引用同一个 Profile。`switchMethod: current-session` 只适合单账号当前会话，不能授权同平台多账号无人值守切换。
-- `switchMethod: computer-use` 表示先通过电脑操作切换到 `profileName`，再用平台页面核对 handle；Profile 名称缺失、状态不是 `verified` 或切换后 handle 不一致时，执行器必须返回 `profile_route_missing` 或 `account_mismatch` 并停止。
+- `switchMethod: computer-use` 表示先通过电脑操作切换到 `profileName`，再用平台页面核对 handle；Profile 名称缺失、状态不是 `verified` 或切换后 handle 不一致时，执行器必须返回 `profile_route_missing` 或 `account_mismatch` 并停止。页面发布是否使用 Computer Use 仍由 `scheduledTransport` / `interactiveTransport` 决定。
 - 同一 `accounts.<account>` 下的所有平台必须通过定位、受众和内容支柱一致性检查；不一致时拆分逻辑账号，不得混合基线和反馈。
 
 ### platformAccounts
@@ -327,7 +333,7 @@ strategies:
 - 内容驱动调度时，`schedule` 约束由到期的 `distributionTarget` 继承；调度器应以 `contentId + targetId` 作为幂等运行键，不以平台技能名作为唯一运行键。
 - `targetPlatforms` 只能选择账号已启用的平台。
 - `publishingMode: reviewed` 要求 `humanApprovalRequired: true` 且 `autoPublish: false`。
-- `publishingMode: unattended` 要求 `humanApprovalRequired: false`、`autoPublish: true`、`selectLimit: 1`、`maxPublishedPerRun: 1`，并配置有效 `schedule`。配置校验通过后，已有调度触发的一次运行无需人工确认；用户明确要求按该配置执行一次时，也不应被再次拦截。只有创建或更新常驻调度需要单独的用户请求。
+- `publishingMode: unattended` 要求 `humanApprovalRequired: false`、`autoPublish: true`、`selectLimit: 1`、`maxPublishedPerRun: 1`，并配置有效 `schedule` 与 `scheduledTransport`。配置校验通过后，已有调度触发的一次运行不增加业务层逐条确认；仍必须遵守所选执行通道的运行时安全策略。
 - 无人值守模式只授权计划运行按内容门禁发布，不授权读取凭证、降低事实阈值、重复发布或在结果不明确时重试。
 
 执行器应在运行记录中区分 `interactive_run`、`scheduled_run` 和 `schedule_setup`。门禁失败必须返回具体原因：配置无效、没有合格候选、事实/来源/版权不足、账号不匹配、重复或发布成功信号不明确；不能把所有失败都归类为人工确认未满足。
@@ -342,6 +348,6 @@ strategies:
 - 至少存在一个启用的数据源和目标平台；
 - 数量和阈值合理，时区有效；
 - 不含疑似凭证字段；
-- 发布模式、人工确认和自动发布字段组合合法；无人值守模式具备限额和调度。
+- 发布模式、人工确认、自动发布和执行传输字段组合合法；无人值守模式具备限额、调度和显式 `scheduledTransport`。
 
 校验失败时列出具体字段路径和修复建议，不带着部分配置继续创作。
