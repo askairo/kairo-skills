@@ -64,6 +64,8 @@ Use this structure when the user asks for a `task.md`, task card, or implementat
 
 Always put the commit message in a fenced code block under `commit:` so the user can copy it directly.
 
+This block is the only commit message for the task branch. Every commit on that branch must use this exact text. Do not invent a new summary for follow-up commits.
+
 Good:
 
 ````markdown

@@ -25,9 +25,9 @@ Resolution order:
 2. If the working directory path contains `.codex`, use `~/.codex/`
 3. If `~/.qoderworkcn/` exists, use it
 4. If `~/.codex/` exists, use it
-5. Fall back to `~/.config/skills/`
+5. If none exist or more than one candidate remains, ask the user which Agent Home to use.
 
-After resolving, confirm that the directory really exists. If none exist, ask the user which Agent Home to use.
+After resolving, confirm that the directory really exists.
 
 **Hard rule:** once `<AGENT_HOME>` has been resolved, only read and write config under that directory. Do not cross Agent directories.
 
@@ -109,8 +109,9 @@ docs:
 
 9. Deliver.
    - Commit or push only when the user explicitly asks for it.
-   - If a commit is needed, treat the commit message in the task doc as fixed once it is generated.
-   - Do not change the commit message on your own.
+   - Read the `commit` fenced block from the external task doc and use that text verbatim.
+   - The message is fixed for the whole task branch. Later commits on the same branch reuse it; do not rewrite it into a finer `fix:` / `feat:` summary.
+   - If the task doc has no `commit` block yet, generate it first, write it into the doc, then commit with that exact text.
 
 10. Wrap up.
    - Recheck that the branch, task doc, and required files are all present.
