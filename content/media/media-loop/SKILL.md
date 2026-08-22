@@ -41,7 +41,7 @@ description: 媒体运营反馈与供给闭环总控，也是运营问题、执�
 
 健康、供给和人工覆盖也必须分开记账：
 
-- 用户对单条内容的频率豁免是一次性的 `targetId` 级 lease，不改变常驻策略、每日上限或下一轮资格。
+- 外部自动化任务的 RRULE 是运行频率唯一权威；不再创建或判断“频率豁免” lease。每次触发独立评估未完成目标。
 - `published_pending_review`、`uncertain` 和账号健康暂停都不能通过生产请求或人工覆盖绕过。
 - 供给库存按目标统计，而不是按账号或 pipeline 的总资产统计；一条内容只有目标适配完成的一侧可以进入 `ready`，不能因为另一平台可发布而连带放行。
 
@@ -58,7 +58,7 @@ description: 媒体运营反馈与供给闭环总控，也是运营问题、执�
 5. **归因诊断**：至少在“账号分发/健康、选题相关性、来源与可信度、首句/标题/封面、正文结构、媒体质量、发布时间、互动入口、版权或平台合规”之间做区分。一个指标下降不能直接证明某个因素是原因。
 6. **检查内容供给**：读取内容层队列和未来发布窗口，区分 `no_source_candidate`、`candidate_blocked`、`adaptation_backlog`、`asset_incomplete`、`ready_not_due`、`ready_supply_starved` 与 `published_pending_review`。审核中目标不是供给，不得重试；仍有足量 ready 目标时不额外生产。
 7. **先处理适配积压**：如果存在 `verified` 资产及其 `pending_content_completion` 目标，先生成一个有界 `adaptationRequest`，按最早未完成目标交给 `media-core` 和对应平台技能；适配积压未清空前，不生成新的来源 `productionRequest`。
-8. **生成生产请求**：仅在没有可恢复适配积压、账号健康允许、策略存在未来窗口且 ready 供给不足时，向 `media-core` 输出一个有界 `productionRequest`；它描述需要什么，不替 core 选择或验收素材。
+8. **生成生产请求**：仅在没有可恢复适配积压、账号健康允许且 ready 供给不足时，向 `media-core` 输出 `productionRequest`；不再因为未来窗口、最小间隔或每日上限推迟。它描述需要什么，不替 core 选择或验收素材。
 9. **生成策略调整**：给出下一轮 `discoveryBrief`、候选排序、内容结构、发布频率或发布时间的具体覆盖项，并说明证据、预期信号、风险和回滚条件。平台细节交给 `x`、`xiaohongshu` 或 `douyin`。
 10. **设计单变量实验**：一次只改变一个主要变量；规定实验周期、最小样本、成功指标、对照组和停止条件。没有足够样本时只提出假设，不宣称结论。
 11. **写回反馈**：将健康快照、供给诊断、适配请求、生产请求、指标汇总、策略版本、实验结果和未决问题写入 `docsRoot/<platform>/<account>/loop/`。不得覆盖原始发布记录；策略调整使用新版本并保留来源和时间。
@@ -75,14 +75,14 @@ description: 媒体运营反馈与供给闭环总控，也是运营问题、执�
 requestId, contentId, targetIds[], pipelineRef,
 reason: adaptation_backlog,
 requestedAt, order: oldest_verified_unfinished_target,
-maxAssetsPerRun: 1, strategyRefs[], editorialContextRefs[],
+strategyRefs[], editorialContextRefs[],
 feedbackRefs[], stopConditions[]
 ```
 
 - 只选择 `verified`、未被用户明确争议、目标为 `pending_content_completion` 且未处于 `published_pending_review` / `uncertain` 的资产。
 - 同一资产可以一次补齐多个平台目标，但每个平台必须调用自己的平台技能，独立生成文案、媒体和交互入口；不得把一个平台的成稿复制给另一个平台。
 - 适配完成后必须重新执行 ready admission；适配成功本身不等于发布成功。
-- 单轮最多处理 1 个内容资产；适配积压存在时，来源生产任务返回 `adaptation_backlog_present`，保持源游标，不新增资产。
+- 不以固定资产次数阻断适配；按最早未完成目标持续推进，直到适配完成、没有可恢复目标或触发 stopConditions。适配积压存在时，来源生产任务仍返回 `adaptation_backlog_present`，保持源游标，不用新资产掩盖旧积压。
 
 ### Unchanged backlog suppression
 
@@ -105,11 +105,11 @@ requiredRights, requiredMediaChecks[], dedupScope,
 strategyRefs[], feedbackRefs[], stopConditions[]
 ```
 
-- 单次执行默认 `targetCount: 1`；不得为追求发布频率要求降低事实、版权、去重或媒体门禁。
-- 当库存低于目标的 `minReadyTargets` 时才允许补货；达到目标后停止生产，不为“多准备一些”无限生成。
+- `targetCount` 只表达本次触发期望推进的目标，不是每日或时间频率门禁；不得为追求发布频率降低事实、版权、去重或媒体门禁。
+- 当库存低于目标的 `minReadyTargets` 时优先补货；达到目标或本次缺口已解决后停止，不为“多准备一些”无限生成。
 - 只有没有 `adaptation_backlog` 且处于 `ready_supply_starved` 或可恢复的 `candidate_blocked` 才生成请求；`ready_not_due`、账号暂停、发布结果不确定或已有足量 ready 库存时不生成。
 - `productionRequest` 是对 `media-core` 的生产委托，不是发布授权，也不是对某个候选已合格的结论。
-- `media-core` 返回 `asset_ready`、`production_blocked` 或 `no_qualified_candidate` 后，`media-loop` 记录供给结果；不得在同一轮对同一 pipeline 无限循环请求。
+- `media-core` 返回 `asset_ready`、`production_blocked` 或 `no_qualified_candidate` 后，`media-loop` 记录供给结果；同一 `requestId + pipelineRef` 只能推进一次，失败、无候选或 stopConditions 命中后停止，不以次数门禁替代幂等和停止条件。
 
 ## Health gates
 

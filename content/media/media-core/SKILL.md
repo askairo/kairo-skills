@@ -32,13 +32,13 @@ description: 媒体内容生产与核心资产层：接收来源流水线或 med
 
 `registry.md` 登记内容源、内容流水线与目标映射；`queue.md` 登记候选和内容资产状态；`runs/` 记录每次发现、核验、生成和跳过；`published.md` 只记录内容资产及其分发目标的最终状态。平台目录中的文档继续保留平台适配、平台发布和平台指标历史，不再成为内容源的唯一事实来源。
 
-本地配置中的每个 `sourcePipelines.<pipeline-id>` 至少声明 `sourceGroupRef`、`schedule`、`dispatchMode`、`targetAccounts` 和 `dedupKeys`。源定时任务默认使用 `dispatchMode: producer-only`：发现、核验、登记可复用内容资产；不直接点击平台发布。若显式声明 `mediaAcquisition`，producer 可以取得已授权候选的媒体并入库，但仍不上传或发布；后续由内容分发目标或 `media-ops` 执行发布。只有明确配置为内容分发任务时，才允许进入发布流程，并且仍需经过平台、账号、版权、频率和成功核验门禁。
+本地配置中的每个 `sourcePipelines.<pipeline-id>` 至少声明 `sourceGroupRef`、`schedule`、`dispatchMode`、`targetAccounts` 和 `dedupKeys`。`schedule` 只描述来源生产任务由哪个外部触发器唤醒，不是内容发布或媒体获取次数门禁。源定时任务默认使用 `dispatchMode: producer-only`：发现、核验、登记可复用内容资产；不直接点击平台发布。若显式声明 `mediaAcquisition`，producer 可以取得已授权候选的媒体并入库，但仍不上传或发布；后续由内容分发目标或 `media-ops` 执行发布。只有明确配置为内容分发任务时，才允许进入发布流程，并且仍需经过平台、账号、版权、事实、去重、媒体有效性、真实平台限流和成功核验门禁。
 
 `producer-only` 限制的是媒体采集和平台写入，不等于禁止访问来源。若来源协议要求动态主页、回复或对话上下文核验，producer 应使用该协议允许的只读来源访问方式（例如受控浏览器查看公开页面）；不得点赞、评论、关注、私信、提交表单或触发任何来源侧写操作。只读访问不得检查、导出或保存密码、Cookie、令牌、验证码、local storage 或浏览器会话。若不访问动态原始页面就无法判断最新内容，必须把结果记为“最新窗口未核验”，不得根据搜索缓存断言“没有新增内容”。
 
 每个 pipeline 的来源生产调度器必须是唯一来源事实写入者；统一扫描器和平台专属发布定时器都可以触发执行，但必须先进入同一个 `media-ops` 内容目标决策入口。平台定时器可以消费 ready 目标，也可以在目标级库存不足时调用 `media-loop → media-core` 的有界补货流程，但不得自行创建候选、绕过内容层或推进别人的游标。所有触发器必须共享 `contentId + targetId` 运行锁；发现重复来源生产者、未持锁写入或本地记录与内容层游标冲突时，先写入 `scheduler_authority_mismatch`，停止写入。
 
-统一分发扫描器使用同一份配置中的 `dispatchScheduler`。配置只规定单轮资源上限、排序方式和适配/补货边界；实际触发频率由外部自动化任务自身的 RRULE 控制。技能不得把建议周期写死进自动化定义，也不得因为自动化 RRULE 与文档中的建议窗口不同就自行创建新定时器或判定执行失败。扫描器被外部调度器触发后，才形成一次 `scheduled_run`；读取配置本身不会创建常驻任务。
+统一分发扫描器使用同一份配置中的 `dispatchScheduler`。实际触发频率由外部自动化任务自身的 RRULE 控制；配置、目标 `plannedAt` / `preferredWindow`、最小间隔、每日上限和媒体获取次数不得挡住已经发生的触发。技能不得把建议周期写死进自动化定义，也不得因为自动化 RRULE 与旧文档窗口不同就自行创建新定时器或判定执行失败。扫描器被外部调度器触发后，才形成一次 `scheduled_run`；读取配置本身不会创建常驻任务。
 
 当来源 pipeline 配置了 `backlogGate` 或 `dispatchScheduler.adaptationBacklog.suppression` 时，来源任务必须在读取来源协议或打开浏览器前计算适配积压指纹。指纹至少由 eligible 内容 ID、目标 `publishState` 和 `selectionStatus` 的稳定排序组成。若上一次结果是 `adaptation_backlog_present` 且指纹未变化、没有适配写回，则返回 `adaptation_backlog_unchanged`：只写轻量 run 记录，不访问来源、不发现候选、不创建资产、不推进游标。队列指纹变化、适配写回或配置声明的 `preferred_schedule_window` 到达后，才恢复正常检查。该门禁是状态去重，不是写死新的扫描频率；外部自动化 RRULE 仍是唯一触发权威。
 
@@ -110,7 +110,7 @@ editorialContextRefs[]  # 可复用的主题知识、栏目框架和编辑边界
 1. 按 `plannedAt`、目标创建时间、来源核验时间和 `targetId` 选择最早的、未被用户争议且未完成的资产；跳过 `published_pending_review`、`uncertain` 和账号健康阻断目标。
 2. 读取内容层编辑框架、该资产的事实边界和反馈引用，再分别调用目标平台技能。小红书、抖音等平台必须各自产出标题、正文/脚本、互动入口和独立媒体，不得机械复用另一平台的成稿或来源截图。
 3. 将目标级适配版本、媒体指纹、版权/授权证据和 `adaptationNotes` 写回内容队列；只有目标字段完整且已有 `plannedAt` / `preferredWindow` 时，才把目标从 `pending_content_completion` 提升为 `ready`。
-4. 每轮最多完成 1 个内容资产的适配；完成后重新执行 ready admission 和分发扫描。适配完成不等于平台发布成功。
+4. 按本次触发的缺口持续完成可推进的内容资产适配；成功、无可恢复目标、锁冲突或 stopConditions 命中后停止。适配完成不等于平台发布成功。
 5. 只要仍存在可恢复的适配积压，就返回 `adaptation_backlog_present`，阻止新的来源生产；不得通过继续创建 `verified` 资产来掩盖适配缺口。
 
 若积压指纹自上一次有效检查后没有变化，按上述门禁返回 `adaptation_backlog_unchanged`，不得重复执行来源访问或生产尝试。适配回写后必须刷新指纹，下一次扫描重新进入最早未完成目标选择。
@@ -129,7 +129,7 @@ editorialContextRefs[]  # 可复用的主题知识、栏目框架和编辑边界
 6. 补齐 canonical asset、ready admission 字段和目标自己的 `plannedAt` / `preferredWindow`；调用目标平台技能生成适配版本，但不执行平台写入。
 7. 返回 `asset_ready`、`production_blocked`、`adaptation_backlog_present` 或 `no_qualified_candidate`，记录具体原因和下一可恢复动作。
 
-单次 production request 默认最多生成 1 个 ready 资产；同一 run、同一 `requestId + pipelineRef` 只能执行一次。失败不得回退旧 Downloads、已发布资产或低于门禁的候选，也不得无限刷新或循环采集。只有 `asset_ready` 才能交回 `media-ops` 重新扫描；生产成功本身不等于发布成功，顺序游标仍按来源协议规定的下游结果推进。
+单次 production request 不再以固定资产数量限制生产；同一 `requestId + pipelineRef` 只能执行一次，成功、无合格候选、来源/版权/媒体失败、锁冲突或 stopConditions 命中后停止。失败不得回退旧 Downloads、已发布资产或低于门禁的候选，也不得无限刷新或循环采集。只有 `asset_ready` 才能交回 `media-ops` 重新扫描；生产成功本身不等于发布成功，顺序游标仍按来源协议规定的下游结果推进。
 
 ## Distribution target contract
 
@@ -146,27 +146,27 @@ plannedAt or preferredWindow
 publishState
 ```
 
-目标的发布时间和频率必须分开表达：`plannedAt` 或 `preferredWindow` 表示这一条内容目标何时可以发布；`strategyRef` 指向的平台/账号策略则提供发布窗口、最小间隔、每日上限、失败退避和账号健康约束。内容层不复制这些策略字段，也不把一个平台的频率传播到其他目标。
+目标的内容计划与运行触发分开表达：`plannedAt` 或 `preferredWindow` 只用于排序、审计和内容计划；外部自动化 RRULE 决定何时尝试。内容层不复制最小间隔、每日上限或媒体获取次数，也不把一个平台的触发器传播到其他目标。
 
 `browserProfileRef` 或 `apiContext` 由执行时根据 `platformAccountRef` 解析，不要求在内容资产中重复保存登录环境。这样同一内容可以生成多个目标，例如 X 原生引用、小红书收藏型图文和抖音知识短视频；每个目标都必须经过目标平台技能的专属筛选与改编。平台账号不是内容资产的拥有者，内容资产也不能绕过账号健康和发布门禁。
 
 ## Content-driven dispatch
 
-定时器的主对象是“到期的内容分发目标”，不是某个平台技能。统一扫描器和平台定时器只是不同触发面；`media-core` 负责表达内容何时准备好、哪些目标到期、目标之间是否有顺序依赖，`media-ops` 负责统一决策、运行锁和发布回写；平台的发布时间窗口、频率上限和健康限制仍作为目标级约束保留。
+定时器的主对象是“未完成的内容分发目标”，不是某个平台技能。统一扫描器和平台定时器只是不同触发面；`media-core` 负责表达内容是否准备好、目标之间是否有顺序依赖，`media-ops` 负责统一决策、运行锁和发布回写；外部自动化 RRULE 决定何时尝试，平台真实限流和健康限制仍作为硬约束保留。
 
 统一分发扫描器可以由任意已配置的外部自动化任务触发，但“扫描一次”不等于“发布一次”。每轮按以下顺序筛选：
 
 1. 只取 `lifecycleState: ready` 且 `publishState` 未完成的目标。
-2. 检查目标自己的 `plannedAt` / `preferredWindow` 是否到期。
-3. 解析 `strategyRef`，应用平台/账号的时间窗口、最小间隔、每日上限、单轮上限和失败退避。
-4. 读取 `media-loop` 健康状态；限流、标签、账号不匹配或不确定发布状态优先阻断目标。
+2. 将 `plannedAt` / `preferredWindow` 作为排序和审计字段读取，但不作为到期阻断。
+3. 解析 `strategyRef`，应用平台/账号身份、事实、版权、媒体、去重、运行锁、单轮批量保护和失败状态；不应用最小间隔、每日上限或媒体获取次数。
+4. 读取 `media-loop` 健康状态；平台真实限流、标签、账号不匹配或不确定发布状态优先阻断目标。
 5. 按到期时间、策略优先级和 Profile 分组排序，再交给 `media-ops`；每个目标独立记账和回写。
 
-同一 `platformAccountRef` 存在多个未完成目标时，必须按目标队列选择“最早到期、仍未完成且当前 eligible”的目标，而不是按来源最新、内容热度或最近创建时间抢占。排序键依次为 `plannedAt`、`targetCreatedAt`、`sourceObservedAt`、`targetId`；`targetSelection.neverPreferLatest` 默认必须为 true。目标自己的内容未 ready、尚未到期或目标级适配/版权门禁失败时，保留该目标并记录原因，同时可以继续处理下一条 eligible 目标；账号级限流、标签、不确定发布状态或账号不匹配则暂停该账号的后续目标。这样同一内容在小红书已发布而抖音未发布时，抖音会优先补发最早一条未完成的抖音目标，不会被后来新增且已在小红书发布的内容抢走。
+同一 `platformAccountRef` 存在多个未完成目标时，必须按目标队列选择“最早计划、仍未完成且当前 eligible”的目标，而不是按来源最新、内容热度或最近创建时间抢占。排序键依次为 `plannedAt`、`targetCreatedAt`、`sourceObservedAt`、`targetId`；`targetSelection.neverPreferLatest` 默认必须为 true。目标自己的内容未 ready 或目标级适配/版权门禁失败时，保留该目标并记录原因，同时可以继续处理下一条 eligible 目标；账号级限流、标签、不确定发布状态或账号不匹配则暂停该账号的后续目标。这样同一内容在小红书已发布而抖音未发布时，抖音会优先补发最早一条未完成的抖音目标，不会被后来新增且已在小红书发布的内容抢走。
 
 若扫描结果为空，返回结构化库存状态给 `media-loop`，不要只返回终止消息。`media-loop` 判定为 `ready_supply_starved` 并给出有效 `productionRequest` 后，`media-core` 可在同一轮执行一次 `Produce on demand`；若生成 `asset_ready`，调用方必须重新运行 ready admission 和到期扫描，不能把“生产完成”直接当作“允许发布”。
 
-同一内容的多个目标因此可以错峰发布：一个目标因尚未到窗口或账号已达上限而保持 `pending`，不能连带改变其他目标的状态。统一扫描器的周期是资源调度参数；平台发布频率仍由各目标的 `strategyRef` 控制。
+同一内容的多个目标因此可以按各自触发器独立尝试；一个目标的失败、审核中或账号暂停不能连带改变其他目标的状态。统一扫描器或平台定时器的 RRULE 是发布频率真相；旧策略频率字段不再控制目标资格。
 
 当一个内容的多个目标同时到期时，执行器可以按解析后的 `browserProfileRef` 分组，优先连续处理同一 Profile 下的不同平台目标，减少 Profile 切换。分组只优化执行顺序，不合并账号身份，也不合并发布结果：每个目标仍要单独核对平台账号、事实、版权、重复和成功状态。
 
