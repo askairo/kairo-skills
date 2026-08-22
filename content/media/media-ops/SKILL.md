@@ -1,11 +1,11 @@
 ---
 name: media-ops
-description: 跨平台媒体发布执行总控：扫描可发布目标；供给不足时调用 media-loop 诊断并委托 media-core 生成和验收最多一个新资产，再调用 X、小红书或抖音子技能完成平台化改编与发布，统一执行账号、频率、版权、安全和成功核验门禁。Use when Codex needs to directly publish a configured content target, execute an approved editorial workflow, recover an empty ready queue, or coordinate content production through publishing. For vague operating problems or permanent strategy changes, media-loop is the default entrypoint. Do not manage credentials or perform simple verbatim cross-posting.
+description: 跨平台媒体发布执行总控：按外部触发器扫描内容目标；供给不足时调用 media-loop 委托 media-core 生成和验收资产，再调用 X、小红书或抖音子技能完成平台化改编与发布，统一执行账号、事实、版权、安全、去重、结果核验和平台真实限流门禁。Use when Codex needs to directly publish a configured content target, execute an approved editorial workflow, recover an empty ready queue, or coordinate content production through publishing. For vague operating problems or permanent strategy changes, media-loop is the default entrypoint. Do not manage credentials or perform simple verbatim cross-posting.
 ---
 
 # Media Ops
 
-把账号目标、平台机制和内容主体转化为可执行的素材发现与发布任务，并协调平台子技能完成核验、筛选、改编和发布。把能力规则保留在 Skill 中，把账号、风格、来源和频率保留在用户配置中。运营反馈由独立的 `media-loop` 负责；`media-ops` 只消费其经过证据支持的策略覆盖，不在发布流程中自行猜测效果原因。
+把账号目标、平台机制和内容主体转化为可执行的素材发现与发布任务，并协调平台子技能完成核验、筛选、改编和发布。外部自动化任务的 RRULE 是运行频率的唯一权威；配置不得再用目标计划时间、最小间隔、每日上限或媒体获取次数把一次已触发的运行挡掉。运营反馈由独立的 `media-loop` 负责；`media-ops` 只消费其经过证据支持的策略覆盖，不在发布流程中自行猜测效果原因。
 
 `media-ops` 是发布执行层总控，不是运营策略层总控。直接发布请求、已明确的目标级执行任务和由 `media-loop` 路由来的配置落地任务进入本技能；“为什么效果差”“应该改哪个配置”这类未分类问题先交给 `media-loop` 诊断。`media-ops` 只能在用户明确授权长期生效时修改常驻执行配置，其他反馈只作为本轮或下一轮的临时覆盖。
 
@@ -27,7 +27,7 @@ description: 跨平台媒体发布执行总控：扫描可发布目标；供给�
 2. 解析该账号启用的平台身份、平台风格、数据源组和执行策略。
 3. 解析 `platformAccounts.<accountRef>.browserProfileRef` 和平台 operation 的执行传输；浏览器平台必须先路由到绑定的 Chrome Profile，再核对平台公开身份。API 平台不需要 Chrome Profile。
 4. 允许用户在本次请求中覆盖配置；仅覆盖本次运行，不自动回写配置文件。
-   - 频率或每日上限覆盖必须登记为本次 `targetId` 的一次性 lease；不得继承到下一轮，也不得把“用户这次要求发布”解释为关闭健康、事实、版权、去重或成功核验门禁。
+   - 本轮不再创建“频率豁免” lease；每次外部触发都是独立的尝试。仍不得把触发本身解释为关闭健康、事实、版权、去重、媒体可用性、平台真实限流或成功核验门禁。
 5. 若缺少的信息只影响表现形式，采用保守默认值并列明；若缺少账号定位、来源、目标平台或浏览器 Profile 路由会改变执行对象，停止并返回具体缺失字段。
 6. 不读取或保存密码、Cookie、访问令牌等凭证。Profile 配置只保存本机可见的环境标识和切换方式，不保存认证材料。
 
@@ -54,18 +54,18 @@ description: 跨平台媒体发布执行总控：扫描可发布目标；供给�
 
 ### Content-driven dispatch and Profile batching
 
-当任务由内容分发计划触发时，先读取 `media-core` 内容资产和到期的 `distributionTargets`，再解析每个目标的 `platformAccountRef`、平台策略和 `browserProfileRef`。定时器的执行对象是内容目标，不是某个平台技能本身。
+当任务由内容分发触发时，先读取 `media-core` 内容资产和未完成的 `distributionTargets`，再解析每个目标的 `platformAccountRef`、平台策略和 `browserProfileRef`。定时器的执行对象是内容目标，不是某个平台技能本身；外部触发时间决定本轮是否尝试，不再等待目标的计划时间。
 
-- 统一分发定时器只负责周期性扫描到期目标，不代表每个平台都按同一频率发布；扫描周期由 `media-core.dispatchScheduler` 控制，目标是否可发布由该目标的 `plannedAt` / `preferredWindow` 和 `strategyRef` 共同决定。
+- 统一分发定时器和平台定时器都可以触发同一决策入口；触发器当前 RRULE 决定运行频率。`plannedAt` / `preferredWindow` 仅保留为排序、审计和内容计划信息，不是发布阻断条件。
 - 在进入浏览器前，确认内容资产已经通过 `media-core` 的 ready admission check；扫描器不得把 `verified` 资产提升为 `ready`，也不得为缺少到期字段的目标临时补写发布时间。
-- 对每个目标依次检查发布时间窗口、`minIntervalMinutes`、`maxPublishedPerDay`、`maxPublishedPerRun`、平台失败退避和 `media-loop` 健康门禁。任何一项不满足时只保留该目标为 `pending` / `deferred`，不能把整轮或同一内容的其他目标标记为失败。
-- 同一平台不同账号分别计数；同一账号不同平台也分别计数。全局扫描器的 `maxTargetsPerRun` 只是资源保护，不得替代平台/账号频率上限。
-- 同一内容的多个目标可以覆盖不同平台、账号、格式和发布时间窗口；平台策略中的时间仍作为目标级约束，不应被解释为内容资产的唯一发布时间。
+- 对每个目标检查 ready 状态、账号身份、事实、版权、媒体、去重、运行锁、平台真实限流/挑战、失败中的不确定状态和 `media-loop` 健康门禁。不得再检查 `minIntervalMinutes`、`maxPublishedPerDay`、目标时间窗口或媒体获取次数。`maxPublishedPerRun` 仅是单次触发的批量保护，不是时间或频率门禁。
+- 同一平台不同账号和同一账号不同平台仍分别记账；全局扫描器的 `maxTargetsPerRun` 只是单次触发的资源保护。平台返回的真实 rate limit、账号标签、挑战和安全暂停仍必须尊重，不能由配置关闭。
+- 同一内容的多个目标可以覆盖不同平台、账号和格式；平台策略中的旧时间字段不再作为目标级阻断条件。
 - 解析完目标后，先按 `scheduledTransport`，再按 `browserProfileRef` 分组，并在同一传输和 Profile 内尽量连续处理不同平台目标，减少路由切换；分组只改变执行顺序，不改变目标边界。
 - 即使多个目标使用同一个 Profile，每个目标进入平台后仍必须重新核对公开账号身份。不能因为 Profile 已确认，就跳过 `platformAccountRef → platform handle` 校验。
 - 一个 Profile 可以承载用户已确认登录的不同平台账号；同一平台的不同账号不得默认共用 Profile，除非平台支持可靠的账号切换且配置明确授权。账号不匹配、Profile 不明或切换后页面仍是旧账号时，立即停止该目标，不影响其他目标按独立状态处理。
 - 每个目标独立写入 `publishState`、帖子 URL、指标和失败原因。不能把“同一内容部分平台成功”汇总成一次全局成功，也不能把一个平台失败扩散为所有目标失败。
-- 同一账号的多个未完成目标按 `media-core.dispatchScheduler.targetSelection` 处理：选择最早 `plannedAt` 的到期、未完成且 eligible 目标；同一时间再按 `targetCreatedAt`、`sourceObservedAt`、`targetId` 排序。不得因为新资源刚在另一个平台成功，就改选最新资源；已在小红书完成的目标不影响同一内容在抖音上的独立未完成目标。目标级不 ready/未到期/适配失败可以保留并检查下一条 eligible 目标，账号级健康阻断则暂停该账号队列。
+- 同一账号的多个未完成目标按 `media-core.dispatchScheduler.targetSelection` 处理：选择最早 `plannedAt` 的未完成且 eligible 目标；同一时间再按 `targetCreatedAt`、`sourceObservedAt`、`targetId` 排序。不得因为新资源刚在另一个平台成功，就改选最新资源；已在小红书完成的目标不影响同一内容在抖音上的独立未完成目标。目标级不 ready/适配失败可以保留并检查下一条 eligible 目标，账号级健康阻断则暂停该账号队列。
 
 ## Run the workflow
 
@@ -139,7 +139,7 @@ description: 跨平台媒体发布执行总控：扫描可发布目标；供给�
 
 ### 7. Apply the publishing gate
 
-先区分“创建/更新常驻调度”和“执行一次已经被调用的任务”。默认使用人工确认模式并停止在草稿和发布准备阶段；只有用户明确要求建立定时任务时，才创建或更新常驻调度。配置中的 `schedule` 本身不触发创建调度。
+先区分“创建/更新常驻调度”和“执行一次已经被调用的任务”。默认使用人工确认模式并停止在草稿和发布准备阶段；只有用户明确要求建立定时任务时，才创建或更新常驻调度。配置中的 `schedule` 仅为兼容旧文档的描述，不触发创建调度，也不阻断已触发运行。
 
 每次运行先标记执行上下文：
 
@@ -156,7 +156,7 @@ description: 跨平台媒体发布执行总控：扫描可发布目标；供给�
 只接受以下发布模式：
 
 - `publishingMode: reviewed`：要求 `humanApprovalRequired: true` 且 `autoPublish: false`。用户明确授权具体账号和完整内容后，可以完成单次发布。
-- `publishingMode: unattended`：要求 `humanApprovalRequired: false`、`autoPublish: true`、`selectLimit: 1`、`maxPublishedPerRun: 1`，并存在有效 `schedule` 与 `scheduledTransport`。配置校验通过后，`scheduled_run` 以及用户明确要求按该配置执行的 `interactive_run` 可以直接进入发现、改编和发布，不再增加业务层逐条确认；仍必须遵守所选执行通道的运行时安全策略。
+- `publishingMode: unattended`：要求 `humanApprovalRequired: false`、`autoPublish: true`、`selectLimit: 1`、`maxPublishedPerRun: 1` 与有效 `scheduledTransport`；不要求 `schedule`、最小间隔或每日上限。配置校验通过后，`scheduled_run` 以及用户明确要求按该配置执行的 `interactive_run` 可以直接进入发现、改编和发布，不再增加业务层逐条确认；仍必须遵守所选执行通道的运行时安全策略。
 
 门禁结果必须按实际原因返回，不得笼统返回“未满足人工确认门禁”：
 
@@ -224,12 +224,12 @@ description: 跨平台媒体发布执行总控：扫描可发布目标；供给�
 
 1. 把账号、平台、策略窗口、队列库存、候选阻塞、最近发布/审核状态和最近反馈交给 `media-loop`。
 2. 若 loop 返回 `adaptationRequest`，先调用 `media-core` 按最早未完成资产恢复适配，再分别调用对应平台子技能；适配积压存在时不得请求新的来源生产。
-3. 若 loop 返回 `ready_not_due`、账号暂停、结果不确定、已有足量 ready 库存或无生产请求，记录具体原因并结束；不得提前发布或重试审核中目标。
-4. 仅当 loop 明确返回 `productionRequest` 时，调用 `media-core` 对指定 pipeline 生产并验收最多 1 个资产。来源发现、下载、版权、去重、资源路径和游标全部属于 core 及其外部协议；ops 不自行补造候选。
-5. core 返回 `asset_ready` 或适配完成后，在同一轮重新扫描一次 ready admission、目标到期和平台门禁；符合条件才交给平台子技能。生产出的目标尚未到期时保留为 ready，不为了“本轮必须发布”改写时间。
+3. 若 loop 返回账号暂停、结果不确定、已有足量 ready 库存或无生产请求，记录具体原因并结束；不得重试审核中目标。
+4. 仅当 loop 明确返回 `productionRequest` 时，调用 `media-core` 对指定 pipeline 生产并验收。来源发现、下载、版权、去重、资源路径和游标全部属于 core 及其外部协议；ops 不自行补造候选。媒体生产不再受固定“每轮最多几次”限制，由本次外部触发、队列状态、幂等键和 stopConditions 决定是否继续推进。
+5. core 返回 `asset_ready` 或适配完成后，在同一轮重新扫描 ready admission 和平台门禁；符合条件才交给平台子技能。生产出的目标不受旧计划时间阻断，保留其计划字段用于审计和排序。
 6. core 返回 `production_blocked`、`adaptation_backlog_present` 或 `no_qualified_candidate` 时写入内容层和平台运行记录，停止；同一 `requestId + pipelineRef` 本轮不得再次调用。若返回 `adaptation_backlog_unchanged`，按成功的轻量 no-op 记录，禁止重新访问来源、调用 Chrome、发起生产或发布；只有队列指纹变化、适配写回或配置声明的 preferred schedule window 到达后才恢复。
 
-每轮最多执行 1 次供给恢复、生成 1 个 ready 资产并发布 1 条。平台定时器和统一扫描器都必须遵守这一上限，并先取得运行锁；不得形成 `ops → loop → core → ops` 的无界递归。重新扫描后仍无到期目标即结束。`published_pending_review`、`uncertain`、账号健康暂停、授权失败和媒体失败均不能通过供给恢复绕过。
+每次外部触发可以持续推进仍有明确缺口的适配或媒体供给，不再受固定获取次数门禁；但每个请求必须遵守 `contentId + targetId`、`requestId + pipelineRef` 幂等键，遇到成功、无合格候选、来源/版权/媒体失败、锁冲突、账号健康暂停或不确定发布状态即停止。单次触发仍默认最多发布 1 条，防止一次异常重入排空队列；这不是时间或频率门禁。不得形成 `ops → loop → core → ops` 的无界递归。
 
 ### 10. Apply an authorized optimization
 

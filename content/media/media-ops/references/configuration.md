@@ -78,8 +78,8 @@ accounts.<account>
 - `selectionSignals` 是运营目标和观察指标，不是平台算法的固定权重；平台子技能将其转换为自己的发现 brief 和候选评分。
 - `media-loop` 使用独立的 `<AGENT_HOME>/local-config/media-loop/config.json` 保存监测窗口、健康门禁、最小可比样本量、实验规则和写回开关；不得把这些运行数据塞进 `media-ops` 账号配置。
 - `media-ops` 在运行开始时读取 `media-loop` 最近一次有效反馈，运行结束后将发布结果交给 `media-loop`；反馈中的 `strategyOverrides` 只覆盖本轮或下一轮上下文，除非用户明确授权，不回写常驻账号配置。
-- 账号健康状态优先于内容优化：标签、限流、连续发布失败、账号不匹配和不确定发布状态会触发暂停或降频，不能被 `minScore`、发布时间或热点权重覆盖。
-- `strategyRef` 定义数量、时间和发布门禁；平台级覆盖只影响该平台，不改变不可关闭的事实、版权、安全和人工确认规则。
+- 账号健康状态优先于内容优化：标签、平台真实限流、连续发布失败、账号不匹配和不确定发布状态会触发暂停，不能被 `minScore`、热点权重或外部触发覆盖。
+- `strategyRef` 定义内容选择、平台适配和单次触发批量保护；旧的数量/时间频率字段不再作为已触发目标的发布门禁，平台级覆盖只影响该平台，不改变不可关闭的事实、版权、安全和成功核验规则。
 
 ### 内容驱动调度与 Profile 聚合
 
@@ -87,7 +87,7 @@ accounts.<account>
 
 因此，内容配置不重复保存 Profile；Profile 仍是账号登录环境配置。一个内容可以在不同平台目标上解析到同一个 Profile，执行器可以按 Profile 聚合这些目标以减少切换，但必须为每个平台目标单独核对公开账号身份，并分别记录发布状态。
 
-`schedule` 在迁移期间仍可保留在 strategy 中，表示平台/账号的频率、可发布时间窗口和限额约束；内容驱动调度器将其作为目标约束，而不是把“执行某个平台技能”作为定时器的唯一任务对象。未完成调度器迁移前，不应仅修改字段名就宣称已切换为内容驱动。
+`schedule` 在迁移期间仍可保留在 strategy 中，但只作为旧配置和审计信息；实际触发频率以外部自动化任务的 RRULE 为准，`schedule` 不得阻断已触发运行，也不再提供最小间隔或每日上限。
 
 统一分发扫描器由 `media-core` 本地配置声明：
 
@@ -112,23 +112,23 @@ accounts.<account>
 }
 ```
 
-它只表示“每 10 分钟检查一次”，不表示每个平台每 10 分钟发布。一次扫描必须对每个到期目标重新计算有效性：
+它只表示一次外部触发扫描，不表示每个平台都必须按固定周期发布。一次扫描必须对每个未完成目标重新计算有效性：
 
 ```text
 eligible(target) =
-  target.plannedAt/window 已到
-  AND strategy.schedule 窗口允许
-  AND now - lastPublishedAt >= strategy.publishPolicy.minIntervalMinutes
-  AND todayPublishedCount < strategy.publishPolicy.maxPublishedPerDay
+  target.lifecycleState == ready
+  AND target.publishState 未完成
+  AND target.platform/account identity matches
+  AND fact/rights/media/dedup/run-lock gates pass
+  AND platform-reported rate-limit/health gates pass
   AND currentRunCount < strategy.maxPublishedPerRun
-  AND account/platform health gates pass
 ```
 
-其中账号、平台、策略和失败退避按 `target.strategyRef` 独立解析；同一内容的其他目标不共享这些计数。若策略缺少必要的频率约束，目标只能保持待调度，不能用全局扫描周期代替缺失的发布上限。配置中的 `schedule` 和 `dispatchScheduler` 都只是规范与运行参数，不会单独创建常驻系统任务。
+其中账号、平台、策略和失败状态按 `target.strategyRef` 独立解析；同一内容的其他目标不共享这些状态。`plannedAt`、`preferredWindow`、`schedule`、`minIntervalMinutes`、`maxPublishedPerDay` 和媒体获取次数都不是已触发运行的阻断条件。`maxPublishedPerRun` 只是一次触发的批量保护。配置中的 `schedule` 和 `dispatchScheduler` 都不会单独创建常驻系统任务。
 
-内容驱动的 unattended 策略必须同时声明 `publishPolicy.minIntervalMinutes`、`publishPolicy.maxPublishedPerDay` 和 `publishPolicy.platformLimitBackoffHours`；任一缺失时返回“策略频率约束缺失”，不得进入浏览器。`media-ops/config` 是发布节奏的唯一配置真相：账号 README、队列说明和外部调度定义若与其时间或上限不一致，记录为 `schedule_document_mismatch` 并停止该目标，直到显式同步；不得在扫描时猜测哪个旧记录优先。
+内容驱动的 unattended 策略不要求 `publishPolicy.minIntervalMinutes`、`publishPolicy.maxPublishedPerDay` 或 `publishPolicy.platformLimitBackoffHours`；这些旧字段即使残留也不得阻断已触发运行。`media-ops/config` 记录账号和执行路由，外部自动化任务的 RRULE 是发布频率真相；若文档与 RRULE 不一致，记录差异供维护，不得把差异伪装成发布失败或时间门禁。平台真实返回的 rate limit 仍必须暂停并按平台状态恢复。
 
-同一 `platformAccountRef` 的目标选择默认采用 `oldest_due_unfinished_eligible`：`plannedAt` 最早者优先，随后使用 `targetCreatedAt`、`sourceObservedAt`、`targetId` 打破平局。`neverPreferLatest: true` 禁止用“最新资源”覆盖历史未完成目标；目标级阻塞只保留并记录该目标，账号级健康阻断则暂停该账号队列。
+同一 `platformAccountRef` 的目标选择默认采用 `oldest_unfinished_eligible`：`plannedAt` 最早者优先，随后使用 `targetCreatedAt`、`sourceObservedAt`、`targetId` 打破平局。`neverPreferLatest: true` 禁止用“最新资源”覆盖历史未完成目标；目标级阻塞只保留并记录该目标，账号级健康阻断则暂停该账号队列。
 
 ### Runtime context
 
