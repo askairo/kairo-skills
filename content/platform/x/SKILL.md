@@ -1,6 +1,6 @@
 ---
 name: x
-description: X / Twitter 平台策略与发布子技能：对已核验内容资产完成 X 平台筛选、英文改编、受控发布与核验。Use when Codex needs to adapt, publish, or review content specifically for X. Source retrieval, account data, and asset acquisition belong to media-core external records and local configuration. Do not use for credentials or unverified claims.
+description: X / Twitter 平台策略与发布子技能：对已核验内容资产完成 X 平台筛选、英文改编、Premium 长文或普通帖适配、受控发布与核验。Use when Codex needs to adapt, publish, or review content specifically for X. Source retrieval, account data, and asset acquisition belong to media-core external records and local configuration. Do not use for credentials or unverified claims.
 ---
 
 # X
@@ -24,6 +24,8 @@ description: X / Twitter 平台策略与发布子技能：对已核验内容资�
 
 - 默认结构为“具体事实钩子 → 一个关键证据 → 原创解释 → 具体讨论问题”。
 - 单帖只承载一个核心信息；长链路拆成 Thread，首帖必须独立成立。
+- 若 `media-ops` 的 `operation.premium.longForm` 为 `enabled`，且编辑内容确实需要完整展开，可选择 X Premium 长文；Premium 只扩大可用载体，不改变事实、版权、重复、健康、限流和结果核验门禁。
+- 长文发布前必须在当前编辑器中核对长文入口、实际字数/字符计数和预览；不要把 Premium entitlement 或固定字符上限写成无需页面核验的假设。若长文入口不可见，退回 Thread 或普通帖结构，不伪造长文成功。
 - 翻译、摘要和引用原帖不算原创增量；增加事实边界、技术解释、实际影响或可执行判断。
 - 首句不使用空泛的“震撼”“速看”等词；不夸大、不制造焦虑、不把猜测写成事实。
 - 关注转化来自稳定栏目和明确账号承诺，不使用机械“点赞关注”。
@@ -33,7 +35,7 @@ description: X / Twitter 平台策略与发布子技能：对已核验内容资�
 
 ## Growth review
 
-发布前检查：陌生用户能否理解首句、正文是否只有一个核心信息、是否有保存价值、是否有自然回复入口、是否能体现关注后的持续价值、字数/媒体/链接/标签是否合规；若内容包含外部事实，必须确认最终编辑器正文中可见官方来源 URL 或官方来源卡片。发布前展示给用户确认的完整文案必须包含该来源，不得只展示不含来源的正文版本。
+发布前检查：陌生用户能否理解首句、正文是否只有一个核心信息、是否有保存价值、是否有自然回复入口、是否能体现关注后的持续价值、载体（Premium 长文/Thread/普通帖）、字数/媒体/链接/标签是否合规；若内容包含外部事实，必须确认最终编辑器正文中可见官方来源 URL 或官方来源卡片。发布前展示给用户确认的完整文案必须包含该来源，不得只展示不含来源的正文版本。
 
 发布后记录曝光、回复率、转发率、收藏率、链接点击、主页访问、关注转化和负向反馈。回复评论时补充证据和上下文，不复制粘贴或批量骚扰。
 
@@ -41,7 +43,7 @@ description: X / Twitter 平台策略与发布子技能：对已核验内容资�
 
 1. 核对当前登录身份与配置 handle 一致。
    若由 `media-ops` 传入 `browserProfileRef`，先确认已切换到该 Profile；Profile 路由缺失或切换后账号身份不一致时停止。
-2. 发布前解析当前账号对应的 `media-ops` 本地配置；若目标策略为有效的 `publishingMode: unattended`（同时满足 `humanApprovalRequired: false`、`autoPublish: true`、`selectLimit: 1`、`maxPublishedPerRun: 1` 和有效 `scheduledTransport`），且本次调用是已触发的自动化运行，则直接进入发布，不再请求逐条人工确认。旧 `schedule`、最小间隔和每日上限字段不参与资格判断。若策略缺失、无效、账号不明确或为 `reviewed`，才停在草稿并请求确认。不要因为没有调用 `x-api` 就拒绝有效的 `x` 无人值守运行。
+2. 发布前解析当前账号对应的 `media-ops` 本地配置；若目标策略为有效的 `publishingMode: unattended`（同时满足 `humanApprovalRequired: false`、`autoPublish: true`、`selectLimit: 1`、`maxPublishedPerRun: 1` 和有效 `scheduledTransport`），且本次调用是已触发的自动化运行，则直接进入发布，不再请求逐条人工确认。旧 `schedule`、最小间隔和每日上限字段不参与资格判断。若 `operation.premium.longForm` 为 `enabled`，先在当前页面核对 Premium 长文入口实际可用，再决定使用长文、Thread 或普通帖。若策略缺失、无效、账号不明确或为 `reviewed`，才停在草稿并请求确认。不要因为没有调用 `x-api` 就拒绝有效的 `x` 无人值守运行。
 3. 创建草稿后重新读取正文、受众、引用对象、媒体、来源 URL/来源卡片和发布按钮；无论是否需要人工确认，都必须完成这些检查。无人值守策略只跳过确认，不跳过事实、版权、账号、重复和成功核验门禁。
 4. 最终发布按钮只点击一次，等待明确成功提示、帖子 URL 或时间线新内容；遇到挑战页或不明确结果停止，不重试。
 5. X 引用帖必须确认引用的是预期原帖，且原帖媒体在编辑器中仍显示；不得重复上传同一官方媒体。
