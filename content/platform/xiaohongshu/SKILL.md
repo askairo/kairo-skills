@@ -31,7 +31,7 @@ description: 小红书平台策略与发布子技能：对已核验内容资产�
 
 配图、截图、信息卡和视频必须真实、清晰、具备使用权限；不为凑九宫格重复或拼接无关图片。发布前检查标题、封面、正文、来源区、标签、账号身份和发布按钮；发布按钮只点击一次并等待明确结果。
 
-当账号视觉规范要求 PNG、而内容资产提供的是 SVG 源文件时，先按 `media-core.visualRenderer.fallbacks` 选择可用渲染器。macOS 优先使用 `/usr/bin/qlmanage -t -s <size> -o <output-dir> <svg>`，再考虑配置中的其他渲染器；不得把“未安装 rsvg-convert/ImageMagick”误判为没有任何渲染能力。渲染完成后必须确认 PNG 文件真实存在，用 `/usr/bin/sips` 验证宽高和安全区，用 `/usr/bin/shasum -a 256` 记录媒体指纹，并在目标记录中同时保留 SVG 源文件、PNG 成品和验收结果。渲染器都不可用时，返回 `platform_asset_render_blocked`，保持 `pending_content_completion`，不得使用来源截图替代，也不得重复创建内容资产。
+当账号视觉规范要求 PNG、而内容资产提供的是 SVG 源文件时，先读取 `media-core.visualRenderer.preferredRenderer` 和账号 `coverSpecRef`，再选择渲染器。对于“固定宽度、动态高度”的 SVG，禁止把 `/usr/bin/qlmanage -t -s <size>` 作为首选：macOS Quick Look 会把非方形画布按方形缩放，可能把右侧外边裁掉。优先使用配置中的精确视口 SVG→PNG 渲染器；`qlmanage` 只允许用于方形画布或精确验收通过的回退结果。渲染完成后必须确认 PNG 文件真实存在，用 `/usr/bin/sips` 验证宽高，并逐像素检查四条边的连续外边颜色和宽度（顶部、右侧、底部、左侧均为 26px `#F5F1E8`；任一边缺失即 `platform_asset_render_blocked`），再用 `/usr/bin/shasum -a 256` 记录媒体指纹。目标记录同时保留 SVG 源文件、PNG 成品、渲染器、尺寸、四边验收和指纹。渲染器不可用或四边验收失败时，保持 `pending_content_completion`，不得使用来源截图替代，也不得重复创建内容资产。
 
 - 发布前重新读取编辑器中的最终标题、正文和媒体状态，确认标题长度校验已通过。
 - 若 `media-ops` 传入 `browserProfileRef`，先确认当前 Chrome Profile 已完成路由，并核对小红书公开账号身份；Profile 路由缺失或账号不一致时停止。
