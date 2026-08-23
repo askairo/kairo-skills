@@ -70,6 +70,7 @@ accounts.<account>
 - `accounts.<account>` 是运营隔离边界，不是用户或设备边界。若一个科技 X 账号和一个音乐抖音账号的定位不同，应建立两个 `accounts` 条目，即使由同一人管理。
 - `platforms.<platform>.operation` 描述该账号在特定平台“想做什么、找什么、优先什么、排除什么”。例如 X 可以关注讨论、引用、主页访问和关注转化；音乐类抖音账号可以关注音频适配、前三秒记忆点、完播潜力和版权。
 - `operation.transport`、`interactiveSkill`、`scheduledSkill` 和对应 transport 字段定义执行路由，不保存凭证。`scheduledTransport` 是定时写操作的必填字段，不能依赖默认值。
+- `operation.premium` 是平台账号能力声明，不保存订阅凭证。对 X 可使用 `enabled: true`、`longForm: enabled`、`status: user-confirmed` 和 `capabilityCheck: editor-runtime`；它只允许执行器在当前编辑器实际显示长文入口时选择 Premium 长文，不能绕过账号健康、平台限流、事实、版权、重复或成功核验门禁。
 - `sourceGroupRefs` 定义允许寻找的来源；平台级配置可以缩小账号默认来源范围，不得绕过来源和版权门禁。
 - `sourceGroups.<group>.priorityAccounts` 是可选的重点账号白名单。每项使用 `sourceId` 引用同一来源组中已启用的 X 来源，并填写规范化 `handle`；平台子技能应优先扫描和排序命中白名单的候选，但不得因此跳过事实、版权、相关性、原创增量、重复和安全门禁。
 - `docsRoot` 可选，指向 Agent 本地的外部运营文档根目录；它不进入技能源码。平台发布文档仍按 `<docsRoot>/<platform>/<account>/` 组织。跨平台内容源、内容资产和源流水线不放在这里，而由 `media-core` 的 `<AGENT_HOME>/local-config/media-core/config.json` 指向 `<docsRoot>/content/` 独立管理。
