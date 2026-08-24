@@ -50,6 +50,9 @@ description: 抖音平台策略与发布子技能：对已核验内容资产完�
 
 - 通过受控登录会话发布时，先核对当前抖音账号与配置中的公开身份一致，再创建草稿。
 - 若 `media-ops` 传入 `browserProfileRef`，先确认当前 Chrome Profile 已完成路由；Profile 路由缺失、切换失败或抖音公开身份不一致时停止，不创建草稿。
+- 使用 `computer-use` 操作 Chrome 时，进入抖音发布页、作品管理页和发布结果核验前，先将当前 Chrome 窗口切换为全屏/最大化布局；优先使用可见的系统全屏控件，必要时使用 computer-use 支持的 macOS 全屏快捷键。全屏动作后必须重新读取 accessibility state，确认窗口已完成布局重排，再读取页面控件；不得在被挤压的窄布局中判断“控件不存在”或“列表刷新失败”。
+- 作品管理页的核验必须显式确认“全部作品”/作品标签组、作品总数或搜索作品控件可见。若这些控件缺失、被折叠到溢出菜单、只显示导航壳或页面布局异常，先执行全屏并等待重排，再用新 accessibility state 重新定位控件；不要直接把旧作品列表或导航壳当作刷新结果。
+- 发布后核验优先在全屏的作品管理页使用可见的“全部作品”或“搜索作品”控件检索本条标题，再同时匹配标题、正文和时长；只有完成全屏重排并取得新 state 后，最多进行配置允许的刷新次数。全屏前没有看到“全部作品”按钮不构成发布失败证据，也不允许因此随机导航或再次点击发布。
 - 若内容管理可读、但 `creator-micro/content/upload` 只剩浏览器外壳或持续空白，先判定为页面运行时故障而不是账号、素材或发布失败：只关闭本轮失效的抖音标签页，从 `https://creator.douyin.com/` 新建干净标签并重新进入发布入口。若 Chrome 明确显示“网站无法正常运行”且建议允许第三方 Cookie，可在已授权的当前 Profile 中仅为 `creator.douyin.com` 打开站点级第三方 Cookie、让页面自动重载，再重新核对账号和上传控件；不得修改全局 Cookie 策略。若仍空白、Mac 已锁定或 computer-use 无法取得窗口，保留 ready 目标、媒体和游标，记录具体阻塞，不把它写成 `publish_failed`，也不重复下载或重选。
 - 创建草稿前完成近期文案去重并在运行记录中保存 `recentCopyRefs`、本条采用的表达角度和被避开的重复骨架。若不能读取近期至少 5 条成稿，或无法确认本条不是仅替换歌名的重复文案，停止自动发布并记录 `recent_copy_window_unverifiable`。
 - 读取 `media-ops` 当前账号 `styleRef` 对应的 `copyContract`，先生成机器可校验的 `copyPlan`：`title`、`caption`、`selectedAngle`、`recentCopyRefs`、`avoidedPatterns`。合同缺失或字段不完整时记录 `copy_contract_missing` 并停止，不自行发明另一套格式。
