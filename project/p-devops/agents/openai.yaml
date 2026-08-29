@@ -1,0 +1,6 @@
+interface:
+  display_name: "p-devops"
+  short_description: "配置 Jenkins 分支触发构建部署与通知流程"
+  default_prompt: "使用 $p-devops 配置指定 Git 仓库分支的 Jenkins 自动构建、部署与通知流程。"
+policy:
+  allow_implicit_invocation: true
