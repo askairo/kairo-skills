@@ -1,6 +1,6 @@
 ---
 name: mac-clean
-description: Safely clean macOS with two tracks: storage cleanup and zero-risk file organization, both with explicit safety boundaries and reporting.
+description: "Safely clean macOS with two tracks: storage cleanup and zero-risk file organization, both with explicit safety boundaries and reporting."
 ---
 
 # Mac Clean
