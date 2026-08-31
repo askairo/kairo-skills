@@ -38,17 +38,17 @@ description: 跨平台媒体发布执行总控：按外部触发器扫描内容�
 ### Route the browser Profile
 
 - 浏览器平台的执行对象由 `platformAccountRef → browserProfileRef → platform handle` 唯一确定；同一平台的不同账号不得共用一个 Profile 路由。
-- 若当前会话不是目标 Profile，使用受控电脑操作点击 Chrome Profile 菜单并选择配置中的可见 Profile 名称；不得按位置猜测、只看头像颜色或沿用上一个任务的会话。
+- Chrome 浏览器操作统一使用 `chrome-mcp`。先在 Chrome MCP 的 `openTabs` 结果中定位配置的 `profileName` 对应的已登录 Tab，再 `claimTab`；不得使用桌面点击、Computer Use、CDP 或其他浏览器控制接口切换 Profile。
 - Profile 切换后重新打开平台入口，读取当前登录 handle、账号名和平台身份。任何一项与配置不一致、页面仍在旧账号或 Profile 名称无法确认时，立即停止，不创建草稿、不上传媒体、不发布。
-- Chrome 控制接口不能直接切换 Profile；Profile 切换由电脑操作完成，页面读取和发布仍交给对应平台技能。切换后重新获取页面状态，不假设旧 Tab 或旧页面绑定仍属于目标 Profile。
-- `switchMethod: current-session` 只表示沿用当前已打开的会话，不能用于同平台多账号无人值守路由；新增账号必须使用已验证的独立 Profile 名称和 `computer-use` 切换方式，或使用官方 API。
+- `chrome-mcp` 的 Profile 路由前提是目标 Profile 已在 Chrome 中打开并能被 MCP 识别；没有可确认的目标 Tab 时返回 `profile_route_missing`，不得猜测、创建未核验会话或回退到其他控制通道。
+- `switchMethod: chrome-mcp` 表示通过 Chrome MCP 识别并接管目标 Profile 的现有 Tab；`current-session` 只表示沿用当前已确认的单账号 Tab，不能用于同平台多账号无人值守路由。
 
 ### Resolve the execution transport
 
 - `operation.transport` 标识平台适配器；`interactiveSkill` / `scheduledSkill` 标识交给哪个平台子技能；`interactiveTransport` / `scheduledTransport` 标识该次运行实际使用的执行通道。
-- `scheduledTransport` 对所有需要写入外部平台的定时任务都是必填。允许值为 `computer-use`、`controlled-browser-session` 或已接入的 `official-api`；平台子技能可以进一步限制可用值。
-- `computer-use` 表示 Profile 路由、页面读取、输入、上传和发布控件都通过 Computer Use 执行；`controlled-browser-session` 表示使用 Chrome 控制连接；`official-api` 不打开 Chrome，必须由对应 API 子技能完成身份和结果核验。
-- `switchMethod: computer-use` 只规定如何切换 Chrome Profile，不能推断页面发布也使用 Computer Use。两者必须分别配置和分别写入运行快照。
+- `scheduledTransport` 对所有需要写入外部平台的定时任务都是必填。浏览器平台只允许显式的 `chrome-mcp`；API 平台必须选择已接入的 `official-api`。平台子技能可以进一步限制可用值。
+- `chrome-mcp` 表示 Profile 路由、页面读取、输入、上传、编辑、发布控件、结果核验和 Tab 清理全部通过 Chrome MCP/browser-client 完成；不得静默转换为 Computer Use、controlled-browser-session、CDP 或其他 Chrome 控制接口。`official-api` 不打开 Chrome，必须由对应 API 子技能完成身份和结果核验。
+- `switchMethod: chrome-mcp` 与 `interactiveTransport` / `scheduledTransport` 必须分别写入运行快照，但都不得指向其他浏览器执行器。
 - 缺少、拼写错误或当前平台不支持的传输不得静默回退；返回 `scheduled_transport_missing` 或 `scheduled_transport_unsupported`，不打开发布页、不上传、不点击发布。
 - 运行记录必须写入 `activeTransport`、`interactiveTransport` / `scheduledTransport` 和 `browserProfileRef`，便于区分配置门禁、浏览器连接问题和平台发布问题。
 

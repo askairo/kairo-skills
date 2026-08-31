@@ -37,7 +37,7 @@ content asset
 browserProfiles.<profile>
 ├── browser: chrome
 ├── profileName                         # Chrome 中显示的 Profile 名称
-├── switchMethod: computer-use | current-session
+├── switchMethod: chrome-mcp | current-session
 └── status: verified | needs-verification
 accounts.<account>
 ├── vertical / audience / positioning / contentPillars  # 账号共性
@@ -299,13 +299,13 @@ strategies:
 - 抖音可以声明 `operation.allowDownload`，布尔值默认是 `false`；`false` 表示发布前关闭“允许下载”（等价于“不允许下载”）。该配置只是期望状态，平台子技能仍必须在最终发布前重新读取页面控件；状态不明或仍允许下载时停止。
 - `operation.sourceGroupRefs`、`operation.exclusions` 和 `operation.rightsPolicy` 用于收窄来源与安全边界；缺少 `goal` 或 `contentMode` 且会改变选材结论时，应请求补充。
 - `operation.editorialFrameworkRef` 是相对于 `docsRoot` 的外部内容文档路径，必须指向 `media-core` 内容目录中的主题框架；`operation.coverSpecRef` 是相对于 `docsRoot` 的平台/账号视觉规范路径。两者都不保存凭证。
-- 平台可以声明 `operation.transport`、`operation.interactiveSkill`、`operation.scheduledSkill`、`operation.interactiveTransport`、`operation.scheduledTransport` 和 `operation.browserAutomation`；浏览器平台的 `scheduledTransport` 必须显式选择 `computer-use` 或 `controlled-browser-session`，API 平台必须选择已接入的 `official-api`。X 的无人值守策略若选择 `x`，不得被默认改写为 `x-api`。
-- `computer-use` 表示 Profile 路由、页面读取、输入、上传和发布控件都通过 Computer Use 执行；`controlled-browser-session` 表示使用 Chrome 控制连接；`official-api` 不打开 Chrome。`switchMethod: computer-use` 只规定 Profile 切换，不替代页面执行传输。
+- 平台可以声明 `operation.transport`、`operation.interactiveSkill`、`operation.scheduledSkill`、`operation.interactiveTransport`、`operation.scheduledTransport` 和 `operation.browserAutomation`；浏览器平台的两个 transport 必须显式选择 `chrome-mcp`，API 平台必须选择已接入的 `official-api`。X 的无人值守策略若选择 `x`，不得被默认改写为 `x-api`。
+- `chrome-mcp` 表示 Profile 路由、页面读取、输入、上传、编辑、发布控件、结果核验和 Tab 清理全部使用 Chrome MCP/browser-client；禁止回退到 Computer Use、controlled-browser-session、CDP 或其他 Chrome 控制接口。`official-api` 不打开 Chrome。`switchMethod: chrome-mcp` 负责从 Chrome MCP 可见的现有 Tab 中识别并接管目标 Profile，不负责猜测或创建未核验的 Profile 会话。
 - 当策略是有效 `publishingMode: unattended` 时，传输字段只决定如何执行，不会关闭事实、版权、账号、重复、结果核验或运行时安全策略；缺少、拼写错误或平台不支持的 `scheduledTransport` 必须返回 `scheduled_transport_missing` 或 `scheduled_transport_unsupported`，不得静默回退。
 - `platforms.<platform>.strategyRef` 可覆盖账号默认策略；合并顺序为“请求覆盖 → 平台配置 → 账号默认 → Skill 默认”。
 - `baseStyleRef`、`sourceGroupRefs` 和 `strategyRef` 必须指向已定义且启用的对象。
 - 浏览器平台的 `platformAccounts.<accountRef>.browserProfileRef` 必须指向已定义的 `browserProfiles.<profile>`；同一平台的不同账号不得引用同一个 Profile。`switchMethod: current-session` 只适合单账号当前会话，不能授权同平台多账号无人值守切换。
-- `switchMethod: computer-use` 表示先通过电脑操作切换到 `profileName`，再用平台页面核对 handle；Profile 名称缺失、状态不是 `verified` 或切换后 handle 不一致时，执行器必须返回 `profile_route_missing` 或 `account_mismatch` 并停止。页面发布是否使用 Computer Use 仍由 `scheduledTransport` / `interactiveTransport` 决定。
+- `switchMethod: chrome-mcp` 表示先从 Chrome MCP 可见 Tab 中确认 `profileName`，再用平台页面核对 handle；没有可接管的目标 Tab、Profile 名称缺失、状态不是 `verified` 或切换后 handle 不一致时，执行器必须返回 `profile_route_missing` 或 `account_mismatch` 并停止。页面发布也必须由 `chrome-mcp` 执行。
 - 同一 `accounts.<account>` 下的所有平台必须通过定位、受众和内容支柱一致性检查；不一致时拆分逻辑账号，不得混合基线和反馈。
 
 ### platformAccounts
