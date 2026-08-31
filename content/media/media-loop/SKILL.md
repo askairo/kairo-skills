@@ -20,6 +20,10 @@ description: 媒体运营反馈与供给闭环总控，也是运营问题、执�
 - X、小红书或抖音的推荐机制、平台化文案、格式和发布流程：协调对应平台技能（`x`、`xiaohongshu`、`douyin` 或 `x-api`）。
 - `SKILL.md`、技能工作流、技能同步和运行目录一致性：协调 `skills-loop`；技能内容设计先遵守 `skill-creator`。
 
+### 发布异常恢复接管
+
+发布遇到可修复的执行异常时，`media-loop` 不应直接终止本轮：它接管恢复编排，读取当前 `contentId + targetId` 状态和最近证据，协调 `media-ops`、对应平台技能与传输层修复最小范围的问题，重新执行受影响的门禁，并从保留的原目标继续发布。对 `publish_unconfirmed`、`uncertain`、`published_pending_review`、硬门禁失败、用户争议或无法确认副作用的状态，先只读核验并保持原状态，不盲目重发；连续失败或修复条件不满足时暂停并记录具体恢复条件。
+
 用户明确要求直接发布现成内容时，入口可以是 `media-ops`；用户明确要求修改技能本身时，入口是 `skills-loop`。永久配置只有在用户明确授权长期生效时才修改；否则输出一次性 `strategyOverride` 或实验方案，并保留回滚条件。
 
 ## Resolve configuration and inputs
