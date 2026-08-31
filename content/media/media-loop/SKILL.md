@@ -20,6 +20,8 @@ description: 媒体运营反馈与供给闭环总控，也是运营问题、执�
 - X、小红书或抖音的推荐机制、平台化文案、格式和发布流程：协调对应平台技能（`x`、`xiaohongshu`、`douyin` 或 `x-api`）。
 - `SKILL.md`、技能工作流、技能同步和运行目录一致性：协调 `skills-loop`；技能内容设计先遵守 `skill-creator`。
 
+涉及浏览器的诊断、只读核验或恢复编排时，只向 `media-ops` 和平台技能传递 `chrome-mcp`；Chrome MCP/browser-client 是整个媒体运营体系唯一允许的浏览器执行通道。`media-loop` 不自行接管页面，也不得建议或批准 Computer Use、controlled-browser-session、CDP 或其他浏览器接口作为回退。
+
 ### 发布异常恢复接管
 
 发布遇到可修复的执行异常时，`media-loop` 不应直接终止本轮：它接管恢复编排，读取当前 `contentId + targetId` 状态和最近证据，协调 `media-ops`、对应平台技能与传输层修复最小范围的问题，重新执行受影响的门禁，并从保留的原目标继续发布。对 `publish_unconfirmed`、`uncertain`、`published_pending_review`、硬门禁失败、用户争议或无法确认副作用的状态，先只读核验并保持原状态，不盲目重发；连续失败或修复条件不满足时暂停并记录具体恢复条件。
