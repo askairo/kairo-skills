@@ -1,6 +1,6 @@
 ---
 name: p-task
-description: Turn concrete tasks into a complete development workflow. Use when Codex needs to execute a task, ticket, requirement link, or prototype after `p-ordered`, then verify and hand it off. For pure entity table design, use `entity-design` instead.
+description: Turn concrete tasks into a complete development workflow. Use when Codex needs to execute a task, ticket, requirement link, or prototype after `p-loop`, then verify and hand it off. For pure entity table design, use `entity-design` instead.
 ---
 
 # P Task
@@ -9,7 +9,7 @@ description: Turn concrete tasks into a complete development workflow. Use when 
 
 Turn a concrete task into a local development flow that is executable, verifiable, and deliverable. This covers Zentao, Jira, GitHub issues, prototype links, internal docs, screenshots, or directly pasted task descriptions.
 
-If the project is still in an exploratory phase, the architecture is unstable, or project-level docs are not yet organized, use `p-ordered` first to establish the project documentation and architecture order, then come back here for task breakdown and implementation.
+If the project is still in an exploratory phase, the architecture is unstable, or project-level docs are not yet organized, use `p-loop` first to establish the project documentation and architecture order, then come back here for task breakdown and implementation.
 
 ## Local Configuration
 
@@ -55,6 +55,8 @@ docs:
 
 ## Workflow
 
+When this task was handed off by `p-loop`, follow its external-document recovery and return contract in [p-loop execution-loop](../p-loop/references/execution-loop.md). Do not rely on the handoff conversation as the only task context.
+
 1. Gather task information.
    - Support task links, issue numbers, screenshots, prototypes, and natural language descriptions.
    - Extract stable facts: title, ID, source link, product area, repository, target branch.
@@ -94,7 +96,7 @@ docs:
    - Follow `references/task-template.md` when writing task docs.
    - Task doc names are fixed as `<prefix>-<id>.md`, usually with `feat`, `fix`, or `perf` prefixes.
    - Prefer writing docs into `<docs.root>/<repo-name>/tasks/`; put project-level planning in `plans/`.
-   - If the project uses `p-ordered` hierarchy constraints, keep the 20-layer focus docs in sync, along with `30-decisions`, `31-open-questions`, and `32-risk-log`.
+   - If the project uses `p-loop` hierarchy constraints, keep the 20-layer focus docs in sync, along with `30-decisions`, `31-open-questions`, and `32-risk-log`.
    - Keep `source`, `branch`, `baseline`, and `commit` in the docs aligned with the real state.
 
 7. Implement according to the repository structure.
@@ -116,11 +118,13 @@ docs:
 10. Wrap up.
    - Recheck that the branch, task doc, and required files are all present.
    - Summarize the changes, verification results, and remaining risks.
+   - If this task came from `p-loop`, write the execution result, observations, risks, open questions, verification evidence, writeback status, recommended next state, and recommended next step back to the external project docs before handoff.
+   - If the result changes project scope, architecture, priority, or approval boundary, stop at `review_required` instead of silently expanding the task.
    - If the user asks to merge into integration branches after completion, switch to `merge-to` and follow that skill's clean-worktree and target-branch flow.
    - If no merge was requested, state that merge or release-branch synchronization is intentionally left for the user to request.
 
 ## Working With Other Skills
 
 - If the requirement is mainly about entities, table structure, parent-child relationships, or field derivation, use `entity-design` first.
-- If the project is in the early stage, the docs are missing, or the structure is messy, use `p-ordered` first.
+- If the project is in the early stage, the docs are missing, or the structure is messy, use `p-loop` first.
 - Whether to merge the branch after task completion is not part of this skill's default responsibility. Use `merge-to` only after the user explicitly asks to merge or synchronize the completed task branch.
