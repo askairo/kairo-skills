@@ -334,7 +334,7 @@ strategies:
 - 内容驱动调度时，`schedule` 约束由到期的 `distributionTarget` 继承；调度器应以 `contentId + targetId` 作为幂等运行键，不以平台技能名作为唯一运行键。
 - `targetPlatforms` 只能选择账号已启用的平台。
 - `publishingMode: reviewed` 要求 `humanApprovalRequired: true` 且 `autoPublish: false`。
-- `publishingMode: unattended` 要求 `humanApprovalRequired: false`、`autoPublish: true`、`selectLimit: 1`、`maxPublishedPerRun: 1`，并配置有效 `schedule` 与 `scheduledTransport`。配置校验通过后，已有调度触发的一次运行不增加业务层逐条确认；仍必须遵守所选执行通道的运行时安全策略。
+- `publishingMode: unattended` 要求 `humanApprovalRequired: false`、`autoPublish: true`、`selectLimit: 1`、`maxPublishedPerRun: 1` 与有效 `scheduledTransport`。`schedule` 不属于无人值守模式的必填门禁；实际由外部控制定时器决定何时触发一次运行，从而控制发布尝试次数，避免固定频率扫描造成大量空转。配置校验通过后，已被调度器触发的一次运行不增加业务层逐条确认；仍必须遵守所选执行通道的运行时安全策略。
 - 无人值守模式只授权计划运行按内容门禁发布，不授权读取凭证、降低事实阈值、重复发布或在结果不明确时重试。
 
 执行器应在运行记录中区分 `interactive_run`、`scheduled_run` 和 `schedule_setup`。门禁失败必须返回具体原因：配置无效、没有合格候选、事实/来源/版权不足、账号不匹配、重复或发布成功信号不明确；不能把所有失败都归类为人工确认未满足。
@@ -349,6 +349,6 @@ strategies:
 - 至少存在一个启用的数据源和目标平台；
 - 数量和阈值合理，时区有效；
 - 不含疑似凭证字段；
-- 发布模式、人工确认、自动发布和执行传输字段组合合法；无人值守模式具备限额、调度和显式 `scheduledTransport`。
+- 发布模式、人工确认、自动发布和执行传输字段组合合法；无人值守模式具备必要限额和显式 `scheduledTransport`。外部控制定时器负责实际触发和发布次数控制，`strategy.schedule` 可以保留作兼容旧配置或审计信息，但不是必填门禁。
 
 校验失败时列出具体字段路径和修复建议，不带着部分配置继续创作。
