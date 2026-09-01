@@ -17,7 +17,7 @@ https://github.com/askairo/kairo-skills
 - Skills are grouped by package while keeping each skill as a self-contained directory.
 - `skills-loop` is the operational backbone for publish, sync, reinstall, and verify.
 - `p-bootstrap` starts a new project.
-- `p-ordered` normalizes project structure and docs.
+- `p-loop` normalizes project structure and docs.
 - `p-task` executes concrete tasks.
 
 ## `skills-loop`
@@ -70,7 +70,7 @@ kairo-skills/
 │   ├── entity-design/
 │   ├── merge-to/
 │   ├── p-bootstrap/
-│   ├── p-ordered/
+│   ├── p-loop/
 │   ├── p-task/
 │   └── release-flow/
 ├── blog/
@@ -113,7 +113,7 @@ kairo-skills/
 
 - [`core/skills-loop/SKILL.md`](core/skills-loop/SKILL.md)
 - [`project/p-bootstrap/SKILL.md`](project/p-bootstrap/SKILL.md)
-- [`project/p-ordered/SKILL.md`](project/p-ordered/SKILL.md)
+- [`project/p-loop/SKILL.md`](project/p-loop/SKILL.md)
 - [`project/p-task/SKILL.md`](project/p-task/SKILL.md)
 
 ---
@@ -135,7 +135,7 @@ https://github.com/askairo/kairo-skills
 - Skills 已按包分组，每个 skill 仍然保持自包含目录。
 - `skills-loop` 是发布、同步、回装、校验的统一闭环，也是技能维护的核心入口。
 - `p-bootstrap` 负责新项目启动。
-- `p-ordered` 负责项目结构和文档秩序。
+- `p-loop` 负责项目结构和文档秩序。
 - `p-task` 负责具体任务执行。
 
 ## `skills-loop`
@@ -188,7 +188,7 @@ kairo-skills/
 │   ├── entity-design/
 │   ├── merge-to/
 │   ├── p-bootstrap/
-│   ├── p-ordered/
+│   ├── p-loop/
 │   ├── p-task/
 │   └── release-flow/
 ├── blog/
@@ -231,5 +231,5 @@ kairo-skills/
 
 - [`core/skills-loop/SKILL.md`](core/skills-loop/SKILL.md)
 - [`project/p-bootstrap/SKILL.md`](project/p-bootstrap/SKILL.md)
-- [`project/p-ordered/SKILL.md`](project/p-ordered/SKILL.md)
+- [`project/p-loop/SKILL.md`](project/p-loop/SKILL.md)
 - [`project/p-task/SKILL.md`](project/p-task/SKILL.md)
