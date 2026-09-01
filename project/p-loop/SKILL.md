@@ -1,5 +1,5 @@
 ---
-name: p-ordered
+name: p-loop
 description: Maintain a project's architecture-planning loop through ordered external docs. Use when Codex needs to clarify project goals, boundaries, roadmap, focus docs, decisions, open questions, risks, plans, and task readiness before `p-task`, or when implementation/user feedback should update project state and guide the next planning cycle.
 ---
 
@@ -11,7 +11,7 @@ Use this before task development to turn a project from scattered into actionabl
 
 Use external project docs as the shared architecture memory that helps Codex plan, split, execute, verify, learn from feedback, update state, and plan the next step.
 
-`p-ordered` is not a task-execution skill. It is the project-line and architecture-loop skill:
+`p-loop` is not a task-execution skill. It is the project-line and architecture-loop skill. Its external-document recovery and `p-loop → p-task → p-loop` handoff contract is defined in [references/execution-loop.md](references/execution-loop.md):
 
 ```text
 project line -> next plan -> task split -> execution by p-task -> verification feedback -> state writeback -> next plan
@@ -48,7 +48,6 @@ Resolution order:
 2. If the working directory path contains `.codex`, use `~/.codex/`
 3. If `~/.qoderworkcn/` exists, use it
 4. If `~/.codex/` exists, use it
-5. Fall back to `~/.config/skills/`
 
 After resolving, confirm that the directory really exists. If none exist, ask the user which Agent Home to use.
 
@@ -56,8 +55,7 @@ After resolving, confirm that the directory really exists. If none exist, ask th
 
 ### Config Files
 
-- Preferred path config: `<AGENT_HOME>/local-config/p-ordered/paths.yaml`
-- Compatibility path config: `<AGENT_HOME>/local-config/p-task/paths.yaml`
+- Path config: `<AGENT_HOME>/local-config/p-loop/paths.yaml`
 
 Recommended path config:
 
@@ -71,23 +69,20 @@ docs:
 - `docs.root` is the common root for project requirement docs, for example Obsidian's `03-req`.
 - This skill owns the project-level structure under `<docs.root>/<repo-name>/`.
 - Do not store a single project's path, such as `<docs.root>/dimoo`, in the global skill config unless the user explicitly says this Agent only works with that one project.
-- If only the compatibility `p-task` config exists, reuse its `docs.root` because `p-task` and `p-ordered` share the same project-docs collection root.
-
 ### Project Docs Root Resolution
 
-When using `p-ordered`, resolve the actual project docs root in this order:
+When using `p-loop`, resolve the actual project docs root in this order:
 
 1. If the user gives a docs path for this turn, use it. If it already contains project files such as `00-overview.md` or `10-roadmap.md`, treat it as the project docs root; otherwise treat it as the collection root and append `<repo-name>`.
-2. Else read `docs.root` from `<AGENT_HOME>/local-config/p-ordered/paths.yaml`.
-3. Else read `docs.root` from `<AGENT_HOME>/local-config/p-task/paths.yaml`.
-4. If a configured `docs.root` already contains project files such as `00-overview.md` or `10-roadmap.md`, treat it as the project docs root for compatibility with older configs.
-5. Otherwise treat configured `docs.root` as the collection root and use `<docs.root>/<repo-name>` as the project docs root.
+2. Else read `docs.root` from `<AGENT_HOME>/local-config/p-loop/paths.yaml`.
+3. If a configured `docs.root` already contains project files such as `00-overview.md` or `10-roadmap.md`, treat it as the project docs root.
+4. Otherwise treat configured `docs.root` as the collection root and use `<docs.root>/<repo-name>` as the project docs root.
 
-If no docs root is configured and the user has not given a path, ask first, then write only the common collection root into `<AGENT_HOME>/local-config/p-ordered/paths.yaml`. Do not guess the docs root through a full-disk search.
+If no docs root is configured and the user has not given a path, ask first, then write only the common collection root into `<AGENT_HOME>/local-config/p-loop/paths.yaml`. Do not guess the docs root through a full-disk search.
 
 ## Doc Hierarchy
 
-`p-ordered` defines only the hierarchy and responsibilities; it does not hardcode the subject area for any specific project.
+`p-loop` defines only the hierarchy and responsibilities; it does not hardcode the subject area for any specific project.
 
 ### 00 Layer
 
@@ -134,7 +129,7 @@ If no docs root is configured and the user has not given a path, ask first, then
 
 ## Base Constraints
 
-`p-ordered` only cares about "how to layer" and "what should happen first"; it does not care what domain name a project uses.
+`p-loop` only cares about "how to layer" and "what should happen first"; it does not care what domain name a project uses.
 
 Before task breakdown, establish this order:
 
@@ -156,12 +151,21 @@ The key is not the file names themselves, but the responsibilities of each layer
 - `plans/` answers "how the phase gets implemented"
 - `tasks/` answers "how the concrete tasks get executed"
 
+## Resume-first execution boundary
+
+外部项目文档是跨会话、跨 Agent 和中断恢复的事实源，不依赖当前会话记忆。每次进入项目时，先读取项目层文档、计划和当前任务记录，找到最后一个有验证证据的阶段，再决定继续、补充信息、人工接管或阻断。文档与代码、任务记录或验证结果冲突时，不凭猜测继续。
+
+`p-loop` 默认自动完成普通任务拆分、计划/任务/进度文档回写、验证结果归档和下一步生成；只有改变项目目标、范围、架构、优先级、权限、成本、安全边界、生产环境或其他不可逆影响的动作才进入 `review_required`，等待人工确认。条件不足属于 `blocked`，不等同于人工确认。
+
+每个阶段完成后，必须更新外部文档，再进入下一个阶段。交给 `p-task` 的任务要包含目标、范围、验收标准、验证方案、风险等级、人工接管边界和成功/失败后的下一步；`p-task` 返回后，`p-loop` 重新判断项目状态，不把任务完成直接当作项目完成。
+
 ## Core Responsibilities
 
 - Define the project goals, scope, boundaries, and roles first.
 - Identify which focus areas must be captured separately, then place them in the 20 layer.
 - Keep important decisions, open questions, and risks in separate docs.
 - Finally, arrange the phase plans and task execution order.
+- Keep the project resumable by writing the latest verified stage, next action, approval boundary, and unresolved risks into external docs after each meaningful phase.
 
 ## Feedback Writeback
 
@@ -262,10 +266,10 @@ If yes, write back to the appropriate project docs before moving to the next pla
 
 ## Relationship To `p-task`
 
-- `p-ordered` is responsible for turning a project from scattered into actionable.
+- `p-loop` is responsible for turning a project from scattered into actionable.
 - `p-task` is responsible for turning a concrete task from "to do" into "verified".
-- Use `p-ordered` first to establish the main line and focus areas, then enter `p-task` to claim specific task docs.
-- If the key focus areas in the 20 layer are still unclear, stop at `p-ordered` and do not issue task cards too early.
+- Use `p-loop` first to establish the main line and focus areas, then enter `p-task` to claim specific task docs.
+- If the key focus areas in the 20 layer are still unclear, stop at `p-loop` and do not issue task cards too early.
 
 ## Notes
 

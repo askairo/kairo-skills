@@ -1,0 +1,4 @@
+interface:
+  display_name: "P Ordered"
+  short_description: "Maintain project planning docs"
+  default_prompt: "Use $p-loop to clarify the project line, update architecture-planning docs, and decide the next task-ready step."
