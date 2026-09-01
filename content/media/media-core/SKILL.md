@@ -119,7 +119,7 @@ editorialContextRefs[]  # 可复用的主题知识、栏目框架和编辑边界
 
 平台适配生成 SVG 等源文件时，SVG 不是可上传的最终媒体。若目标要求 PNG，按 `media-core.visualRenderer.fallbacks` 的顺序探测可用渲染器；macOS 上 `/usr/bin/qlmanage` 是受支持的 SVG→PNG 回退，不得因为未安装 `rsvg-convert` 或 ImageMagick 就直接判定渲染能力不可用。渲染后必须用配置的尺寸工具核验像素尺寸、用哈希工具记录 `mediaFingerprint`，并保留 SVG 源文件与 PNG 成品的对应关系。所有渲染器都不可用时，返回 `platform_asset_render_blocked` 并保留具体能力缺口，不得用来源截图替代或反复创建同一来源资产。
 
-`media-core` 可以被来源调度器直接调用，也可以接收 `media-loop.productionRequest` 主动补充供给。后者不是绕过 producer-only 边界，而是在同一内容层执行一次有界生产：
+`media-core` 可以被来源调度器直接调用，也可以接收 `media-loop.productionRequest` 主动补充供给。执行时遵守 `media-loop` 的 [runtime-contract.md](../media-loop/references/runtime-contract.md)：每个来源生产和适配阶段都写检查点，恢复从最后一个明确完成阶段继续，不重复下载、创建资产或推进游标。后者不是绕过 producer-only 边界，而是在同一内容层执行一次有界生产：
 
 1. 先执行 `Adaptation backlog recovery`；只有没有可恢复适配积压时，才校验 `pipelineRef` 并进入新的来源生产。
 2. 校验 `pipelineRef` 存在且目标账号、内容支柱、来源组和策略引用一致。
@@ -171,6 +171,13 @@ publishState
 当一个内容的多个目标同时到期时，执行器可以按解析后的 `browserProfileRef` 分组，优先连续处理同一 Profile 下的不同平台目标，减少 Profile 切换。分组只优化执行顺序，不合并账号身份，也不合并发布结果：每个目标仍要单独核对平台账号、事实、版权、重复和成功状态。
 
 同一 Chrome Profile 可以承载用户已确认登录的多个不同平台账号；同一平台的多个账号是否共用 Profile 仍遵守 `media-ops` 的隔离规则。Profile 是账号登录环境，不是内容资产 ID；内容只引用平台账号，执行时再解析 Profile。
+
+## Runtime reliability
+
+- 先完成 pipeline、来源协议、资源根目录、游标和运行锁的 preflight；缺失时在来源访问前返回具体 `blocked` 原因。
+- `asset_verified`、`target_adapted` 和 `ready_admitted` 分别记录，不把下载完成、适配完成或生产成功直接等同于 `ready`。
+- 已存在可复用的本轮证据、媒体指纹或目标适配时，优先恢复和验收现有记录；不得重复创建等价资产。
+- 来源、媒体和版权失败只允许在同一幂等请求内做有界恢复；结果不确定时保留候选、媒体和游标，不向下游伪造成功。
 
 ## Boundaries
 
