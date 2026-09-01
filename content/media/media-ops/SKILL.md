@@ -13,7 +13,7 @@ description: 跨平台媒体发布执行总控：按外部触发器扫描内容�
 
 ## Resolve configuration
 
-执行前读取 [configuration.md](references/configuration.md)，按其中的配置位置、模型、合并顺序和校验规则解析运行上下文。
+执行前读取 [configuration.md](references/configuration.md)，按其中的配置位置、模型、合并顺序和校验规则解析运行上下文；运行阶段、检查点和恢复规则遵守 `media-loop` 的 [runtime-contract.md](../media-loop/references/runtime-contract.md)。
 
 若配置提供 `docsRoot`，将其作为外部运营文档根目录；按 `<docsRoot>/<platform>/<account>/` 读取和写入队列、发布历史、运行记录和复盘。外部文档是人类可读记录，本地状态是机器执行缓存；两者不一致时停止推进并记录待核对状态。
 
@@ -66,6 +66,17 @@ description: 跨平台媒体发布执行总控：按外部触发器扫描内容�
 - 一个 Profile 可以承载用户已确认登录的不同平台账号；同一平台的不同账号不得默认共用 Profile，除非平台支持可靠的账号切换且配置明确授权。账号不匹配、Profile 不明或切换后页面仍是旧账号时，立即停止该目标，不影响其他目标按独立状态处理。
 - 每个目标独立写入 `publishState`、帖子 URL、指标和失败原因。不能把“同一内容部分平台成功”汇总成一次全局成功，也不能把一个平台失败扩散为所有目标失败。
 - 同一账号的多个未完成目标按 `media-core.dispatchScheduler.targetSelection` 处理：选择最早 `plannedAt` 的未完成且 eligible 目标；同一时间再按 `targetCreatedAt`、`sourceObservedAt`、`targetId` 排序。不得因为新资源刚在另一个平台成功，就改选最新资源；已在小红书完成的目标不影响同一内容在抖音上的独立未完成目标。目标级不 ready/适配失败可以保留并检查下一条 eligible 目标，账号级健康阻断则暂停该账号队列。
+
+## Preflight and resume
+
+进入来源访问、媒体上传或平台写操作前，先建立一次运行检查点，确认账号、目标、传输、来源证据、媒体状态、幂等键和运行锁。若同一 `contentId + targetId` 已有未完成运行：
+
+- 已明确发布成功、审核中或已写回：直接结束，不重复发布；
+- 已有草稿或上传产物：从最近的明确阶段继续，不重新发现、下载或创建资产；
+- 发布结果不明确：只读核验，不点击发布；
+- 仅有可恢复的连接/页面错误：只恢复受影响阶段，达到预算后转为具体 `blocked` 或 `unknown`。
+
+每个跳过、失败和待确认结果都必须写出 `reasonCode`、`nextAction` 和 `resumeCondition`。不要用“本轮没有内容”掩盖配置错误、适配积压、账号暂停、数据不足或运行时故障。
 
 ## Run the workflow
 
@@ -220,6 +231,7 @@ description: 跨平台媒体发布执行总控：按外部触发器扫描内容�
 
 ### 9.1 Recover an empty ready queue
 
+空队列恢复前先读取 `media-loop` 的库存指纹和生产检查点。指纹未变化且没有适配写回时执行轻量 no-op；存在未完成适配时先恢复适配，不重新发现来源。
 `no-ready-unfinished-due-distribution-targets` 是一次扫描结果，不一定是整轮终点。对配置允许内容生产的执行上下文，按以下低自由度流程处理：
 
 1. 把账号、平台、策略窗口、队列库存、候选阻塞、最近发布/审核状态和最近反馈交给 `media-loop`。
