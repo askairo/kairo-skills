@@ -89,6 +89,10 @@ editorialContextRefs[]  # 可复用的主题知识、栏目框架和编辑边界
 
 从 `verified` 写为 `ready` 前，逐项核对并在内容资产中实际写入 `factBoundary`、`audiencePromise`、`adaptationNotes`、`editorialContextRefs` 和 `feedbackRefs`；不得因为媒体已经验收就跳过这些字段。每个待分发目标还必须已有 `plannedAt` 或 `preferredWindow`。缺任一字段时保持 `verified` / `pending`，在来源流水线或内容编辑记录中补齐后再提升；统一扫描器只判断既有资产，不能替资产补造到期时间或把不完整资产直接发布。
 
+## Shared runtime contract
+
+运行结果分类、检查点、未知副作用和恢复语义统一遵守 [media-loop runtime contract](../media-loop/references/runtime-contract.md)。本技能只补充内容资产阶段规则，不另建同义结果类型；所有停止结果都写出 `reasonCode`、`nextAction` 和 `resumeCondition`。
+
 ## Content-first workflow
 
 1. **Ingest**：接收原始帖子、网页、视频、访谈或用户素材，记录来源和权限线索；动态来源按来源协议使用只读页面访问核验最新窗口和原始上下文。
