@@ -11,7 +11,7 @@ description: 小红书平台策略与发布子技能：对已核验内容资产�
 
 若 `media-ops` 或 `media-core` 传入 `editorialContextRefs` / `editorialFrameworkRef`，先读取对应的主题编辑框架，再进行小红书平台化改编。主题框架提供事实边界、人物原意、栏目知识和内容门禁；账号专属封面规范只能从本机配置或外部账号文档的 `coverSpecRef` 读取，不得写回本技能或主题框架。
 
-浏览器发布统一使用 Playwright MCP Bridge：页面读取、输入、图片上传、编辑、发布、结果核验和 Tab 清理都必须由该通道完成。用户必须先在目标 Chrome Profile 中授权已登录的目标 Tab；没有可连接的目标 Tab 时，返回 `profile_route_missing` 并停止。不得使用 Computer Use、controlled-browser-session、CDP 或其他 Chrome 控制接口。
+浏览器发布统一使用已声明的 Chrome MCP/browser-client 或 Playwright MCP Bridge：页面读取、输入、图片上传、编辑、发布、结果核验和 Tab 清理都必须由同一通道完成。前者须 `claimTab`，后者须用户授权已登录的目标 Tab；没有可连接的目标 Tab 时，返回 `profile_route_missing` 并停止。不得在通道间静默回退，也不得使用 Computer Use、controlled-browser-session、CDP、鼠标坐标点击或其他 Chrome 控制接口。
 
 ## Assess platform fit
 

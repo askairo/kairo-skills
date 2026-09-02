@@ -38,17 +38,17 @@ description: 跨平台媒体发布执行总控：按外部触发器扫描内容�
 ### Route the browser Profile
 
 - 浏览器平台的执行对象由 `platformAccountRef → browserProfileRef → platform handle` 唯一确定；同一平台的不同账号不得共用一个 Profile 路由。
-- Chrome 浏览器操作统一使用 `playwright-mcp`（Playwright MCP Bridge）。用户必须先在配置的 `profileName` 对应 Chrome Profile 中启用 Bridge 并授权已登录的目标 Tab；执行器不得猜测或切换 Profile，也不得使用桌面点击、Computer Use、CDP 或其他浏览器控制接口。
-- 连接后重新打开平台入口，读取当前登录 handle、账号名和平台身份。任何一项与配置不一致、页面仍在旧账号或目标 Tab 不可确认时，立即停止，不创建草稿、不上传媒体、不发布。
-- `playwright-mcp` 的 Profile 路由前提是目标 Profile 的已登录 Tab 已获 Bridge 授权；没有可确认的目标 Tab 时返回 `profile_route_missing`，不得创建未核验会话或回退到其他控制通道。
-- `switchMethod: playwright-mcp` 表示用户在目标 Chrome Profile 中授权既有 Tab，再由 Playwright MCP Bridge 接管；`current-session` 只表示沿用当前已确认的单账号 Tab，不能用于同平台多账号无人值守路由。
+- Chrome 浏览器操作只能使用配置的 `chrome-mcp`（Chrome MCP/browser-client）或 `playwright-mcp`（Playwright MCP Bridge）。`chrome-mcp` 先从 `openTabs` 定位目标 `profileName` 的已登录 Tab 并 `claimTab`；`playwright-mcp` 则要求用户先在目标 Profile 中启用 Bridge 并授权已登录 Tab。不得猜测或切换 Profile，也不得使用桌面点击、Computer Use、CDP、鼠标坐标点击或其他浏览器控制接口。
+- 接管后重新打开平台入口，读取当前登录 handle、账号名和平台身份。任何一项与配置不一致、页面仍在旧账号或目标 Tab 不可确认时，立即停止，不创建草稿、不上传媒体、不发布。
+- 两种通道均要求目标 Profile 的已登录 Tab 可确认；`chrome-mcp` 无可 `claimTab` 的 Tab 或 `playwright-mcp` 无 Bridge 授权 Tab 时，返回 `profile_route_missing`，不得创建未核验会话或在两种通道间静默回退。
+- `switchMethod: chrome-mcp` 表示 Chrome MCP 识别并接管既有 Tab；`switchMethod: playwright-mcp` 表示用户授权既有 Tab 后由 Playwright MCP Bridge 接管；`current-session` 只表示沿用当前已确认的单账号 Tab，不能用于同平台多账号无人值守路由。
 
 ### Resolve the execution transport
 
 - `operation.transport` 标识平台适配器；`interactiveSkill` / `scheduledSkill` 标识交给哪个平台子技能；`interactiveTransport` / `scheduledTransport` 标识该次运行实际使用的执行通道。
-- `scheduledTransport` 对所有需要写入外部平台的定时任务都是必填。浏览器平台只允许显式的 `playwright-mcp`；API 平台必须选择已接入的 `official-api`。平台子技能可以进一步限制可用值。
-- `playwright-mcp` 表示目标 Profile 已授权 Tab 的页面读取、输入、上传、编辑、发布控件、结果核验和 Tab 清理全部通过 Playwright MCP Bridge 完成；不得静默转换为 Computer Use、controlled-browser-session、CDP 或其他 Chrome 控制接口。`official-api` 不打开 Chrome，必须由对应 API 子技能完成身份和结果核验。
-- `switchMethod: playwright-mcp` 与 `interactiveTransport` / `scheduledTransport` 必须分别写入运行快照，但都不得指向其他浏览器执行器。
+- `scheduledTransport` 对所有需要写入外部平台的定时任务都是必填。浏览器平台只允许显式的 `chrome-mcp` 或 `playwright-mcp`；API 平台必须选择已接入的 `official-api`。平台子技能可以进一步限制可用值。
+- `chrome-mcp` 或 `playwright-mcp` 表示 Profile 路由、页面读取、输入、上传、编辑、发布控件、结果核验和 Tab 清理全部由同一已声明通道完成；不得在两者之间静默转换，也不得转换为 Computer Use、controlled-browser-session、CDP、鼠标坐标点击或其他 Chrome 控制接口。`official-api` 不打开 Chrome，必须由对应 API 子技能完成身份和结果核验。
+- `switchMethod: chrome-mcp` 或 `playwright-mcp` 与 `interactiveTransport` / `scheduledTransport` 必须分别写入运行快照，但都不得指向其他浏览器执行器。
 - 缺少、拼写错误或当前平台不支持的传输不得静默回退；返回 `scheduled_transport_missing` 或 `scheduled_transport_unsupported`，不打开发布页、不上传、不点击发布。
 - 运行记录必须写入 `activeTransport`、`interactiveTransport` / `scheduledTransport` 和 `browserProfileRef`，便于区分配置门禁、浏览器连接问题和平台发布问题。
 
