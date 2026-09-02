@@ -18,7 +18,7 @@ description: X / Twitter 平台策略与发布子技能：对已核验内容资�
 
 - 增长策略与推荐机制：读取 [x-growth.md](references/x-growth.md)
 - 通用来源评分：需要评分或核验时读取 [source-quality.md](../../media/media-ops/references/source-quality.md)
-- 浏览器发布：所有 Chrome 页面读取、输入、媒体上传、编辑、发布、结果核验和 Tab 清理统一使用 Chrome MCP/browser-client 的低自由度流程，不使用 Computer Use、controlled-browser-session、CDP 或其他 Chrome 控制接口。`reviewed` 模式在最终动作前等待用户确认；有效 `unattended` 模式由已触发的自动化任务直接执行，不再次请求逐条确认，但仍必须完成账号、来源、事实、版权、重复、媒体和成功结果核验。
+- 浏览器发布：所有 Chrome 页面读取、输入、媒体上传、编辑、发布、结果核验和 Tab 清理统一使用 Playwright MCP Bridge 的低自由度流程。用户必须先在目标 Chrome Profile 中授权目标 Tab；不使用 Computer Use、controlled-browser-session、CDP 或其他 Chrome 控制接口。`reviewed` 模式在最终动作前等待用户确认；有效 `unattended` 模式由已触发的自动化任务直接执行，不再次请求逐条确认，但仍必须完成账号、来源、事实、版权、重复、媒体和成功结果核验。
 
 ## Adapt content
 
