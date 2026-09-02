@@ -75,6 +75,7 @@ When this task was handed off by `p-loop`, follow its external-document recovery
 3. Read repository rules.
    - Start with the repo's `AGENTS.md`, `CLAUDE.md`, and root README.
    - If there are architecture, SQL, module, or process docs, read only the parts directly related to the current task.
+   - Identify any repository-defined Definition of Done (DoD), completion checklist, or equivalent acceptance rules that apply to the task.
    - If the project has project-level docs, read `00-overview`, `10-roadmap`, `20-*.md`, `30-decisions`, `31-open-questions`, and `32-risk-log` first, then the relevant `plans/` and `tasks/`.
 
 4. Create or select a task branch.
@@ -105,6 +106,7 @@ When this task was handed off by `p-loop`, follow its external-document recovery
    - If a recurring project convention is missing, propose adding it to the repo rules file instead of baking it into the skill itself.
 
 8. Verify.
+   - Perform the applicable repository-defined DoD or equivalent completion checks; treat them as changed-code checks, not a request for unrelated repository cleanup.
    - Run the narrowest useful checks first, then broaden as needed.
    - Increase verification when shared contracts, controllers, workflows, or persistence are affected.
    - Clearly report blockers that are unrelated to the current task.
