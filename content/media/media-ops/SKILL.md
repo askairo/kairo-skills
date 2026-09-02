@@ -78,6 +78,10 @@ description: 跨平台媒体发布执行总控：按外部触发器扫描内容�
 
 每个跳过、失败和待确认结果都必须写出 `reasonCode`、`nextAction` 和 `resumeCondition`。不要用“本轮没有内容”掩盖配置错误、适配积压、账号暂停、数据不足或运行时故障。
 
+## Shared runtime contract
+
+运行结果分类、检查点、未知副作用和恢复语义统一遵守 [media-loop runtime contract](../media-loop/references/runtime-contract.md)。本技能只补充发布执行阶段规则，不另建同义结果类型。
+
 ## Run the workflow
 
 如果调用上下文已经提供 `contentRef` 或 `distributionTargetRef`，先读取 `media-core` 内容资产和目标状态，不重新做与该内容无关的平台热点发现；只在证据、目标窗口或平台适配信息缺失时补充发现。只有没有现成内容资产时，才从候选发现开始，并在核验通过后建立内容资产和分发目标。
