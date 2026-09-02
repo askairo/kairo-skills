@@ -87,3 +87,13 @@ experimentRefs[], writeBackStatus, cleanupStatus
 ```
 
 报告必须能回答：本轮做到了哪一步、为什么没有继续、下次从哪里恢复、是否可能已经产生外部副作用，以及这次结果是否足以改变策略。
+
+## 7. 共享契约与验收
+
+本文件是 `media-loop`、`media-core` 和 `media-ops` 的共享运行结果契约。各技能只补充自身阶段规则；结果类型、最小报告字段、未知副作用和恢复语义以本文件为准，不复制另一套定义。
+
+五个关键状态的固定样例见 [acceptance-scenarios.json](acceptance-scenarios.json)。修改运行结果契约后执行：
+
+```powershell
+python content/media/media-loop/scripts/validate_runtime_contract.py
+```

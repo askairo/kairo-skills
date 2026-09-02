@@ -172,4 +172,4 @@ pauseOrRateLimit, confidence, nextReviewAt
 
 按顺序输出：运行范围与数据质量、账号健康结论、平台分项指标与基线、诊断及置信度、下一轮策略覆盖、实验计划、暂停/恢复建议、写回路径和下次检查时间。若无法区分分发问题与内容问题，明确列为待验证假设。
 
-详细字段和示例见 [metrics-schema.md](references/metrics-schema.md)。运行阶段、检查点、错误分类、有界恢复和性能规则见 [runtime-contract.md](references/runtime-contract.md)。
+详细字段和示例见 [metrics-schema.md](references/metrics-schema.md)。运行阶段、检查点、错误分类、有界恢复和性能规则以共享的 [runtime-contract.md](references/runtime-contract.md) 为准；修改这些语义时同时运行其中链接的五个验收场景。
