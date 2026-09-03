@@ -34,7 +34,7 @@ description: 媒体内容生产与核心资产层：接收来源流水线或 med
 
 本地配置中的每个 `sourcePipelines.<pipeline-id>` 至少声明 `sourceGroupRef`、`schedule`、`dispatchMode`、`targetAccounts` 和 `dedupKeys`。`schedule` 只描述来源生产任务由哪个外部触发器唤醒，不是内容发布或媒体获取次数门禁。源定时任务默认使用 `dispatchMode: producer-only`：发现、核验、登记可复用内容资产；不直接点击平台发布。若显式声明 `mediaAcquisition`，producer 可以取得已授权候选的媒体并入库，但仍不上传或发布；后续由内容分发目标或 `media-ops` 执行发布。只有明确配置为内容分发任务时，才允许进入发布流程，并且仍需经过平台、账号、版权、事实、去重、媒体有效性、真实平台限流和成功核验门禁。
 
-`producer-only` 限制的是媒体采集和平台写入，不等于禁止访问来源。若来源协议要求动态主页、回复或对话上下文核验，producer 应使用已配置的 Chrome MCP/browser-client 或 Playwright MCP Bridge 对已授权 Chrome Tab 进行只读公开页面访问；不得使用 Computer Use、controlled-browser-session、CDP、鼠标坐标点击或其他浏览器控制接口。不得点赞、评论、关注、私信、提交表单或触发任何来源侧写操作。只读访问不得检查、导出或保存密码、Cookie、令牌、验证码、local storage 或浏览器会话。若不访问动态原始页面就无法判断最新内容，必须把结果记为“最新窗口未核验”，不得根据搜索缓存断言“没有新增内容”。
+`producer-only` 限制的是媒体采集和平台写入，不等于禁止访问来源。若来源协议要求动态主页、回复或对话上下文核验，producer 应使用已配置的 Chrome MCP/browser-client 或 Playwright MCP Bridge 对已授权 Chrome Tab 进行只读公开页面访问；不得使用 Computer Use、controlled-browser-session、CDP、鼠标坐标点击或其他浏览器控制接口。新版运行时通过 Unified Computer Use 暴露 `family: chrome`、`type: extension` browser 时，使用 `cua.getState()` / `cua.getTab(...)` 操作该 Chrome extension Tab 仍属于 Chrome MCP，不是 Computer Use 回退；不得改用原生 Chrome app 或桌面坐标。旧版独立工具名缺失不能单独证明来源访问不可用。不得点赞、评论、关注、私信、提交表单或触发任何来源侧写操作。只读访问不得检查、导出或保存密码、Cookie、令牌、验证码、local storage 或浏览器会话。若不访问动态原始页面就无法判断最新内容，必须把结果记为“最新窗口未核验”，不得根据搜索缓存断言“没有新增内容”。
 
 每个 pipeline 的来源生产调度器必须是唯一来源事实写入者；统一扫描器和平台专属发布定时器都可以触发执行，但必须先进入同一个 `media-ops` 内容目标决策入口。平台定时器可以消费 ready 目标，也可以在目标级库存不足时调用 `media-loop → media-core` 的有界补货流程，但不得自行创建候选、绕过内容层或推进别人的游标。所有触发器必须共享 `contentId + targetId` 运行锁；发现重复来源生产者、未持锁写入或本地记录与内容层游标冲突时，先写入 `scheduler_authority_mismatch`，停止写入。
 
