@@ -81,6 +81,16 @@ description: 跨平台媒体发布执行总控：按外部触发器扫描内容�
 
 每个跳过、失败和待确认结果都必须写出 `reasonCode`、`nextAction` 和 `resumeCondition`。不要用“本轮没有内容”掩盖配置错误、适配积压、账号暂停、数据不足或运行时故障。
 
+### Historical result reconciliation does not fulfill the current run
+
+平台时间线可能已经显示某个本地 `pending` 目标在更早的运行中成功发布，而本地队列、游标或台账尚未回写。此时只读核验并修复本地状态属于历史结果对账，不是本轮新发布：
+
+- 先用标题/正文/媒体或时长、账号和平台发布时间把历史作品与 `contentId + targetId` 明确关联，再写回 `published` / `published_pending_review` 和顺序游标；不得重复上传或点击发布。
+- 记录 `historical_result_reconciled`、作品实际发布时间和 `newPublishSideEffectsThisRun: 0`。历史作品发生在本轮 `runStartedAt` 之前时，不消耗本轮 `maxPublishedPerRun`，也不能被写成“本轮已发布”。
+- 对账完成后必须在同一轮重新扫描当前账号的未完成目标。如果本轮是用户明确要求发布一次，或当前触发器的目标是推进一次平台发布，而仍没有本轮关联的新提交，则继续执行空队列恢复：先交给 `media-loop` 判断，再由 `media-core` 恢复适配或生产，最后重新扫描并最多新发布 1 条。
+- 用户说“今天发布”时，以账号配置时区比较平台 `publishedAt` 的自然日；前一自然日的历史作品只能完成对账，不能满足今天的发布请求。不得用固定每日上限或最小间隔替代这一判断。
+- 只有账号健康暂停、结果不确定、来源/版权/媒体硬门禁、无合格候选、幂等冲突或有界恢复停止条件命中时才结束；结束记录必须区分“历史对账成功”和“本轮新发布未完成”。
+
 ## Shared runtime contract
 
 运行结果分类、检查点、未知副作用和恢复语义统一遵守 [media-loop runtime contract](../media-loop/references/runtime-contract.md)。本技能只补充发布执行阶段规则，不另建同义结果类型。
@@ -239,7 +249,7 @@ description: 跨平台媒体发布执行总控：按外部触发器扫描内容�
 ### 9.1 Recover an empty ready queue
 
 空队列恢复前先读取 `media-loop` 的库存指纹和生产检查点。只有当前仍有 eligible 可恢复适配目标、上次结果为 `adaptation_backlog_present`、指纹未变化且没有适配写回时，才执行轻量 no-op；存在可恢复适配时先恢复适配，不重新发现来源。争议、审核中、未知、已完成、账号暂停和 disabled 目标不计入 eligible 积压；排除后 ready 为零时必须进入 `ready_supply_starved` 供给决策。
-`no-ready-unfinished-due-distribution-targets` 是一次扫描结果，不一定是整轮终点。对配置允许内容生产的执行上下文，按以下低自由度流程处理：
+`no-ready-unfinished-due-distribution-targets` 是一次扫描结果，不一定是整轮终点。刚完成 `historical_result_reconciled` 且当前触发仍未获得本轮新提交时，也必须进入本节；不得把历史对账当作本轮发布额度。对配置允许内容生产的执行上下文，按以下低自由度流程处理：
 
 1. 把账号、平台、策略窗口、队列库存、候选阻塞、最近发布/审核状态和最近反馈交给 `media-loop`。
 2. 若 loop 返回 `adaptationRequest`，先调用 `media-core` 按最早未完成资产恢复适配，再分别调用对应平台子技能；适配积压存在时不得请求新的来源生产。
