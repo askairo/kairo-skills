@@ -11,7 +11,7 @@ description: 小红书平台策略与发布子技能：对已核验内容资产�
 
 若 `media-ops` 或 `media-core` 传入 `editorialContextRefs` / `editorialFrameworkRef`，先读取对应的主题编辑框架，再进行小红书平台化改编。主题框架提供事实边界、人物原意、栏目知识和内容门禁；账号专属封面规范只能从本机配置或外部账号文档的 `coverSpecRef` 读取，不得写回本技能或主题框架。
 
-浏览器发布统一使用已声明的 Chrome MCP/browser-client 或 Playwright MCP Bridge：页面读取、输入、图片上传、编辑、发布、结果核验和 Tab 清理都必须由同一通道完成。前者须 `claimTab`，后者须用户授权已登录的目标 Tab；没有可连接的目标 Tab 时，返回 `profile_route_missing` 并停止。不得在通道间静默回退，也不得使用 Computer Use、controlled-browser-session、CDP、鼠标坐标点击或其他 Chrome 控制接口。
+浏览器发布统一使用已声明的 Chrome MCP/browser-client 或 Playwright MCP Bridge：页面读取、输入、图片上传、编辑、发布、结果核验和 Tab 清理都必须由同一通道完成。Chrome MCP 在旧运行时使用 `claimTab`；新版运行时若 Unified Computer Use 暴露 `family: chrome`、`type: extension` browser，则用 `cua.getState()` 找到该 browser、再以 `cua.getTab(...)` 接管小红书创作中心 Tab，这仍是 Chrome Plugin 通道，不是 Computer Use 回退。不得改用 `cua.getApp("Google Chrome")`、原生窗口、桌面坐标或截图点击。只有 Chrome extension browser/目标 Tab 不可见，或页面实读账号身份不一致时，才返回 `profile_route_missing` / `account_mismatch`；不能仅因旧版独立工具名缺失而停止。不得在通道间静默回退，也不得使用 controlled-browser-session 或 CDP。
 
 ## Assess platform fit
 
