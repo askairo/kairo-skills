@@ -40,7 +40,7 @@ description: 媒体内容生产与核心资产层：接收来源流水线或 med
 
 统一分发扫描器使用同一份配置中的 `dispatchScheduler`。实际触发频率由外部自动化任务自身的 RRULE 控制；配置、目标 `plannedAt` / `preferredWindow`、最小间隔、每日上限和媒体获取次数不得挡住已经发生的触发。技能不得把建议周期写死进自动化定义，也不得因为自动化 RRULE 与旧文档窗口不同就自行创建新定时器或判定执行失败。扫描器被外部调度器触发后，才形成一次 `scheduled_run`；读取配置本身不会创建常驻任务。
 
-当来源 pipeline 配置了 `backlogGate` 或 `dispatchScheduler.adaptationBacklog.suppression` 时，来源任务必须在读取来源协议或打开浏览器前计算适配积压指纹。指纹至少由 eligible 内容 ID、目标 `publishState` 和 `selectionStatus` 的稳定排序组成。若上一次结果是 `adaptation_backlog_present` 且指纹未变化、没有适配写回，则返回 `adaptation_backlog_unchanged`：只写轻量 run 记录，不访问来源、不发现候选、不创建资产、不推进游标。队列指纹变化、适配写回或配置声明的 `preferred_schedule_window` 到达后，才恢复正常检查。该门禁是状态去重，不是写死新的扫描频率；外部自动化 RRULE 仍是唯一触发权威。
+当来源 pipeline 配置了 `backlogGate` 或 `dispatchScheduler.adaptationBacklog.suppression` 时，来源任务必须在读取来源协议或打开浏览器前计算适配积压指纹。指纹至少由 eligible 内容 ID、目标 `publishState` 和 `selectionStatus` 的稳定排序组成。只有当前仍存在至少一个可恢复的 eligible 适配目标、上一次结果是 `adaptation_backlog_present`、指纹未变化且没有适配写回时，才返回 `adaptation_backlog_unchanged`：只写轻量 run 记录，不访问来源、不发现候选、不创建资产、不推进游标。`user_disputed_selection`、`published_pending_review`、`publish_unconfirmed`、`uncertain`、已完成、账号暂停和 disabled 目标均不计入 eligible 积压；排除后 eligible 数量为 `0` 且目标 ready 库存为 `0` 时，结果必须是 `ready_supply_starved`，并交给 `media-loop` 判断有界补货。该门禁是状态去重，不是写死新的扫描频率；外部自动化 RRULE 仍是唯一触发权威。
 
 内容源迁移时不删除平台历史文档，也不重复复制历史帖子；在内容流水线文档中登记来源映射和迁移起点，之后新增内容以 `contentId` 为唯一内容资产 ID，以 `contentId + targetId` 为分发幂等键。
 
@@ -117,7 +117,7 @@ editorialContextRefs[]  # 可复用的主题知识、栏目框架和编辑边界
 4. 按本次触发的缺口持续完成可推进的内容资产适配；成功、无可恢复目标、锁冲突或 stopConditions 命中后停止。适配完成不等于平台发布成功。
 5. 只要仍存在可恢复的适配积压，就返回 `adaptation_backlog_present`，阻止新的来源生产；不得通过继续创建 `verified` 资产来掩盖适配缺口。
 
-若积压指纹自上一次有效检查后没有变化，按上述门禁返回 `adaptation_backlog_unchanged`，不得重复执行来源访问或生产尝试。适配回写后必须刷新指纹，下一次扫描重新进入最早未完成目标选择。
+只有当前仍有 eligible 适配积压且积压指纹自上一次 `adaptation_backlog_present` 后没有变化，才按上述门禁返回 `adaptation_backlog_unchanged`，不得重复执行来源访问或生产尝试。排除不可恢复状态后已经没有 eligible 积压时，不沿用旧指纹压制补货；ready 为零则返回 `ready_supply_starved`。适配回写后必须刷新指纹，下一次扫描重新进入最早未完成目标选择。
 
 ### Visual asset rendering fallback
 
