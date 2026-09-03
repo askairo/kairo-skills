@@ -18,7 +18,7 @@ description: X / Twitter 平台策略与发布子技能：对已核验内容资�
 
 - 增长策略与推荐机制：读取 [x-growth.md](references/x-growth.md)
 - 通用来源评分：需要评分或核验时读取 [source-quality.md](../../media/media-ops/references/source-quality.md)
-- 浏览器发布：所有 Chrome 页面读取、输入、媒体上传、编辑、发布、结果核验和 Tab 清理统一使用已声明的 Chrome MCP/browser-client 或 Playwright MCP Bridge 的低自由度流程。前者须 `claimTab`，后者须用户授权目标 Tab；不使用 Computer Use、controlled-browser-session、CDP、鼠标坐标点击或其他 Chrome 控制接口，也不得在通道间静默回退。`reviewed` 模式在最终动作前等待用户确认；有效 `unattended` 模式由已触发的自动化任务直接执行，不再次请求逐条确认，但仍必须完成账号、来源、事实、版权、重复、媒体和成功结果核验。
+- 浏览器发布：所有 Chrome 页面读取、输入、媒体上传、编辑、发布、结果核验和 Tab 清理统一使用已声明的 Chrome MCP/browser-client 或 Playwright MCP Bridge 的低自由度流程。Chrome MCP 在旧运行时使用 `claimTab`；新版运行时若 Unified Computer Use 暴露 `family: chrome`、`type: extension` browser，则用 `cua.getState()` 找到该 browser、再以 `cua.getTab(...)` 接管 X Tab，这仍是 Chrome Plugin 通道，不是 Computer Use 回退。不得改用 `cua.getApp("Google Chrome")`、原生窗口、桌面坐标、controlled-browser-session 或 CDP，也不得在通道间静默回退。旧版独立工具名不存在但 Chrome extension browser 和 X Tab 可见时，不能返回 `profile_route_missing`。`reviewed` 模式在最终动作前等待用户确认；有效 `unattended` 模式由已触发的自动化任务直接执行，不再次请求逐条确认，但仍必须完成账号、来源、事实、版权、重复、媒体和成功结果核验。
 
 ## Adapt content
 
