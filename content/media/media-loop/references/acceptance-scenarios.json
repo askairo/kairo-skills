@@ -75,6 +75,31 @@
     }
   },
   {
+    "name": "ready_supply_starved",
+    "record": {
+      "runId": "run-ready-supply-starved",
+      "runType": "scheduled_run",
+      "accountRef": "account-a",
+      "platform": "xiaohongshu",
+      "window": "P1D",
+      "dataQuality": "observed",
+      "phase": "preflight",
+      "outcome": "blocked",
+      "reasonCode": "ready_supply_starved",
+      "idempotencyKey": "pipeline-a:target-xhs",
+      "healthStatus": "healthy",
+      "inventoryStatus": "ready_supply_starved",
+      "artifactRefs": [],
+      "nextAction": "issue_bounded_production_request",
+      "resumeCondition": "asset_ready_or_production_stop_condition",
+      "strategyVersion": "v1",
+      "experimentRefs": [],
+      "writeBackStatus": "completed",
+      "cleanupStatus": "not_needed",
+      "sideEffects": []
+    }
+  },
+  {
     "name": "published_pending_review",
     "record": {
       "runId": "run-review",

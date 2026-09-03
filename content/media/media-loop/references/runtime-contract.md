@@ -71,7 +71,7 @@ lastObservedAt, nextAction, retryClass, retryCount
 ## 5. 性能原则
 
 - 先做一次 `preflight`，缓存本轮不变的账号、权限、事实、版权、媒体和去重结果；最终发布前只重新核对受副作用影响的门禁。
-- 使用适配积压指纹和 ready 库存指纹；指纹未变化时执行轻量 no-op，不访问来源、不打开浏览器、不生成资产。
+- 使用适配积压指纹和 ready 库存指纹；只有当前仍有 eligible 可恢复适配积压、上次结果为 `adaptation_backlog_present` 且指纹未变化时才执行轻量 no-op。排除争议、审核中、未知、已完成、账号暂停和 disabled 目标后 ready 为零，必须进入 `ready_supply_starved`，不能由旧指纹压制补货。
 - `media-loop` 只读取目标平台相关的指标和平台技能；不为一次 X 运行加载抖音、小红书的全部规则。
 - 运行恢复优先检查本地检查点、队列和结果页；已明确完成的阶段不得重复执行。
 - 同一运行最多沿一条阶段路径推进一次；不得形成 `ops → loop → core → ops` 的无界递归。
@@ -92,7 +92,7 @@ experimentRefs[], writeBackStatus, cleanupStatus
 
 本文件是 `media-loop`、`media-core` 和 `media-ops` 的共享运行结果契约。各技能只补充自身阶段规则；结果类型、最小报告字段、未知副作用和恢复语义以本文件为准，不复制另一套定义。
 
-五个关键状态的固定样例见 [acceptance-scenarios.json](acceptance-scenarios.json)。修改运行结果契约后执行：
+六个关键状态的固定样例见 [acceptance-scenarios.json](acceptance-scenarios.json)。修改运行结果契约后执行：
 
 ```powershell
 python content/media/media-loop/scripts/validate_runtime_contract.py

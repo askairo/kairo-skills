@@ -96,9 +96,10 @@ feedbackRefs[], stopConditions[]
 
 `adaptation_backlog_present` 只表示“当前仍有积压”，不代表每次触发都需要重新检查来源。对配置启用 `suppression` 的来源，先计算稳定的队列指纹，至少包含 eligible 内容 ID、目标发布状态和选择状态：
 
-- 上一次结果为 `adaptation_backlog_present`，队列指纹未变化，且没有适配写回时，返回 `adaptation_backlog_unchanged`。
+- 只有当前仍存在至少一个可恢复的 eligible 适配目标、上一次结果为 `adaptation_backlog_present`、队列指纹未变化且没有适配写回时，才返回 `adaptation_backlog_unchanged`。
+- `user_disputed_selection`、`published_pending_review`、`publish_unconfirmed`、`uncertain`、已完成、账号暂停和 disabled 目标不计入 eligible 适配积压；排除后 eligible 数量为 `0` 且目标 ready 库存为 `0` 时，必须判定 `ready_supply_starved`，进入有界 `productionRequest` 决策，不能返回 unchanged no-op。
 - 该结果是成功的轻量 no-op，不访问来源主页、不打开 Chrome、不生成 `productionRequest`、不创建内容资产、不推进来源游标，也不调用平台发布写操作。
-- 只有队列指纹变化、适配写回或配置声明的 preferred schedule window 到达时，才重新评估积压并恢复适配/来源决策。
+- 只有对仍然存在的 eligible 积压，才等待队列指纹变化或适配写回后重新评估；preferred schedule window 只保留为审计字段，不作为恢复门禁。
 - 轻量记录仍需保留 runId、队列指纹、上次有效结果和下一恢复条件；不得把状态未变化写成来源访问失败。
 
 ## Supply recovery contract
@@ -172,4 +173,4 @@ pauseOrRateLimit, confidence, nextReviewAt
 
 按顺序输出：运行范围与数据质量、账号健康结论、平台分项指标与基线、诊断及置信度、下一轮策略覆盖、实验计划、暂停/恢复建议、写回路径和下次检查时间。若无法区分分发问题与内容问题，明确列为待验证假设。
 
-详细字段和示例见 [metrics-schema.md](references/metrics-schema.md)。运行阶段、检查点、错误分类、有界恢复和性能规则以共享的 [runtime-contract.md](references/runtime-contract.md) 为准；修改这些语义时同时运行其中链接的五个验收场景。
+详细字段和示例见 [metrics-schema.md](references/metrics-schema.md)。运行阶段、检查点、错误分类、有界恢复和性能规则以共享的 [runtime-contract.md](references/runtime-contract.md) 为准；修改这些语义时同时运行其中链接的六个验收场景。

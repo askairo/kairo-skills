@@ -13,6 +13,7 @@ EXPECTED = {
     "published": ("success", "published"),
     "adaptation_backlog": ("blocked", "adaptation_backlog_present"),
     "adaptation_backlog_unchanged": ("skipped", "adaptation_backlog_unchanged"),
+    "ready_supply_starved": ("blocked", "ready_supply_starved"),
     "published_pending_review": ("success", "published_pending_review"),
     "publish_unconfirmed": ("unknown", "publish_unconfirmed"),
 }
@@ -42,6 +43,12 @@ def validate(path: Path) -> None:
     unchanged = next((item["record"] for item in scenarios if item.get("name") == "adaptation_backlog_unchanged"), {})
     if unchanged.get("sideEffects"):
         errors.append("adaptation_backlog_unchanged: sideEffects must be empty")
+    if unchanged.get("inventoryStatus") != "adaptation_backlog":
+        errors.append("adaptation_backlog_unchanged: inventoryStatus must remain adaptation_backlog")
+
+    starved = next((item["record"] for item in scenarios if item.get("name") == "ready_supply_starved"), {})
+    if starved.get("inventoryStatus") != "ready_supply_starved":
+        errors.append("ready_supply_starved: inventoryStatus must be ready_supply_starved")
 
     if errors:
         raise SystemExit("\n".join(errors))
