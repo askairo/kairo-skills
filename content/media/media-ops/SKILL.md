@@ -235,7 +235,7 @@ description: 跨平台媒体发布执行总控：按外部触发器扫描内容�
 
 ### 9.1 Recover an empty ready queue
 
-空队列恢复前先读取 `media-loop` 的库存指纹和生产检查点。指纹未变化且没有适配写回时执行轻量 no-op；存在未完成适配时先恢复适配，不重新发现来源。
+空队列恢复前先读取 `media-loop` 的库存指纹和生产检查点。只有当前仍有 eligible 可恢复适配目标、上次结果为 `adaptation_backlog_present`、指纹未变化且没有适配写回时，才执行轻量 no-op；存在可恢复适配时先恢复适配，不重新发现来源。争议、审核中、未知、已完成、账号暂停和 disabled 目标不计入 eligible 积压；排除后 ready 为零时必须进入 `ready_supply_starved` 供给决策。
 `no-ready-unfinished-due-distribution-targets` 是一次扫描结果，不一定是整轮终点。对配置允许内容生产的执行上下文，按以下低自由度流程处理：
 
 1. 把账号、平台、策略窗口、队列库存、候选阻塞、最近发布/审核状态和最近反馈交给 `media-loop`。
@@ -243,7 +243,7 @@ description: 跨平台媒体发布执行总控：按外部触发器扫描内容�
 3. 若 loop 返回账号暂停、结果不确定、已有足量 ready 库存或无生产请求，记录具体原因并结束；不得重试审核中目标。
 4. 仅当 loop 明确返回 `productionRequest` 时，调用 `media-core` 对指定 pipeline 生产并验收。来源发现、下载、版权、去重、资源路径和游标全部属于 core 及其外部协议；ops 不自行补造候选。媒体生产不再受固定“每轮最多几次”限制，由本次外部触发、队列状态、幂等键和 stopConditions 决定是否继续推进。
 5. core 返回 `asset_ready` 或适配完成后，在同一轮重新扫描 ready admission 和平台门禁；符合条件才交给平台子技能。生产出的目标不受旧计划时间阻断，保留其计划字段用于审计和排序。
-6. core 返回 `production_blocked`、`adaptation_backlog_present` 或 `no_qualified_candidate` 时写入内容层和平台运行记录，停止；同一 `requestId + pipelineRef` 本轮不得再次调用。若返回 `adaptation_backlog_unchanged`，按成功的轻量 no-op 记录，禁止重新访问来源、调用 Chrome、发起生产或发布；只有队列指纹变化、适配写回或配置声明的 preferred schedule window 到达后才恢复。
+6. core 返回 `production_blocked`、`adaptation_backlog_present` 或 `no_qualified_candidate` 时写入内容层和平台运行记录，停止；同一 `requestId + pipelineRef` 本轮不得再次调用。若返回 `adaptation_backlog_unchanged`，先校验当前 eligible 适配积压数量必须大于 `0`；成立时按成功的轻量 no-op 记录，禁止重新访问来源、调用 Chrome、发起生产或发布，等待队列指纹变化或适配写回。若 eligible 数量为 `0`，该结果无效，必须重分类为 `ready_supply_starved` 并继续一次有界供给恢复。
 
 每次外部触发可以持续推进仍有明确缺口的适配或媒体供给，不再受固定获取次数门禁；但每个请求必须遵守 `contentId + targetId`、`requestId + pipelineRef` 幂等键，遇到成功、无合格候选、来源/版权/媒体失败、锁冲突、账号健康暂停或不确定发布状态即停止。单次触发仍默认最多发布 1 条，防止一次异常重入排空队列；这不是时间或频率门禁。不得形成 `ops → loop → core → ops` 的无界递归。
 

@@ -34,6 +34,11 @@ content asset
 配置采用“Chrome Profile 路由 + 账号共性 + 平台差异 + 运行策略”的四层结构：
 
 ```text
+execution.adaptationBacklog.suppression
+├── scope: eligible_recoverable_adaptation_only
+├── requireEligibleBacklog: true
+├── unchangedResult: adaptation_backlog_unchanged
+└── emptyReadyWithoutEligibleBacklogResult: ready_supply_starved
 browserProfiles.<profile>
 ├── browser: chrome
 ├── profileName                         # Chrome 中显示的 Profile 名称
@@ -65,6 +70,7 @@ accounts.<account>
 
 职责边界如下：
 
+- `execution.adaptationBacklog.suppression` 只压制仍然存在的可恢复适配积压。`requireEligibleBacklog: true` 表示必须先排除争议、审核中、未知、已完成、账号暂停和 disabled 目标；排除后 ready 为零时使用 `emptyReadyWithoutEligibleBacklogResult: ready_supply_starved`，不得沿用旧队列指纹跳过补货。
 - `accounts.<account>` 描述账号长期定位、受众和内容支柱，不描述某个平台的推荐技巧。
 - `browserProfiles.<profile>` 描述本机可见的 Chrome Profile 路由，不保存密码、Cookie、令牌、浏览器用户数据目录或其他认证材料；`profileName` 必须是用户在 Chrome Profile 菜单中看到的名称。
 - `accounts.<account>` 是运营隔离边界，不是用户或设备边界。若一个科技 X 账号和一个音乐抖音账号的定位不同，应建立两个 `accounts` 条目，即使由同一人管理。
