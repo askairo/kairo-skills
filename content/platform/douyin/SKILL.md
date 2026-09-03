@@ -48,6 +48,7 @@ description: 抖音平台策略与发布子技能：对已核验内容资产完�
 
 ## Publish
 
+- 新版运行时若通过 Unified Computer Use 暴露 `family: chrome`、`type: extension` browser，先用 `cua.getState()` 找到该 browser，再用 `cua.getTab(...)` 接管抖音创作者中心 Tab；这属于 Chrome MCP 通道，不是 Computer Use 回退。不得改用 `cua.getApp("Google Chrome")`、原生窗口、桌面坐标或截图点击。旧版独立工具名不存在但 Chrome extension browser 和抖音 Tab 可见时，不得返回 `profile_route_missing`。
 - 通过受控登录会话发布时，先核对当前抖音账号与配置中的公开身份一致，再创建草稿。
 - 若 `media-ops` 传入 `browserProfileRef`，先确认当前 Chrome Profile 已完成路由；Profile 路由缺失、切换失败或抖音公开身份不一致时停止，不创建草稿。
 - 使用已声明的 `chrome-mcp` 或 `playwright-mcp` 操作 Chrome 时，进入抖音发布页、作品管理页和发布结果核验前，先通过该通道重新读取当前 Tab 的 DOM/可访问页面状态；不得依赖桌面布局、窗口坐标或旧快照判断控件存在。
