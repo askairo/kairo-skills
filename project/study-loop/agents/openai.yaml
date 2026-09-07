@@ -1,0 +1,4 @@
+interface:
+  display_name: "Study Loop"
+  short_description: "Manage structured learning plans and study records"
+  default_prompt: "Use $study-loop to plan, record, and resume project source-code learning."
