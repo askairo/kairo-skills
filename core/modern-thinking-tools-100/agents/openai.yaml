@@ -1,0 +1,4 @@
+interface:
+  display_name: "万维钢·现代思维工具100讲"
+  short_description: "为复杂分析与决策选择思维工具，形成行动建议、反证与更新条件"
+  default_prompt: "使用 $modern-thinking-tools-100 分析当前问题，选择合适的思维工具，给出判断、行动和更新条件。"
