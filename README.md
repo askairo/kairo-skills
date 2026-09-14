@@ -65,7 +65,7 @@ Make the change in this repository first, validate it, commit and push it, then 
 kairo-skills/
 ├── README.md
 ├── core/
-│   ├── modern-thinking-tools-100/
+│   ├── think-tools/
 │   └── skills-loop/
 ├── project/
 │   ├── entity-design/
@@ -184,7 +184,7 @@ python core\skills-loop\scripts\sync.py update --skill hexo-push --agent-dir C:\
 kairo-skills/
 ├── README.md
 ├── core/
-│   ├── modern-thinking-tools-100/
+│   ├── think-tools/
 │   └── skills-loop/
 ├── project/
 │   ├── entity-design/
