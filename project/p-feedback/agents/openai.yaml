@@ -1,0 +1,4 @@
+interface:
+  display_name: "P Feedback"
+  short_description: "Turn production signals into verified improvements"
+  default_prompt: "Use $p-feedback to inspect production signals, identify actionable feedback, and verify the resulting improvement."
