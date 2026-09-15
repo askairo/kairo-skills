@@ -16,6 +16,7 @@ Use one record for one stable problem fingerprint or tightly related group. Cont
 # <Feedback title>
 
 - status: observed | proposed | implementing | awaiting_release | verifying | verified | deferred | blocked
+- scope: observability | functional | both
 - project: <project>
 - target: <configured-target>
 - firstObservedAt: <timestamp>
@@ -60,6 +61,15 @@ Use one record for one stable problem fingerprint or tightly related group. Cont
 
 - <timestamp>: <material state change and evidence>
 ```
+
+## Lifecycle consistency
+
+- `awaiting_release` means the implementation is complete enough to release and `conclusion` remains `pending`.
+- `verifying` means the target release is available and a comparable production query is in progress.
+- `verified` requires the release identifier, verification query/window, and before/after evidence.
+- `deferred` or `blocked` must state the reason, owner, and condition for resuming.
+- `scope: observability` means only detection or logging behavior is in scope; `functional` means product/system behavior is in scope; `both` requires separate acceptance conditions for each.
+- Legacy records without `scope` remain readable; assign the scope on the next material update instead of mass-rewriting historical records.
 
 ## Writeback rules
 

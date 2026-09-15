@@ -39,6 +39,7 @@ The file contains machine- and user-specific values. Keep it outside the skill s
       "logSystem": "<log-system-name>",
       "environment": "<environment>",
       "service": "<service-name>",
+      "availableLevels": ["WARN", "ERROR"],
       "labels": {
         "container": "<container-name>"
       },
@@ -55,6 +56,7 @@ The file contains machine- and user-specific values. Keep it outside the skill s
 - `logSystems` describes access endpoints and datasource identity.
 - `accountRef` is a symbolic reference to a connector, credential-store entry, or authenticated browser session. Never store a password, token, cookie, OTP, or private key here.
 - `targets` binds a project and environment/service scope to one log system and default query.
+- `availableLevels` is optional target metadata. When present, it lists the levels that can actually be observed in that environment; absence of an unlisted level is not evidence that the application did not emit it.
 - Provider-specific query syntax belongs in `defaultQuery`; safety and redaction rules remain part of the skill and cannot be disabled by configuration.
 
 ## Selection order
