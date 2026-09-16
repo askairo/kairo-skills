@@ -44,12 +44,14 @@ This skill uses private local configuration to store stable document roots. Do n
 
 Resolution order:
 
-1. If the working directory path contains `.qoderworkcn`, use `~/.qoderworkcn/`
-2. If the working directory path contains `.codex`, use `~/.codex/`
-3. If `~/.qoderworkcn/` exists, use it
-4. If `~/.codex/` exists, use it
+1. If the user or caller explicitly specifies an Agent Home, use that directory.
+2. If the current Skill runtime path is under `<AGENT_HOME>/skills/<skill-name>/`, infer `<AGENT_HOME>` from that path. This is the primary implicit signal and must take precedence over other existing Agent directories.
+3. If the working directory is clearly inside one Agent Home, use that Agent Home.
+4. If exactly one known Agent Home exists, use it.
+5. If multiple candidates remain and the current Skill runtime path and working directory do not distinguish them, ask the user or caller to choose; do not infer from directory existence or fixed candidate ordering.
+6. If no known Agent Home exists, use the current Agent's documented generic configuration root; if that is unavailable, ask before reading or writing config.
 
-After resolving, confirm that the directory really exists. If none exist, ask the user which Agent Home to use.
+The existence of `~/.qoderworkcn/` must never select QoderWork when the current Skill runtime is under `~/.codex/skills/`. After resolving, confirm that the selected directory really exists.
 
 **Hard rule:** once `<AGENT_HOME>` has been resolved, only read and write config under that directory. Do not cross Agent directories.
 
