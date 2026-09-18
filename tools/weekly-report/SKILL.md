@@ -22,11 +22,10 @@ Read the local configuration from:
 
 `<AGENT_HOME>/local-config/weekly-report/config.json`
 
-The configuration owns machine-specific paths, timezone, source adapter selection, completion preferences, and the fixed next-week plan. Do not put those values in this skill or guess alternate config locations.
+The configuration owns machine-specific paths, timezone, source adapter selection, completion preferences, and the template filename. Resolve `templateFile` relative to the same configuration directory and read that template before drafting a report. The template owns the report headings, order, placeholders, and all fixed text. Do not copy template content into this skill or invent a fallback template.
 
 The configured `businessRoot` contains these skill-defined paths:
 
-- Template: `01-templates/inner/weekly.md`
 - Report: `04-reviews/weekly.md`
 - Task inbox: `00-daily/weekly-tasks.md`
 
@@ -52,7 +51,7 @@ Read [references/task-inbox.md](references/task-inbox.md) when creating or updat
 Use report mode when the user asks to write, update, or regenerate a weekly report.
 
 1. Read the local configuration and workspace instructions. Check `<businessRoot>/AGENTS.md`; if absent, check only required parent directories.
-2. Read the report template and the newest 3-6 reports for headings, domain names, wording, and status style.
+2. Read the configured local template and the newest 3-6 reports for domain names, wording, and status style. Preserve every static template line exactly and replace only its placeholders.
 3. Define the target week from the user's explicit date/week, otherwise the current local date. Use Monday 00:00 through Sunday 23:59 in the configured timezone.
 4. Query the configured primary task source first, using all of these filters:
    - completion date is inside the target week;
@@ -63,7 +62,7 @@ Use report mode when the user asks to write, update, or regenerate a weekly repo
 7. Compare normalized task IDs/URLs/titles with the previous weekly reports before choosing status wording.
 8. Draft and insert the new report above the previous newest report. Keep the existing heading style and do not create a separate final report file.
 9. Mark included inbox entries with the report date or reported marker without deleting their source data.
-10. Reopen the top 40-80 lines and verify task coverage, numbering, status wording, and the fixed next-week plan.
+10. Reopen the top 40-80 lines and verify task coverage, numbering, status wording, and exact conformance to the configured template.
 
 ## Source adapter contract
 
@@ -91,8 +90,6 @@ Use explicit source/user status first. Otherwise compare the task with recent re
 - No-link maintenance or optimization: place it in the strongest historical functional area when clear; otherwise place it under `其他`, without inventing completion or impact.
 - If a user-provided grouped task contains meaningful submodules, split it into those submodules in the report while preserving one source-task identity.
 
-The user's configured fixed next-week plan is used verbatim. Do not invent a different plan unless the user explicitly requests a change.
-
 ## Domain mapping
 
 Prefer labels already used in recent `04-reviews/weekly.md` entries. Keep task bracket hints such as `[wms]`, `[oms]`, `[采购单]`, or `【采购计划】`.
@@ -103,25 +100,16 @@ Prefer labels already used in recent `04-reviews/weekly.md` entries. Keep task b
 - `新品开发` -> `新品开发`; `客诉` -> `客诉管理`; `侵权`/`侵权事件` -> `侵权管理`
 - Cross-module utilities and common APIs -> `公共能力` only when no stronger business domain exists.
 
-## Required report structure
+## Template contract
 
-```markdown
-## YYYY-MM-DD
-### **开发任务**
-#### 功能开发
+The configured template is the sole source of report layout and fixed wording. It may contain these dynamic placeholders:
 
-1. 功能领域: 任务说明及状态
-2. 功能领域: 任务说明及状态
-#### 其他
-1. 本周需求分析, 开发设计, 任务安排
-2. 已有功能维护
+- `{{date}}`: report date.
+- `{{developmentTasks}}`: numbered, dynamically generated development tasks.
+- `{{milestones}}`: numbered milestone summaries.
+- `{{issues}}`: numbered unresolved issues or the template-compatible no-issue wording.
 
-### **里程碑 & 问题**
-1. ...
-
-### **下周计划**
-1. ...
-```
+Replace placeholders with generated content while leaving static headings and fixed list items unchanged. If `templateFile` is missing, unreadable, escapes the local configuration directory, or contains unsupported unresolved placeholders, stop and ask the user to repair the template instead of silently using a built-in structure.
 
 Use concise work-report language, ASCII punctuation where the file does, and no invented metrics. If a title says design, describe design; if it says backend, describe backend development; if it says optimization, describe optimization.
 
