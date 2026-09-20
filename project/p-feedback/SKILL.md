@@ -1,6 +1,6 @@
 ---
 name: p-feedback
-description: Turn scoped production logs and operational signals into evidence-backed product feedback, route confirmed work to project planning or task execution, and verify released changes. Use when Codex needs to inspect a configured log system, monitor recurring errors, determine whether a released change worked, or maintain a production feedback loop. Do not use for ordinary implementation work without production feedback.
+description: Turn scoped production logs and operational signals into evidence-backed, noise-reduced product feedback, close normal business events, route real code improvements to planning or task execution, and verify released changes. Use when Codex needs to inspect a configured log system, monitor recurring errors, determine whether a released change worked, or maintain a production feedback loop. Do not use for ordinary implementation work without production feedback.
 ---
 
 # P Feedback
@@ -13,6 +13,18 @@ production signal -> evidence -> attribution -> decision or task
 ```
 
 Logs are an input, not the skill boundary. The skill may also use configured metrics or alerts when they are available and relevant.
+
+## Objective and disposition gate
+
+The outcome is better user experience, system stability, and lower maintenance cost. Do not maximize the number of feedback records or keep normal business behavior open merely because it is frequent.
+
+Classify every signal through these gates before creating or continuing a record:
+
+1. **Expected business behavior**: normal inventory validation, token/credential validity checks, provider rejection caused by ordinary input or availability, and routine lifecycle/progress output are not product faults by themselves. If there is no material user impact, contract regression, data loss, or required-function failure, close the record as `closed` with the reason and keep future recurrence quiet.
+2. **Expected but noisy or unsafe output**: if the behavior is normal but the log is too frequent, incorrectly leveled, duplicated, exposes payloads, or lacks actionable context, route it as a code optimization project with status `proposed` and a linked `p-task`. Do not label the underlying business behavior as a functional incident.
+3. **Actual failure or regression**: track local defects, remote failures that prevent required functionality, contract regressions, data integrity risks, authentication/configuration failures, and user-impacting performance problems. Preserve the appropriate severity and route concrete fixes.
+
+Use `verified` only when a released change satisfies its acceptance condition. Use `closed` when the signal is confirmed normal, explicitly no longer requires tracking, or is superseded by a new optimization project. Reopen only for a new fingerprint or a material change in user impact, failure rate, severity, or context.
 
 ## Ownership boundary
 
@@ -46,6 +58,7 @@ Read [references/configuration.md](references/configuration.md) whenever configu
    - remote dependency failure;
    - local system defect or resource problem;
    - observability noise such as duplicate stacks, unsafe payloads, wrong level, or missing context.
+   Apply the disposition gate above: expected normal events with no material impact are closed, while unnecessary output becomes a proposed code-optimization item.
 6. State the evidence, impact, confidence, likely owner, smallest safe next action, unresolved assumptions, and verification condition. Do not turn correlation into a proven cause. Give every feedback item a scope of `observability`, `functional`, or `both` so a logging fix is not mistaken for a root-cause fix.
 7. Create or update the feedback record using [references/feedback-record.md](references/feedback-record.md). Link related task records instead of copying their implementation history. Do not rewrite records for unchanged, non-actionable observations.
 8. Route work by responsibility:

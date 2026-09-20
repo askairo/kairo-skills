@@ -49,6 +49,13 @@ Compare the fingerprint with existing feedback records before classifying it as 
 - **WARN reduction candidate**: record the repeated pattern and the safe reduction shape, such as aggregation, deduplication, context improvement, or payload redaction. Do not reduce visibility for a local failure or required functionality loss merely to reduce volume.
 - **System failure**: retain ERROR severity and notify even when the fingerprint is known.
 
+Before keeping a group open, apply the objective gate from `SKILL.md`:
+
+- Normal business validation, ordinary token/credential checks, expected provider rejection, and routine lifecycle output with no material user impact are `closed`; frequency alone is not a reason to monitor them.
+- Normal behavior with unnecessary logging is a `proposed` code-optimization item. Link a task when implementation is clear, and do not route the normal business event as a functional incident.
+- Keep real failures, contract regressions, data risks, and user-impacting performance problems open with the required severity.
+- A release verification may become `verified` only after its acceptance condition is evidenced. A user-confirmed “no longer follow” or a confirmed normal event may become `closed` with a concise reason.
+
 ## Routing and return
 
 `p-feedback` remains the controller and hands off only the appropriate responsibility:
