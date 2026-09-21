@@ -57,12 +57,12 @@ description: 以源码仓库到 GitHub 再到 Agent 运行目录的闭环管理 
 所有自有 Skills 只允许使用：
 
 ```text
-<AGENTS_HOME>/local-config/<skill-or-domain>/config.json
+<AGENTS_HOME>/local-config/<skill-or-domain>/<skill-defined-config-file>
 ```
 
-- 默认使用 skill 名作为作用域，例如 `local-config/p-task/config.json`。
-- 多个 skills 明确共享同一领域配置时，使用领域名作为作用域，例如 `dialogue-refine` 和 `hexo-push` 共享 `local-config/blog/config.json`。
-- 每个作用域只使用一个 `config.json`；字段 schema、默认值和安全门禁由 Skill 定义。
+- 默认使用 skill 名作为作用域，例如 `local-config/p-task/`。
+- 多个 skills 明确共享同一领域配置时，使用领域名作为作用域，例如 `dialogue-refine` 和 `hexo-push` 共享 `local-config/blog/`。
+- 每个配置文件名、字段 schema、默认值和安全门禁都由对应 Skill 定义；JSON、YAML 等格式可以按其具体用途选用。
 - 本地配置不得放入源码仓库或已安装 Skill 目录，因为发布和回装不应覆盖用户配置。
 - 命令可以显式覆盖配置值或选择 Agent Home，但不得引入第二个配置文件位置。
 - 不读取、不迁移、不回退到旧目录、点文件、工作目录配置、Skill 目录配置或旧文件名。
@@ -72,7 +72,7 @@ description: 以源码仓库到 GitHub 再到 Agent 运行目录的闭环管理 
 
 使用 `publish` 或 `publish-and-update` 发布自有 Skill 时，必须通过本地配置模型校验：
 
-- 包含本地配置读取或写入逻辑的 Skill，必须明确使用 `local-config` 和 `config.json`。
+- 包含本地配置读取或写入逻辑的 Skill，必须明确使用 `~/.agents/local-config`，并在 Skill 中声明配置文件名。
 - 出现旧式 local 文件、隐藏 JSON 点文件、通用用户配置目录或多位置候选回退时直接拒绝发布。
 - 优化已有 Skill 时先删除旧路径读取逻辑，再发布；不要做双读、迁移器或兼容期。
 
@@ -145,7 +145,7 @@ python core\skills-loop\scripts\sync.py publish-and-update --skill hexo-push --m
 python core\skills-loop\scripts\sync.py install --repo <owner>/<repo> --skill hexo-push
 ```
 
-如果本地已有同名 skill，会先备份到 `<AGENT_HOME>/skill-backups/<skill-name>/` 再覆盖。备份不放在活动 `skills` 目录中，避免被 Agent 识别成重复 Skill。
+如果本地已有同名 skill，会先备份到 `<AGENTS_HOME>/skill-backups/<skill-name>/` 再覆盖。备份不放在活动 `skills` 目录中，避免被 Agent 识别成重复 Skill。
 
 也可以使用显式包路径：
 
@@ -173,7 +173,7 @@ python core\skills-loop\scripts\sync.py update --skill hexo-push
 python core\skills-loop\scripts\sync.py update-all
 ```
 
-清理安装/更新时自动生成的 `<AGENT_HOME>/skill-backups/` 备份：
+清理安装/更新时自动生成的 `<AGENTS_HOME>/skill-backups/` 备份：
 
 ```powershell
 python core\skills-loop\scripts\sync.py cleanup-backups
@@ -221,10 +221,10 @@ python core\skills-loop\scripts\sync.py install --repo owner/repo --path path/to
 可以用脚本生成本地配置：
 
 ```powershell
-python core\skills-loop\scripts\sync.py write-config --repo <owner>/<repo> --local-repo <absolute-local-skills-repo> --agent-dir <absolute-agent-skills-dir> --config-dir <agent-home>
+python core\skills-loop\scripts\sync.py write-config --repo <owner>/<repo> --local-repo <absolute-local-skills-repo> --agent-dir ~/.agents/skills --config-dir ~/.agents
 ```
 
-当只存在一个 Agent Home、脚本从已安装的 `skills-loop` 内运行，或 `--agent-dir` 明确指向 `<AGENT_HOME>/skills` 时，可以省略 `--config-dir`。否则存在多个 Agent Home 时必须显式指定。
+脚本默认从 `~/.agents/local-config/skills-loop/config.json` 读取配置；仅临时隔离目录需要传入 `--agent-dir` 或 `--config-dir`。
 
 ## 常用命令
 

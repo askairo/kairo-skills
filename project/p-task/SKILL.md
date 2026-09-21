@@ -15,27 +15,14 @@ If the project is still in an exploratory phase, the architecture is unstable, o
 
 This skill uses private local configuration to store stable paths and authentication information. Do not write this configuration into the project repository.
 
-### Agent Home Resolution
+### Shared Configuration
 
-`<AGENT_HOME>` means the current Agent's config root. You must resolve it before reading or writing local config, and you may only use the directory that belongs to the current Agent.
-
-Resolution order:
-
-1. If the user or caller explicitly specifies an Agent Home, use that directory.
-2. If the current Skill runtime path is under `<AGENT_HOME>/skills/<skill-name>/`, infer `<AGENT_HOME>` from that path. This is the primary implicit signal and must take precedence over other existing Agent directories.
-3. If the working directory is clearly inside one Agent Home, use that Agent Home.
-4. If exactly one known Agent Home exists, use it.
-5. If multiple candidates remain and the current Skill runtime path and working directory do not distinguish them, ask the user or caller to choose; do not infer from directory existence or fixed candidate ordering.
-6. If no known Agent Home exists, use the current Agent's documented generic configuration root; if that is unavailable, ask before reading or writing config.
-
-The existence of `~/.qoderworkcn/` must never select QoderWork when the current Skill runtime is under `~/.codex/skills/`. After resolving, confirm that the selected directory really exists.
-
-**Hard rule:** once `<AGENT_HOME>` has been resolved, only read and write config under that directory. Do not cross Agent directories.
+`<AGENTS_HOME>` is the user-level shared Agent Skills root, fixed at `~/.agents`. All Agents read and write this one shared configuration directory; Agent-specific homes must not provide alternate copies. An explicitly supplied path is allowed only for an isolated run.
 
 ### Config Files
 
-- Auth config: `<AGENT_HOME>/local-config/p-task/auth-sites.yaml`
-- Path config: `<AGENT_HOME>/local-config/p-task/paths.yaml`
+- Auth config: `<AGENTS_HOME>/local-config/p-task/auth-sites.yaml`
+- Path config: `<AGENTS_HOME>/local-config/p-task/paths.yaml`
 
 Recommended path config:
 

@@ -4,7 +4,7 @@
 GitHub-centered skills manager.
 
 The stable flow is:
-  local skills repo -> GitHub -> current Agent skills directory
+  local skills repo -> GitHub -> ~/.agents/skills
 
 Environment variables are supported only as a last-resort fallback. Prefer
 explicit arguments, local config files, installed-source metadata, and automatic
@@ -69,11 +69,7 @@ def detect_agent_homes() -> list[Path]:
 
 
 def detect_agent_home() -> Path | None:
-    """Detect the current agent's home directory by checking known paths.
-
-    Returns the only existing known agent home, or None if none found or if
-    multiple agent homes exist and the caller should choose explicitly.
-    """
+    """Return the canonical shared Agent Skills home when available."""
     homes = detect_agent_homes()
     if len(homes) == 1:
         return homes[0]
@@ -571,10 +567,10 @@ def validate_local_config_model(skill_dir: Path):
         for marker in ("def load_config(", "def save_user_config(", "Agent 本地配置", "Agent-local config")
     )
     if uses_local_config:
-        if "local-config" not in combined or "config.json" not in combined:
+        if "local-config" not in combined:
             raise ValueError(
-                "Skill with Agent-local config must use "
-                "<AGENT_HOME>/local-config/<skill-or-domain>/config.json"
+            "Skill with Agent-local config must declare a file under "
+                "~/.agents/local-config/<skill-or-domain>/"
             )
     print("  [OK] local-config model")
 
@@ -678,7 +674,7 @@ def write_config(args, config: dict):
                 "Multiple Agent Homes detected. Pass --config-dir explicitly.\n"
                 f"Detected candidates:\n{choices}"
             )
-        agent_home = Path.home() / ".config" / "agents"
+        agent_home = Path.home() / SHARED_AGENT_HOME
 
     path = agent_home / PREFERRED_CONFIG_PATH
     if args.dry_run:
@@ -706,13 +702,13 @@ def build_parser():
     parser.add_argument("--path", help="Path to skill inside repo. Defaults to --skill")
     parser.add_argument("--ref", help="Git ref/branch/tag. Defaults to config or main")
     parser.add_argument("--name", help="Installed skill directory name. Defaults to path basename")
-    parser.add_argument("--agent-dir", help="Current Agent skills directory. Required when multiple agents exist.")
+    parser.add_argument("--agent-dir", help="Temporary or isolated skills directory; defaults to ~/.agents/skills.")
     parser.add_argument("--local-repo", help="Local writable skills source repository")
     parser.add_argument(
         "--config-dir",
         help=(
-            "Agent Home used for local config. skills-loop reads/writes "
-            "<Agent Home>/local-config/skills-loop/config.json"
+            "Shared Agent Skills home used for local config. skills-loop reads/writes "
+            "~/.agents/local-config/skills-loop/config.json"
         ),
     )
     parser.add_argument("--message", help="Commit message for publish")
