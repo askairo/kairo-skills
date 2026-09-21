@@ -271,17 +271,7 @@ def resolve_agent_dir(args, config: dict) -> Path:
     if detected.name == "skills":
         return detected
 
-    agent_homes = detect_agent_homes()
-    if len(agent_homes) == 1:
-        return (agent_homes[0] / "skills").resolve()
-    if len(agent_homes) > 1:
-        homes = format_agent_home_candidates(agent_homes)
-        raise SystemExit(
-            "Multiple agent skill directories detected. Pass --agent-dir explicitly.\n"
-            f"Detected candidates:\n{homes}"
-        )
-
-    # Last resort: the Agent Skills user-level standard location.
+    # Default: the Agent Skills user-level standard location.
     return (Path.home() / SHARED_AGENT_HOME / "skills").resolve()
 
 
@@ -667,13 +657,6 @@ def write_config(args, config: dict):
     else:
         agent_home = script_agent_home() or detect_agent_home()
     if not agent_home:
-        homes = detect_agent_homes()
-        if len(homes) > 1:
-            choices = "\n".join(f"- {home}" for home in homes)
-            raise SystemExit(
-                "Multiple Agent Homes detected. Pass --config-dir explicitly.\n"
-                f"Detected candidates:\n{choices}"
-            )
         agent_home = Path.home() / SHARED_AGENT_HOME
 
     path = agent_home / PREFERRED_CONFIG_PATH
