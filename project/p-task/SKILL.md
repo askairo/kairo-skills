@@ -108,7 +108,7 @@ When this task was handed off by `p-loop`, follow its external-document recovery
 10. Wrap up.
    - Recheck that the branch, task doc, and required files are all present.
    - Summarize the changes, verification results, and remaining risks.
-   - If this task came from `p-loop`, write the execution result, observations, risks, open questions, verification evidence, writeback status, recommended next state, and recommended next step back to the external project docs before handoff.
+   - If an external task or project document was used as the task source, write the execution result, observations, risks, open questions, verification evidence, writeback status, recommended next state, and recommended next step back to that document before handoff. This applies whether the task came from `p-loop` or was started directly from an external task link. Skip the writeback only when no external document exists or the user explicitly asked for analysis without modification.
    - If the result changes project scope, architecture, priority, or approval boundary, stop at `review_required` instead of silently expanding the task.
    - If the user asks to merge into integration branches after completion, switch to `merge-to` and follow that skill's clean-worktree and target-branch flow.
    - If no merge was requested, state that merge or release-branch synchronization is intentionally left for the user to request.
