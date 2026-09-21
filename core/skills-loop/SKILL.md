@@ -8,18 +8,18 @@ description: 以源码仓库到 GitHub 再到 Agent 运行目录的闭环管理 
 把 skills 的长期维护模型统一成：
 
 ```text
-本地 skills 源码仓库 -> GitHub -> 当前 Agent skills 运行目录 -> 反馈下一轮迭代
+本地 skills 源码仓库 -> GitHub -> ~/.agents/skills -> 各 Agent 适配链接 -> 反馈下一轮迭代
 ```
 
 ## 核心原则
 
 - GitHub 是跨机器、跨 Agent 的分发源。
 - 本地源码仓库只用于开发和提交；具体路径来自配置、显式参数、已安装来源元数据或自动发现。
-- 当前 Agent 的 skills 目录只是运行时安装目标；具体路径来自配置、显式参数或脚本所在位置。
+- `~/.agents/skills` 是唯一的用户级运行时目录；Codex、Cursor 等 Agent 的私有目录只允许作为到该目录的适配链接，不得各自保存副本。
 - 源码仓库可以按包分组；脚本会递归发现 `SKILL.md`，并用 frontmatter 的 `name` 解析 skill。
 - 用户用自然语言表达意图，Agent 负责选择脚本命令。
 - 不依赖环境变量作为主要配置。优先级是：自然语言/显式参数 > 本地配置文件 > 已安装来源元数据 > 自动发现 > 环境变量兜底。
-- 多 agent 环境下，不要默认猜测运行目录；如果检测到多个 agent skills 目录，必须显式传 `--agent-dir`。
+- 多 Agent 环境下，默认安装到 `~/.agents/skills`；只有临时或隔离安装才显式传 `--agent-dir`。
 
 ## 触发规则
 
@@ -48,23 +48,16 @@ description: 以源码仓库到 GitHub 再到 Agent 运行目录的闭环管理 
 
 不要在 `SKILL.md`、`references/` 或脚本默认值里写死个人机器路径、个人 GitHub 仓库、个人 Obsidian 路径和真实账号数据。示例使用 `<absolute-docs-root>`、`<local-skills-repo>`、`<agent-skills-dir>`、`<account-handle>`、`<owner>/<repo>` 等占位符。
 
-### Agent Home resolution
+### Shared Agent Home
 
-`<AGENT_HOME>` 表示当前 Agent 的用户配置根目录。按以下顺序解析：
-
-1. 使用用户或命令显式指定的 Agent Home。
-2. 若当前 Skill 的运行路径位于 `<AGENT_HOME>/skills/<skill-name>/`，从该路径确定 Agent Home。
-3. 若工作目录明确位于某个 Agent Home 内，使用该目录。
-4. 若本机只存在一个已知 Agent Home，使用它。
-5. 若存在多个候选且当前上下文无法区分，必须要求用户或调用方显式选择；不要跨 Agent 读取配置。
-6. 若没有已知 Agent Home，使用当前 Agent 定义的通用配置根；仍无法确定时先询问用户。
+`<AGENTS_HOME>` 表示用户级共享 Agent Skills 根目录，固定为 `~/.agents`。所有 Agent 都从此处读取同一份技能和技能本地配置；私有 Agent 目录只能通过符号链接或目录联接适配到此目录。临时隔离运行可由命令显式覆盖，但不得成为新的默认位置。
 
 ### 唯一本地配置模型
 
 所有自有 Skills 只允许使用：
 
 ```text
-<AGENT_HOME>/local-config/<skill-or-domain>/config.json
+<AGENTS_HOME>/local-config/<skill-or-domain>/config.json
 ```
 
 - 默认使用 skill 名作为作用域，例如 `local-config/p-task/config.json`。
@@ -207,7 +200,7 @@ python core\skills-loop\scripts\sync.py install --repo owner/repo --path path/to
 `skills-loop` 自身也遵循 Agent 本地配置目录规范。首选配置文件为：
 
 ```text
-<AGENT_HOME>/local-config/skills-loop/config.json
+<AGENTS_HOME>/local-config/skills-loop/config.json
 ```
 
 配置优先级为：显式命令参数 > 首选 Agent 本地配置 > 已安装来源元数据 > 自动发现 > 环境变量兜底。

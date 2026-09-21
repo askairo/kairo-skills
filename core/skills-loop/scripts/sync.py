@@ -8,7 +8,7 @@ The stable flow is:
 
 Environment variables are supported only as a last-resort fallback. Prefer
 explicit arguments, local config files, installed-source metadata, and automatic
-Agent directory detection.
+shared skills directory detection.
 """
 
 import argparse
@@ -53,27 +53,19 @@ LEGACY_CONFIG_PATTERNS = (
 )
 CONFIG_TEXT_SUFFIXES = {".md", ".py", ".json", ".yaml", ".yml", ".toml"}
 
-# Known agent home directories, checked in priority order.
-# Each entry is (directory_name, agent_label).
-KNOWN_AGENT_HOMES = [
-    (".qoderworkcn", "QoderWork"),
-    (".codex", "Codex"),
-    (".config/agents", "Agents"),
-]
+# The open Agent Skills convention uses one shared user directory. Agent-specific
+# homes are deliberately not probed: adapters should link their skills/config
+# locations to this canonical home rather than create divergent installations.
+SHARED_AGENT_HOME = ".agents"
 
 
 def detect_agent_homes() -> list[Path]:
-    """Return all known agent home directories that exist on this machine."""
-    home = Path.home()
-    homes = []
-    for dirname, _label in KNOWN_AGENT_HOMES:
-        candidate = home / dirname
-        try:
-            if candidate.exists():
-                homes.append(candidate)
-        except OSError:
-            continue
-    return homes
+    """Return the canonical shared Agent Skills home, when it exists."""
+    candidate = Path.home() / SHARED_AGENT_HOME
+    try:
+        return [candidate] if candidate.exists() else []
+    except OSError:
+        return []
 
 
 def detect_agent_home() -> Path | None:
@@ -293,8 +285,8 @@ def resolve_agent_dir(args, config: dict) -> Path:
             f"Detected candidates:\n{homes}"
         )
 
-    # Last resort: generic XDG-style path.
-    return (Path.home() / ".config" / "agents" / "skills").resolve()
+    # Last resort: the Agent Skills user-level standard location.
+    return (Path.home() / SHARED_AGENT_HOME / "skills").resolve()
 
 
 def resolve_local_repo(args, config: dict) -> Path | None:
