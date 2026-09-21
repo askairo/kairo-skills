@@ -19,7 +19,7 @@ This workflow is for project initialization, not feature implementation.
 Use local machine config for stable, user-specific documentation destinations. Keep these files outside project repos and treat them as private state.
 
 - Path config: `<CODEX_HOME>/local-config/p-bootstrap/paths.yaml`
-- Fallback path config: `<HOME>/.codex/local-config/p-bootstrap/paths.yaml`
+- Fallback path config: `<HOME>/.agents/local-config/p-bootstrap/paths.yaml`
 
 Recommended path config shape:
 
@@ -57,7 +57,7 @@ docs:
    - Resolve the docs root with this priority:
      - Explicit user-provided docs root for the current request.
      - Local path config from `<CODEX_HOME>/local-config/p-bootstrap/paths.yaml`.
-     - Local path config from `<HOME>/.codex/local-config/p-bootstrap/paths.yaml`.
+     - Local path config from `<HOME>/.agents/local-config/p-bootstrap/paths.yaml`.
    - If the docs root cannot be resolved, pause and ask the user for it; then write it to the local path config.
    - Create directory: `<docs-root>/<project-name>`
    - Create:

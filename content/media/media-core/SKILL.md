@@ -14,7 +14,7 @@ description: 媒体内容生产与核心资产层：接收来源流水线或 med
 内容源、内容资产和源流水线必须有独立的外部文档，不再寄存在某个平台账号的 `queue.md`、`runs/` 或 `published.md` 中。启动内容发现、内容资产生成或源流水线定时任务前，读取 Agent 本地配置：
 
 ```text
-<AGENT_HOME>/local-config/media-core/config.json
+<AGENTS_HOME>/local-config/media-core/config.json
 ```
 
 配置只保存本机文档根目录、内容层子目录、内容源流水线和调度定义，不保存密码、Cookie、令牌或浏览器会话。`<docsRoot>/<contentRoot>` 下的结构由本技能固定：

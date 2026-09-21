@@ -40,13 +40,13 @@ python core\skills-loop\scripts\sync.py publish-and-update --skill hexo-push --m
 Install from GitHub into an Agent runtime:
 
 ```powershell
-python core\skills-loop\scripts\sync.py install --repo askairo/kairo-skills --skill hexo-push --agent-dir C:\Users\admin\.codex\skills
+python core\skills-loop\scripts\sync.py install --repo askairo/kairo-skills --skill hexo-push --agent-dir %USERPROFILE%\.agents\skills
 ```
 
 Update an installed skill with recorded source metadata:
 
 ```powershell
-python core\skills-loop\scripts\sync.py update --skill hexo-push --agent-dir C:\Users\admin\.codex\skills
+python core\skills-loop\scripts\sync.py update --skill hexo-push --agent-dir %USERPROFILE%\.agents\skills
 ```
 
 ## Local Development
@@ -54,7 +54,7 @@ python core\skills-loop\scripts\sync.py update --skill hexo-push --agent-dir C:\
 Recommended flow for any skill change:
 
 ```text
-local source repository -> GitHub -> current Agent skills runtime directory
+local source repository -> GitHub -> shared ~/.agents/skills runtime directory
 ```
 
 Make the change in this repository first, validate it, commit and push it, then use `skills-loop` to pull the latest version back into the runtime copy.
@@ -100,7 +100,7 @@ kairo-skills/
 ## Config and Storage
 
 - Prefer natural language, explicit parameters, config files, and auto-discovery.
-- Store private per-skill runtime config under `<AGENT_HOME>/local-config/<skill-name>/` by default.
+- Store private per-skill runtime config under `<AGENTS_HOME>/local-config/<skill-name>/` by default.
 - Use environment variables only as fallback compatibility, not as the primary configuration path.
 - Installed skills from GitHub should include `.skill-source.json` metadata.
 - If a repository needs bilingual README content, keep it in a single `README.md` and switch sections with internal links.
@@ -159,13 +159,13 @@ python core\skills-loop\scripts\sync.py publish-and-update --skill hexo-push --m
 从 GitHub 安装到 Agent 运行目录：
 
 ```powershell
-python core\skills-loop\scripts\sync.py install --repo askairo/kairo-skills --skill hexo-push --agent-dir C:\Users\admin\.codex\skills
+python core\skills-loop\scripts\sync.py install --repo askairo/kairo-skills --skill hexo-push --agent-dir %USERPROFILE%\.agents\skills
 ```
 
 更新已记录来源元数据的 skill：
 
 ```powershell
-python core\skills-loop\scripts\sync.py update --skill hexo-push --agent-dir C:\Users\admin\.codex\skills
+python core\skills-loop\scripts\sync.py update --skill hexo-push --agent-dir %USERPROFILE%\.agents\skills
 ```
 
 ## 本地开发
@@ -219,7 +219,7 @@ kairo-skills/
 ## 配置与存储
 
 - 优先使用自然语言、显式参数、配置文件和自动发现。
-- 私有的 Skill 运行配置默认放在 `<AGENT_HOME>/local-config/<skill-name>/`。
+- 私有的 Skill 运行配置默认放在 `<AGENTS_HOME>/local-config/<skill-name>/`。
 - 环境变量只作为兜底兼容，不作为主配置路径。
 - 来自 GitHub 的已安装 skill 应包含 `.skill-source.json` 元数据。
 - 如果仓库需要双语 README 内容，统一放在一个 `README.md` 里，用文内链接切换。

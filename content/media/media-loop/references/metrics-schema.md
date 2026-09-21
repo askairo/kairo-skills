@@ -2,7 +2,7 @@
 
 ## 本地配置
 
-文件：`<AGENT_HOME>/local-config/media-loop/config.json`
+文件：`<AGENTS_HOME>/local-config/media-loop/config.json`
 
 ```json
 {

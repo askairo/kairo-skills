@@ -2,10 +2,10 @@
 
 ## Runtime config root
 
-Use a user-level `.codex` directory for runtime settings, for example:
+Use the shared user-level Agent Skills configuration directory:
 
 ```text
-~/.codex/use-datax/
+~/.agents/local-config/use-datax/
 └── config.json
 ```
 

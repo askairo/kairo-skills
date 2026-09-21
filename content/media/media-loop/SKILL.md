@@ -32,7 +32,7 @@ description: 媒体运营反馈与供给闭环总控，也是运营问题、执�
 
 ## Resolve configuration and inputs
 
-执行前读取唯一配置文件：`<AGENT_HOME>/local-config/media-loop/config.json`。配置只保存监测窗口、指标阈值、最小样本量、实验规则和输出开关，不保存密码、Cookie、令牌或浏览器会话。
+执行前读取唯一配置文件：`<AGENTS_HOME>/local-config/media-loop/config.json`。配置只保存监测窗口、指标阈值、最小样本量、实验规则和输出开关，不保存密码、Cookie、令牌或浏览器会话。
 
 同时读取 `media-ops` 当前配置和外部运营文档。优先使用：
 

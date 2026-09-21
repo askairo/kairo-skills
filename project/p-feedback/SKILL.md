@@ -41,7 +41,7 @@ Use `p-feedback -> p-task -> p-feedback` when the smallest safe fix is already c
 Use exactly one machine-local configuration file:
 
 ```text
-<AGENT_HOME>/local-config/p-feedback/config.json
+<AGENTS_HOME>/local-config/p-feedback/config.json
 ```
 
 Read [references/configuration.md](references/configuration.md) whenever configuring or selecting a project, log system, account reference, or observation target. Do not read legacy paths or create fallback configuration files.

@@ -4,10 +4,10 @@ Use private local config for machine-specific paths and requirement-source authe
 
 ## Agent Home
 
-Resolve `<AGENT_HOME>` the same way as `p-task`, then read only from:
+Resolve `<AGENTS_HOME>` the same way as `p-task`, then read only from:
 
-- `<AGENT_HOME>/local-config/entity-design/paths.yaml`
-- `<AGENT_HOME>/local-config/entity-design/auth-sites.yaml`
+- `<AGENTS_HOME>/local-config/entity-design/paths.yaml`
+- `<AGENTS_HOME>/local-config/entity-design/auth-sites.yaml`
 
 Do not store these files in the project repo.
 

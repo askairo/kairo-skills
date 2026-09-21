@@ -25,7 +25,7 @@ description: 将 AI 对话记录提炼、脱敏并重构为结构化的 Hexo 博
 
 ## 路径与配置边界
 
-- `blogRoot` 是博客领域共享的机器配置，只保存在 `<AGENT_HOME>/local-config/blog/config.json`。
+- `blogRoot` 是博客领域共享的机器配置，只保存在 `<AGENTS_HOME>/local-config/blog/config.json`。
 - 首次使用且无法自动识别 Hexo 根目录时，先询问用户，再写入上述唯一配置文件。
 - 不读取工作目录、Skill 目录、隐藏点文件、通用用户配置目录或环境变量中的旧配置，不提供迁移回退。
 - 技能固定使用 `<blogRoot>/source/_posts` 作为博客文章根目录；其下的 `Dialogues`、`Clippings` 和年份目录属于技能规范，不需要用户逐项配置。
@@ -114,7 +114,7 @@ import tempfile
 from pathlib import Path
 
 # 加载 refine 模块
-sys.path.insert(0, str(Path('<AGENT_HOME>') / 'skills' / 'dialogue-refine' / 'scripts'))
+sys.path.insert(0, str(Path('<AGENTS_HOME>') / 'skills' / 'dialogue-refine' / 'scripts'))
 from refine import get_latest_dialogue, parse_dialogue
 
 # 1. 从用户本地配置解析 <blogRoot>，再定位对话目录
@@ -191,7 +191,7 @@ python scripts/refine.py --dialogue-dir <dialogues_dir>
 与 `hexo-push` 共用唯一配置文件：
 
 ```text
-<AGENT_HOME>/local-config/blog/config.json
+<AGENTS_HOME>/local-config/blog/config.json
 ```
 
 示例：

@@ -26,11 +26,11 @@ This skill is intended for a browser-operated design workflow:
 
 Use private local config when the current request depends on stable project paths or authenticated requirement sources.
 
-- Resolve `<AGENT_HOME>` the same way as `p-task`.
+- Resolve `<AGENTS_HOME>` the same way as `p-task`.
 - Read config only from the current agent home, never from the project repo.
 - Preferred config files:
-  - `<AGENT_HOME>/local-config/entity-design/paths.yaml`
-  - `<AGENT_HOME>/local-config/entity-design/auth-sites.yaml`
+  - `<AGENTS_HOME>/local-config/entity-design/paths.yaml`
+  - `<AGENTS_HOME>/local-config/entity-design/auth-sites.yaml`
 - `paths.yaml` stores the local docs root used for saved design artifacts.
 - `auth-sites.yaml` stores login records for requirement sources such as ZenTao and Axhub.
 - If config exists, use it before asking the user for a docs root or credentials.
@@ -73,7 +73,7 @@ Output destinations:
 1. Collect context.
    - Read prototype links, PRD links, screenshots, existing table/design links, module prefix, and user clarifications.
    - Read local project rules first when available (`AGENTS.md`, `CLAUDE.md`, existing module code, existing table/entity examples).
-   - If the requirement source or output path needs machine-local state, read `<AGENT_HOME>/local-config/entity-design/auth-sites.yaml` and `<AGENT_HOME>/local-config/entity-design/paths.yaml` first.
+   - If the requirement source or output path needs machine-local state, read `<AGENTS_HOME>/local-config/entity-design/auth-sites.yaml` and `<AGENTS_HOME>/local-config/entity-design/paths.yaml` first.
    - Identify whether the task is to generate entities, review existing designs, or update an external document.
 
 2. Inspect the prototype.

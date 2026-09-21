@@ -264,7 +264,7 @@ description: 跨平台媒体发布执行总控：按外部触发器扫描内容�
 
 当用户明确要求基于 `media-loop` 报告实施优化时，由 `media-ops` 负责拆分变更，不把所有调整写入同一层：
 
-- 账号定位、发布频率、阈值和平台 operation：写入 `<AGENT_HOME>/local-config/media-ops/config.yaml`；
+- 账号定位、发布频率、阈值和平台 operation：写入 `<AGENTS_HOME>/local-config/media-ops/config.yaml`；
 - 平台通用的文案、候选、媒体验收和发布规则：写入对应平台子技能或其 references；
 - 实际自动化触发频率和提示词：检查并更新对应的本机自动化定义；
 - `media-loop` 只保留诊断、实验假设、结果和下一次复盘条件，不直接替代执行器改写平台内容。

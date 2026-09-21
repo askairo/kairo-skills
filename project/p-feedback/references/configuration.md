@@ -5,10 +5,10 @@
 Use only:
 
 ```text
-<AGENT_HOME>/local-config/p-feedback/config.json
+<AGENTS_HOME>/local-config/p-feedback/config.json
 ```
 
-Resolve `<AGENT_HOME>` from the current installed skill location or an explicit Agent Home. If more than one Agent Home remains possible, ask the user to choose. Never read another Agent's configuration.
+`<AGENTS_HOME>` is the shared user-level Agent Skills root, fixed at `~/.agents`. Read only this shared configuration unless the user explicitly supplies an isolated path for the current run.
 
 The file contains machine- and user-specific values. Keep it outside the skill source repository, installed skill directory, project repository, and external project documents.
 

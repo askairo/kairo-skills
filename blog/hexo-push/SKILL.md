@@ -16,7 +16,7 @@ description: 将 Clippings 或 Agent 加工稿发布为 Hexo 文章，按用户�
 
 ## 路径与配置边界
 
-- `blogRoot` 是博客领域共享配置，只能保存在 `<AGENT_HOME>/local-config/blog/config.json`。
+- `blogRoot` 是博客领域共享配置，只能保存在 `<AGENTS_HOME>/local-config/blog/config.json`。
 - 首次使用且无法自动识别 Hexo 根目录时，先询问用户，再用 `--blog-root <path> --save-config` 写入唯一配置文件。
 - 不读取工作目录、Skill 目录、隐藏点文件、通用用户配置目录或环境变量中的旧配置，不提供迁移回退。
 - 技能固定推导文章根目录为 `<blogRoot>/source/_posts`，Clippings 为其下的 `Clippings`。
@@ -92,7 +92,7 @@ python <agent-skills-dir>\hexo-push\scripts\publish.py `
 与 `dialogue-refine` 共用唯一配置文件：
 
 ```text
-<AGENT_HOME>/local-config/blog/config.json
+<AGENTS_HOME>/local-config/blog/config.json
 ```
 
 示例：

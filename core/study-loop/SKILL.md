@@ -9,7 +9,7 @@ Turn exploratory technical learning into a resumable loop. Use the configured Ob
 
 ## Configuration
 
-Read `<AGENT_HOME>/local-config/study-loop/config.json` when present. If absent, use the configured p-task docs root as the default source and create only the study-loop config when needed:
+Read `<AGENTS_HOME>/local-config/study-loop/config.json` when present. If absent, use the configured p-task docs root as the default source and create only the study-loop config when needed:
 
 ```json
 { "docsRoot": "<absolute-obsidian-collection-root>" }

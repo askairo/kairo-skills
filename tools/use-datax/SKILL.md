@@ -1,6 +1,6 @@
 ---
 name: use-datax
-description: Generate, validate, and run DataX sync jobs for MySQL table transfers. Use when the user needs to move one or more tables between environments, prepare explicit-column DataX JSON, read runtime DB settings from a .codex config directory, or troubleshoot a DataX sync run.
+description: Generate, validate, and run DataX sync jobs for MySQL table transfers. Use when the user needs to move one or more tables between environments, prepare explicit-column DataX JSON, read runtime DB settings from the shared .agents/local-config directory, or troubleshoot a DataX sync run.
 ---
 
 # Use DataX
@@ -11,7 +11,7 @@ Use this skill to prepare and execute DataX syncs for project databases. It cove
 
 ## Configuration
 
-Read runtime settings from the user's `.codex` config directory.
+Read runtime settings from the user's `.agents/local-config` directory.
 
 Only these values are externalized:
 

@@ -10,14 +10,8 @@ param(
 )
 
 function Get-DefaultConfigPath {
-  if ($env:CODEX_HOME) {
-    return (Join-Path $env:CODEX_HOME "local-config\p-bootstrap\paths.yaml")
-  }
-  if ($HOME) {
-    return (Join-Path $HOME ".codex\local-config\p-bootstrap\paths.yaml")
-  }
-
-  throw "Unable to resolve a local config path. Provide -ConfigPath explicitly."
+  $userProfile = [Environment]::GetFolderPath('UserProfile')
+  return (Join-Path $userProfile ".agents\local-config\p-bootstrap\paths.yaml")
 }
 
 function Resolve-ExistingConfigPath {
@@ -27,13 +21,8 @@ function Resolve-ExistingConfigPath {
     return $ExplicitPath
   }
 
-  $candidates = @()
-  if ($env:CODEX_HOME) {
-    $candidates += (Join-Path $env:CODEX_HOME "local-config\p-bootstrap\paths.yaml")
-  }
-  if ($HOME) {
-    $candidates += (Join-Path $HOME ".codex\local-config\p-bootstrap\paths.yaml")
-  }
+  $userProfile = [Environment]::GetFolderPath('UserProfile')
+  $candidates = @((Join-Path $userProfile ".agents\local-config\p-bootstrap\paths.yaml"))
 
   foreach ($candidate in $candidates) {
     if ($candidate -and (Test-Path -LiteralPath $candidate)) {

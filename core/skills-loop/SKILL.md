@@ -8,14 +8,14 @@ description: 以源码仓库到 GitHub 再到 Agent 运行目录的闭环管理 
 把 skills 的长期维护模型统一成：
 
 ```text
-本地 skills 源码仓库 -> GitHub -> ~/.agents/skills -> 各 Agent 适配链接 -> 反馈下一轮迭代
+本地 skills 源码仓库 -> GitHub -> ~/.agents/skills -> 支持标准的 Agent 直接发现 -> 反馈下一轮迭代
 ```
 
 ## 核心原则
 
 - GitHub 是跨机器、跨 Agent 的分发源。
 - 本地源码仓库只用于开发和提交；具体路径来自配置、显式参数、已安装来源元数据或自动发现。
-- `~/.agents/skills` 是唯一的用户级运行时目录；Codex、Cursor 等 Agent 的私有目录只允许作为到该目录的适配链接，不得各自保存副本。
+- `~/.agents/skills` 是唯一的用户级运行时目录。支持 Agent Skills 标准的 Agent 直接发现该目录；不支持标准位置的客户端才使用适配链接，且链接不是统一模型成立的前提。Agent 私有目录不得保存另一份技能副本。
 - 源码仓库可以按包分组；脚本会递归发现 `SKILL.md`，并用 frontmatter 的 `name` 解析 skill。
 - 用户用自然语言表达意图，Agent 负责选择脚本命令。
 - 不依赖环境变量作为主要配置。优先级是：自然语言/显式参数 > 本地配置文件 > 已安装来源元数据 > 自动发现 > 环境变量兜底。
@@ -50,7 +50,7 @@ description: 以源码仓库到 GitHub 再到 Agent 运行目录的闭环管理 
 
 ### Shared Agent Home
 
-`<AGENTS_HOME>` 表示用户级共享 Agent Skills 根目录，固定为 `~/.agents`。所有 Agent 都从此处读取同一份技能和技能本地配置；私有 Agent 目录只能通过符号链接或目录联接适配到此目录。临时隔离运行可由命令显式覆盖，但不得成为新的默认位置。
+`<AGENTS_HOME>` 表示用户级共享 Agent Skills 根目录，固定为 `~/.agents`。所有 Agent 都从此处读取同一份技能和技能本地配置。支持标准位置的 Agent 直接发现；其他客户端可用符号链接或目录联接适配。临时隔离运行可由命令显式覆盖，但不得成为新的默认位置。
 
 ### 唯一本地配置模型
 
