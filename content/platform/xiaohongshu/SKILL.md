@@ -11,7 +11,7 @@ description: 小红书平台策略与发布子技能：对已核验内容资产�
 
 若 `media-ops` 或 `media-core` 传入 `editorialContextRefs` / `editorialFrameworkRef`，先读取对应的主题编辑框架，再进行小红书平台化改编。主题框架提供事实边界、人物原意、栏目知识和内容门禁；账号专属封面规范只能从本机配置或外部账号文档的 `coverSpecRef` 读取，不得写回本技能或主题框架。
 
-浏览器发布统一使用已声明的 Chrome MCP/browser-client 或 Playwright MCP Bridge：页面读取、输入、图片上传、编辑、发布、结果核验和 Tab 清理都必须由同一通道完成。Chrome MCP 在旧运行时使用 `claimTab`；新版运行时若 Unified Computer Use 暴露 `family: chrome`、`type: extension` browser，则用 `cua.getState()` 找到该 browser、再以 `cua.getTab(...)` 接管小红书创作中心 Tab，这仍是 Chrome Plugin 通道，不是 Computer Use 回退。不得改用 `cua.getApp("Google Chrome")`、原生窗口、桌面坐标或截图点击。只有 Chrome extension browser/目标 Tab 不可见，或页面实读账号身份不一致时，才返回 `profile_route_missing` / `account_mismatch`；不能仅因旧版独立工具名缺失而停止。不得在通道间静默回退，也不得使用 controlled-browser-session 或 CDP。
+浏览器发布统一使用已声明的 Chrome MCP/browser-client 或 Playwright MCP Bridge：页面读取、输入、图片上传、编辑、发布、结果核验和 Tab 清理都必须由同一通道完成。Chrome MCP 在旧运行时使用 `claimTab`；新版运行时若 Unified Computer Use 暴露 `family: chrome`、`type: extension` browser，则用 `cua.getState()` 找到该 browser、再以 `cua.getTab(...)` 接管小红书创作中心 Tab，这仍是 Chrome Plugin 通道，不是 Computer Use 回退。不得改用 `cua.getApp("Google Chrome")`、原生窗口或桌面坐标。页面截图和页内坐标点击仅在下述小红书封闭发布组件恢复条件全部成立时允许，且必须仍由同一个 Chrome extension Tab API 执行；其他情形继续使用可访问控件或可定位 DOM。只有 Chrome extension browser/目标 Tab 不可见，或页面实读账号身份不一致时，才返回 `profile_route_missing` / `account_mismatch`；不能仅因旧版独立工具名缺失而停止。不得在通道间静默回退，也不得使用 controlled-browser-session 或 CDP。
 
 ## Assess platform fit
 
@@ -36,12 +36,18 @@ description: 小红书平台策略与发布子技能：对已核验内容资产�
 
 配图、截图、信息卡和视频必须真实、清晰、具备使用权限；不为凑九宫格重复或拼接无关图片。发布前检查标题、封面、正文、来源区、标签、账号身份和发布按钮；发布按钮只点击一次并等待明确结果。
 
+### 封闭发布组件的受限恢复
+
+小红书创作页可能用封闭的 `xhs-publish-btn` 组件同时承载“暂存离开”和“发布”，其内部按钮不一定出现在可访问树或可定位 DOM。仅当普通控件定位确实不可用、当前目标仍可发布且没有已提交或结果不明的历史尝试时，才可对这个组件使用同一 Chrome extension Tab 的实时页面截图和页内坐标点击。先只读确认：组件唯一，宿主属性为 `is-publish=true`、`submit-text=发布`、`submit-disabled=false`；当前账号、最终标题、正文、封面、媒体和相关门禁仍与目标一致；实时画面中的红色“发布”按钮与该组件位置对应、可见、未被遮挡，并与“暂存离开”明确区分。若 Tab API 不支持可信的页面坐标映射或任一核对不成立，保留草稿并记录具体阻断，不猜测坐标。
+
+确认后仅用该 Tab API 对红色“发布”按钮执行一次页内点击；不得改用原生窗口、桌面坐标、其他浏览器通道或对“暂存离开”执行此例外。随后只读核验成功提示及可关联的管理页条目/状态；明确成功但“审核中”写 `published_pending_review`，禁止再次提交。无明确结果写 `publish_unconfirmed`，保留页面和资产，禁止自动重试。该例外只属于小红书此封闭组件，不适用于其他平台或一般页面控件。
+
 当账号视觉规范要求 PNG、而内容资产提供的是 SVG 源文件时，先读取 `media-core.visualRenderer.preferredRenderer` 和账号 `coverSpecRef`，再选择渲染器。对于“固定宽度、动态高度”的 SVG，禁止把 `/usr/bin/qlmanage -t -s <size>` 作为首选：macOS Quick Look 会把非方形画布按方形缩放，可能把右侧外边裁掉。优先使用配置中的精确视口 SVG→PNG 渲染器；`qlmanage` 只允许用于方形画布或精确验收通过的回退结果。渲染完成后必须确认 PNG 文件真实存在，用 `/usr/bin/sips` 验证宽高，并逐像素检查四条边的连续外边颜色和宽度（顶部、右侧、底部、左侧均为 26px `#F5F1E8`；任一边缺失即 `platform_asset_render_blocked`），再用 `/usr/bin/shasum -a 256` 记录媒体指纹。目标记录同时保留 SVG 源文件、PNG 成品、渲染器、尺寸、四边验收和指纹。渲染器不可用或四边验收失败时，保持 `pending_content_completion`，不得使用来源截图替代，也不得重复创建内容资产。
 
 - 发布前重新读取编辑器中的最终标题、正文和媒体状态，确认标题长度校验已通过。
 - 若 `media-ops` 传入 `browserProfileRef`，先确认当前 Chrome Profile 已完成路由，并核对小红书公开账号身份；Profile 路由缺失或账号不一致时停止。
 - 点击发布后只接受明确的成功提示、已发布状态、帖子 URL 或账号时间线新内容；如果页面仍停留在编辑器、出现校验错误或状态不明确，记录为“发布未确认”，并在运行记录中保留具体页面信号。
-- 只有当本机执行策略明确配置 `retry-on-failure` 时，`publish_failed` 或 `publish_unconfirmed` 才允许在后续运行重试；每次最多点击一次，重试次数遵守配置上限（未配置时默认不重试）。账号不匹配、事实/版权门禁失败、安全验证和验证码不可重试。
-- 发布未确认时，不得把候选写入已发布清单或推进来源游标；达到重试上限后暂停该候选，避免重复发布。
+- `publish_unconfirmed` 一律先只读核验，不能自动重试。只有平台明确显示提交失败、且本机执行策略明确配置 `retry-on-failure` 时，`publish_failed` 才允许在后续运行按配置上限重试；每次最多点击一次，未配置时默认不重试。账号不匹配、事实/版权门禁失败、安全验证和验证码不可重试。
+- 发布未确认时，不得把候选写入已发布清单或推进来源游标；保留目标和必要页面，直到只读核验能明确归类，避免重复发布。
 
 将发布结果交给 `media-ops` 完成外部运行记录和队列回写；回写成功后由 `media-ops` 统一关闭本次运行创建的素材、编辑器和结果页。发布未确认、草稿待修复或用户要求保留页面时，保留必要的交接页，不得先关页。
