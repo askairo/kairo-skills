@@ -20,7 +20,7 @@ description: 媒体运营反馈与供给闭环总控，也是运营问题、执�
 - X、小红书或抖音的推荐机制、平台化文案、格式和发布流程：协调对应平台技能（`x`、`xiaohongshu`、`douyin` 或 `x-api`）。
 - `SKILL.md`、技能工作流、技能同步和运行目录一致性：协调 `skills-loop`；技能内容设计先遵守 `skill-creator`。
 
-涉及浏览器的诊断、只读核验或恢复编排时，只向 `media-ops` 和平台技能传递已配置的 `chrome-mcp` 或 `playwright-mcp`；它们是整个媒体运营体系仅允许的浏览器执行通道。`media-loop` 不自行接管页面，也不得建议或批准 Computer Use、controlled-browser-session、CDP、鼠标坐标点击或其他浏览器接口作为回退。
+涉及浏览器的诊断、只读核验或恢复编排时，只向 `media-ops` 和平台技能传递已配置的 `chrome-mcp` 或 `playwright-mcp`；它们是整个媒体运营体系仅允许的浏览器执行通道。`media-loop` 不自行接管页面，也不得建议或批准 Computer Use、controlled-browser-session、CDP、桌面坐标点击或其他浏览器接口作为回退。小红书封闭发布组件在原 Chrome extension Tab 内的受限页内点击由 `xiaohongshu` 子技能定义，不属于通道回退，也不能扩展到其他平台。
 
 ### 发布异常恢复接管
 
