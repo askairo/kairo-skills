@@ -81,6 +81,8 @@ description: 跨平台媒体发布执行总控：按外部触发器扫描内容�
 
 每个跳过、失败和待确认结果都必须写出 `reasonCode`、`nextAction` 和 `resumeCondition`。不要用“本轮没有内容”掩盖配置错误、适配积压、账号暂停、数据不足或运行时故障。
 
+小红书上传异常先交给 `xiaohongshu` 的 `references/upload-recovery.md`（按该已安装技能的位置解析），在同一目标、同一 Tab、既有资产上完成文件选择器和平台媒体状态检查。不能仅凭 AX 点击无变化或隐藏 input 等待超时判定能力缺失、设备锁屏或权限未开；检查点记录 chooser 是否出现、setFiles 是否尝试及平台验收证据。只有该流程的有界恢复已耗尽且无未知副作用，才记具体上传阻断；可能已上传/已提交则只读对账，不换候选、不重新生产、不重试发布。此路由不改变 X 或抖音的上传规则。
+
 ### Historical result reconciliation does not fulfill the current run
 
 平台时间线可能已经显示某个本地 `pending` 目标在更早的运行中成功发布，而本地队列、游标或台账尚未回写。此时只读核验并修复本地状态属于历史结果对账，不是本轮新发布：
