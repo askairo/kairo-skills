@@ -70,6 +70,15 @@ description: 抖音平台策略与发布子技能：对已核验内容资产完�
 - 交互式运行在最终发布前必须展示完整成稿并等待针对该账号和该内容的明确确认；已被有效无人值守调度调用的 `scheduled_run` 按 `media-ops` 门禁执行，不重复要求逐条确认。
 - 将发布结果交给 `media-ops` 完成外部文档回写；回写成功后由 `media-ops` 统一关闭本次运行创建的编辑器和结果页。结果不明确或草稿待修复时，保留必要页面，不得先关页。
 
+### Keep scheduled runs fast without weakening gates
+
+- Resume the same `contentId + targetId` at its earliest incomplete stage. If the target already has a verified canonical asset or a user-uploaded editor preview, reuse its recorded source/media evidence; do not rediscover, redownload, re-upload, or repeat media probes unless the file identity changed or a prior check is missing.
+- Bind the existing Chrome extension browser and creator Tab once per run, then reuse that binding. Read a fresh page state after navigation or a state-changing action; do not repeat full inventory or reread unchanged fields. Before any publish action, confirm the live Tab is still the editor, not a manager page or stale accessibility view. If it is already the manager, correlate the new row read-only and never submit again.
+- Treat the configured download observation duration as a ceiling, not a mandatory idle delay after a definitive error. After registering the visible download event, if it reports a terminal failure/rejection and two Downloads snapshots 10 seconds apart show no matching file or `.crdownload`, proceed to the authorized visible fallback without spending the remaining wait budget. A missing event, timeout, or lack of progress alone is ambiguous; keep bounded observations (at most 60 seconds per wait and within the source protocol's total ceiling) until the result is clear. Never overlap normal and fallback downloads while the first remains active.
+- Resolve title length before asking for approval or entering the draft: count against both the configured contract and the live field cap, then present only a title the field can actually retain. If no title satisfies both, identify the smallest one-run exception once; never seek approval for a title already known to be truncated by the platform.
+- Record stage start/end times and explicit wait reasons in the run checkpoint. Separate platform waits, download observation, and user-response time so the next review can target the measured bottleneck instead of attributing all elapsed time to the publishing steps.
+- Once the current manager page uniquely matches title, full caption, and duration and reports `已发布` or `审核中`, settle and write back immediately. Do not repeat searches, refreshes, or setup checks after the correlation is complete.
+
 ## Clean archived Downloads sources
 
 - 每次完成已发布目标的结果核验和本地回写后，自动检查 `~/Downloads`（含子目录）中与抖音来源视频对应的文件；不需要逐文件询问用户。
