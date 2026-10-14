@@ -26,6 +26,8 @@ description: 媒体运营反馈与供给闭环总控，也是运营问题、执�
 
 发布遇到可修复的执行异常时，`media-loop` 不应直接终止本轮：它接管恢复编排，读取当前 `contentId + targetId` 状态和最近证据，协调 `media-ops`、对应平台技能与传输层修复最小范围的问题，重新执行受影响的门禁，并从保留的原目标继续发布。对 `publish_unconfirmed`、`uncertain`、`published_pending_review`、硬门禁失败、用户争议或无法确认副作用的状态，先只读核验并保持原状态，不盲目重发；连续失败或修复条件不满足时暂停并记录具体恢复条件。
 
+同一轮遇到能力文档遗漏、Tab 绑定或无副作用的控件定位错误，先协调责任技能做一次文档/绑定恢复并重跑受影响门禁，成功即继续原目标；不得把“等待用户说继续”当作技术恢复方案。恢复计数沿目标检查点延续，未知副作用仍只读。能力缺失结论必须附完整文档来源或明确 unsupported 证据；不能从基础 wrapper、旧工具名或超时推断。
+
 恢复必须遵守 [runtime-contract.md](references/runtime-contract.md)：先读取检查点和副作用记录，从最小受影响阶段继续；`skipped`、`blocked`、`retryable_failure`、`unknown` 和 `data_insufficient` 必须使用不同结果类型，并写出 `reasonCode`、`nextAction` 与 `resumeCondition`。
 
 用户明确要求直接发布现成内容时，入口可以是 `media-ops`；用户明确要求修改技能本身时，入口是 `skills-loop`。永久配置只有在用户明确授权长期生效时才修改；否则输出一次性 `strategyOverride` 或实验方案，并保留回滚条件。
@@ -33,6 +35,8 @@ description: 媒体运营反馈与供给闭环总控，也是运营问题、执�
 ## Resolve configuration and inputs
 
 执行前读取唯一配置文件：`<AGENTS_HOME>/local-config/media-loop/config.json`。配置只保存监测窗口、指标阈值、最小样本量、实验规则和输出开关，不保存密码、Cookie、令牌或浏览器会话。
+
+授权的来源窗口实验使用本配置的 `strategyOverrides`，解析和到期回退见 [source-window-overrides.md](references/source-window-overrides.md)。该覆盖只改变发现窗口，不改账号文案实验、来源质量或发布门禁。
 
 同时读取 `media-ops` 当前配置和外部运营文档。优先使用：
 
