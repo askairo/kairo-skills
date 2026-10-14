@@ -13,6 +13,14 @@
 
 先读所选浏览器提供的 `file-uploads` 文档；新版接口用 `agent.documentation.get("file-uploads")`（仅当当前文档声明），不猜 `cua.getDocumentation`、`setInputFiles` 或原生接口。通过所选 extension browser 的文档取得同一 Tab 的 `playwright` 绑定；不会因为 wrapper 没有该属性就报路由缺失。
 
+### 能力缺失的证据门禁
+
+基础 AX/wrapper 方法清单只是入口，不是完整能力表。接管 Tab 后完整读取所选 browser 文档，记录 `browserId/extensionInstanceId`、`documentationRefs`、Tab 绑定入口与 filechooser/setFiles 签名；按文档目录读取上传专题。文档截断、尚未读取专题或尚未取到正确绑定时，是待完成的能力核验，不能写 API unavailable。仅在当前文档声明时调用 `agent.documentation.get("file-uploads")` 等接口；不通过反射、猜方法或其他通道探测。
+
+缺文档/绑定可在本轮恢复一次，不消耗上传触发次数。取得已声明的接口后继续原目标最小阶段，不终止为人工交接。只有完整文档确无能力、或正确绑定实际返回明确 unsupported，且同轮文档恢复已耗尽，才写 `blocked / chrome_extension_filechooser_api_unavailable`；记录 `capabilityEvidence`、原始错误与 `documentationRecoveryCount`。helper 的绑定异常只是核验线索，不能直接作为最终能力缺失结论。
+
+工具明确报告权限拒绝才读取权限专题并请求所需授权；不能从超时猜测权限。记录授权恢复时的 extensionInstanceId 与成功选择回执，后续连接变化重新实读，不把历史权限验证当作当前平台成功。
+
 复读 DOM，确认可见“上传图片”按钮唯一且可用，优先精确 role/name 定位。`input[type=file]` 在小红书可能隐藏；隐藏 input 或 AX 的“选择文件”标签不是默认触发器。没有可见按钮时，只能使用当前 DOM 中确实可交互且唯一的 file input/关联 label，不强制点击隐藏 input，不固定 selector、元素序号或坐标。
 
 等待必须在点击前注册，并立即安装 rejection handler，防止 chooser 超时成为未处理拒绝、重置 REPL。同一 Tab 的 helper [upload_once.mjs](../scripts/upload_once.mjs) 接收已绑定 Tab、经本轮 DOM 定位的 trigger 和既有绝对路径；它不选择账号、不导航、不重试、不发布。通过 `cua_repl` 调用，不得在 shell 创建浏览器/调用页面。可在允许模块加载的 REPL 中导入 helper，或按其模式调用当前已声明接口：

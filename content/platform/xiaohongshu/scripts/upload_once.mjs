@@ -12,7 +12,7 @@ export async function uploadOnce({ tab, trigger, assetPath, priorState, chooserT
     pending = tab.playwright.waitForEvent("filechooser", { timeoutMs: chooserTimeoutMs })
       .then(chooser => ({ chooser }), error => ({ error: String(error) }));
   } catch (error) {
-    return { outcome: "blocked", reasonCode: "filechooser_api_unavailable", selectionAttempted: false, error: String(error) };
+    return { outcome: "recover_documentation_before_blocking", reasonCode: "upload_binding_or_api_error", chooserObserved: false, selectionAttempted: false, triggerAttempted: false, error: String(error) };
   }
   let triggerError;
   try { await trigger.click({ timeoutMs: 6000 }); }

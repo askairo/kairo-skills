@@ -55,7 +55,19 @@ passed++;
 f = fixture({ apiFails: true });
 result = await uploadOnce({ ...f, assetPath });
 assert.deepEqual(f.calls, ["wait"]);
-assert.equal(result.reasonCode, "filechooser_api_unavailable");
+assert.equal(result.reasonCode, "upload_binding_or_api_error");
+assert.equal(result.outcome, "recover_documentation_before_blocking");
+assert.equal(result.triggerAttempted, false);
+passed++;
+
+// The AX wrapper can lack playwright while the selected browser has a documented binding.
+const rebound = fixture();
+result = await uploadOnce({ tab: {}, trigger: rebound.trigger, assetPath, priorState: "empty" });
+assert.equal(result.outcome, "recover_documentation_before_blocking");
+assert.deepEqual(rebound.calls, []); // No chooser/click occurred before the caller restores the binding.
+result = await uploadOnce({ ...rebound, assetPath });
+assert.deepEqual(rebound.calls, ["wait", "click", "setFiles"]);
+assert.equal(result.selectionReceipt, true);
 passed++;
 
 for (const priorState of [undefined, "uploaded", "processing", "upload_intent", "published_pending_review", "publish_unconfirmed", "uncertain"]) {

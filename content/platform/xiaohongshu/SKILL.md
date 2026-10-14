@@ -39,16 +39,19 @@ description: 小红书平台策略与发布子技能：对已核验内容资产�
 
 ### 上传与最小阶段恢复
 
-图片上传前，以及出现“选择文件”点击无效、filechooser 超时或 `setFiles` 异常时，必须读取 [upload-recovery.md](references/upload-recovery.md)。优先用同一已核验 Tab 的可见“上传图片”控件触发文件选择器，先注册等待并立即捕获异步错误，再传入既有验收资产；隐藏 file input 的存在或一次 AX 点击无变化都不是上传能力缺失的证据。已上传或结果不明时先只读核验，不重复上传；未触发 chooser 且确认无上传副作用时才有界重定位一次。恢复检查未完成前，不得返回 `file_upload_control_unavailable`。
+图片上传前，以及出现“选择文件”点击无效、filechooser 超时或 `setFiles` 异常时，必须读取 [upload-recovery.md](references/upload-recovery.md)。优先用同一已核验 Tab 的可见“上传图片”控件触发文件选择器，先注册等待并立即捕获异步错误，再传入既有验收资产；隐藏 file input 的存在或一次 AX 点击无变化都不是上传能力缺失的证据。已上传或结果不明时先只读核验，不重复上传；未触发 chooser 且确认无上传副作用时才有界重定位一次。恢复检查未完成前，不得返回 `file_upload_control_unavailable` 或 `chrome_extension_filechooser_api_unavailable`。wrapper 没有方法不代表选定 browser 的 Tab 绑定没有能力；先读完整所选 browser 文档、上传专题并取得文档声明的绑定。同轮有界恢复成功后直接继续原目标，不等待用户再次说“继续”。
 
 ### 封闭发布组件的受限恢复
 
 小红书创作页可能用封闭的 `xhs-publish-btn` 组件同时承载“暂存离开”和“发布”，其内部按钮不一定出现在可访问树或可定位 DOM。仅当普通控件定位确实不可用、当前目标仍可发布且没有已提交或结果不明的历史尝试时，才可对这个组件使用同一 Chrome extension Tab 的实时页面截图和页内坐标点击。先只读确认：组件唯一，宿主属性为 `is-publish=true`、`submit-text=发布`、`submit-disabled=false`；当前账号、最终标题、正文、封面、媒体和相关门禁仍与目标一致；实时画面中的红色“发布”按钮与该组件位置对应、可见、未被遮挡，并与“暂存离开”明确区分。若 Tab API 不支持可信的页面坐标映射或任一核对不成立，保留草稿并记录具体阻断，不猜测坐标。
 
+坐标入口也必须先读所选 browser 的完整文档；若文档提供 `tab.capabilities.list()/get(...).documentation()`，只读取当前列出的页内输入能力及其说明，不猜 capability ID。基础 `tab.click([x,y])` 可能属于被禁止的原生输入 wrapper，不能用它探测页内能力。入口不明时先在同轮完成一次文档/绑定恢复，记录 `clickApiRef`、坐标基准和截图尺寸；恢复后重新复读草稿、组件和实时截图。已尝试点击或不能证明工具在动作前拒绝时只读核验，绝不能换入口再次点击。
+
 确认后仅用该 Tab API 对红色“发布”按钮执行一次页内点击；不得改用原生窗口、桌面坐标、其他浏览器通道或对“暂存离开”执行此例外。随后只读核验成功提示及可关联的管理页条目/状态；明确成功但“审核中”写 `published_pending_review`，禁止再次提交。无明确结果写 `publish_unconfirmed`，保留页面和资产，禁止自动重试。该例外只属于小红书此封闭组件，不适用于其他平台或一般页面控件。
 
 当账号视觉规范要求 PNG、而内容资产提供的是 SVG 源文件时，先读取 `media-core.visualRenderer.preferredRenderer` 和账号 `coverSpecRef`，再选择渲染器。对于“固定宽度、动态高度”的 SVG，禁止把 `/usr/bin/qlmanage -t -s <size>` 作为首选：macOS Quick Look 会把非方形画布按方形缩放，可能把右侧外边裁掉。优先使用配置中的精确视口 SVG→PNG 渲染器；`qlmanage` 只允许用于方形画布或精确验收通过的回退结果。渲染完成后必须确认 PNG 文件真实存在，用 `/usr/bin/sips` 验证宽高，并逐像素检查四条边的连续外边颜色和宽度（顶部、右侧、底部、左侧均为 26px `#F5F1E8`；任一边缺失即 `platform_asset_render_blocked`），再用 `/usr/bin/shasum -a 256` 记录媒体指纹。目标记录同时保留 SVG 源文件、PNG 成品、渲染器、尺寸、四边验收和指纹。渲染器不可用或四边验收失败时，保持 `pending_content_completion`，不得使用来源截图替代，也不得重复创建内容资产。
 
+- ready admission 和发布前都检查账号配置的公开字段排除项，覆盖标题、正文、卡片、结尾和标签。原引语含禁用来源平台名时，不得静默改写引语；采用保留必要上下文的可核验节选并标示省略，否则暂停适配。不能发布后才报告可预见冲突。
 - 发布前重新读取编辑器中的最终标题、正文和媒体状态，确认标题长度校验已通过。
 - 若 `media-ops` 传入 `browserProfileRef`，先确认当前 Chrome Profile 已完成路由，并核对小红书公开账号身份；Profile 路由缺失或账号不一致时停止。
 - 点击发布后只接受明确的成功提示、已发布状态、帖子 URL 或账号时间线新内容；如果页面仍停留在编辑器、出现校验错误或状态不明确，记录为“发布未确认”，并在运行记录中保留具体页面信号。
