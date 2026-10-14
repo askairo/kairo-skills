@@ -79,7 +79,11 @@ description: 跨平台媒体发布执行总控：按外部触发器扫描内容�
 - 发布结果不明确：只读核验，不点击发布；
 - 仅有可恢复的连接/页面错误：只恢复受影响阶段，达到预算后转为具体 `blocked` 或 `unknown`。
 
+同轮可修复的文档、绑定或控件定位错误先交给 media-loop 协调一次最小恢复，恢复成功后继续原 contentId+targetId；不把等待用户“继续”作为正常路径。恢复计数按目标阶段累计，不因新 turn/runId 清零。账号/权限硬阻断和未知副作用仍停止。运行汇总按原始触发和 continuation 归并，区分 `assistantPublishAttemptCount`、`userPublishAttemptCount`、`manualInterventionCount`、`documentationRecoveryCount`；无候选计正常跳过，审核中计提交成功，技术阻断单列。
+
 每个跳过、失败和待确认结果都必须写出 `reasonCode`、`nextAction` 和 `resumeCondition`。不要用“本轮没有内容”掩盖配置错误、适配积压、账号暂停、数据不足或运行时故障。
+
+小红书运行在来源生产前先完成所选 extension browser 的完整文档与上传能力预检，记录能力来源和绑定，避免生成资产后才误报接口缺失；已有目标先只读判断副作用，禁止为预检触发 chooser/选文件。缺失专题或绑定可在同轮恢复一次；只有完整能力证据或明确 unsupported 才能记 API unavailable。配置 Profile 的 verified 不等于当前连接或文件权限已验证。
 
 小红书上传异常先交给 `xiaohongshu` 的 `references/upload-recovery.md`（按该已安装技能的位置解析），在同一目标、同一 Tab、既有资产上完成文件选择器和平台媒体状态检查。不能仅凭 AX 点击无变化或隐藏 input 等待超时判定能力缺失、设备锁屏或权限未开；检查点记录 chooser 是否出现、setFiles 是否尝试及平台验收证据。只有该流程的有界恢复已耗尽且无未知副作用，才记具体上传阻断；可能已上传/已提交则只读对账，不换候选、不重新生产、不重试发布。此路由不改变 X 或抖音的上传规则。
 
@@ -243,6 +247,8 @@ description: 跨平台媒体发布执行总控：按外部触发器扫描内容�
 ### 9. Hand off feedback
 
 发布、跳过、失败和不确定结果完成记录后，调用 `media-loop` 进行账号健康与运营效果复盘。传递平台、账号、内容支柱、格式、来源、发布时间、可见指标、发布状态和本轮策略版本；不得把凭证或隐私数据传给反馈技能。
+
+来源发现前按 [source-window-overrides.md](../media-loop/references/source-window-overrides.md) 解析 loop 配置中获授权、目标匹配且未过期的来源窗口覆盖，将有效窗口传给 productionRequest/core 并写入本轮记录；不存在覆盖则使用常驻策略，不能从历史运行自动继承 P2D/P4D。
 
 `media-loop` 返回的 `strategyOverrides` 只作为下一轮运行的临时覆盖，除非用户明确要求修改常驻配置。`media-ops` 不自行修改策略、不把单条内容表现当作稳定规律，也不因反馈建议绕过事实、版权、安全、去重、限额和发布成功核验。
 
