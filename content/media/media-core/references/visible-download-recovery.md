@@ -2,20 +2,29 @@
 
 适用于来源协议允许浏览器下载的已授权候选。来源协议决定服务、入口和恢复预算；本文件规定如何证明下载完成、保留候选并处理安全阻断。页面和文件操作遵守当前工具文档，浏览器动作保持在已声明的同一 Chrome extension Tab 通道。
 
+## 下载入口策略
+
+先读取 `sourcePipelines.<pipeline-id>.mediaAcquisition.downloadPathPolicy`：
+
+- `source_protocol`（缺省）：按来源协议选择入口及主备顺序。
+- `alternative_only`：候选解析成功后直接展开本条视频的可见菜单，选择明确标为“备用下载地址”/“Alternative link”的项；不要求先发生常规下载失败，`normalAttempts` 必须保持为 `0`。备用项缺失时记录 `alternate_download_control_missing`；备用下载失败或结果不明时按同一次动作的检查点恢复，不切回常规入口。
+
+入口策略必须在点击前确定并记入检查点；新策略不会解除已有下载的不确定状态或安全拒绝。已有完整合格文件、canonical 媒体或 ready 目标时继续原阶段，不因策略变化重新下载。
+
 ## 固定候选与完成证据
 
 - 下载前写下 `requestId + pipelineRef`、`contentId + targetId`、候选 ID、原始来源 URL、作者、来源时长、Tab ID、开始时间和本地下载目录基线（绝对路径、大小、修改时间）。顺序源直接后继核验后，先持久化 `nextVideoId` 与 `nextVideoTitle`；这不推进 `lastReleasedVideoId`，阻断后仍从同一候选恢复。
 - 若当前 Tab 提供 `playwright.waitForEvent("download")`，在点击可见下载控件前注册事件，再点击一次。用事件返回的 `path()` 取得本地路径；事件超时须被捕获，避免丢弃已经启动的下载。没有事件能力则采用目录差异，不能猜测工具 API、复制媒体 URL 或读取浏览器内部数据库。
 - 点击后出现媒体预览页/新 Tab，只说明导航已发生。先检查同一次动作的本地增量；不要为确认下载去接管第三方媒体页。
-- 按来源协议的完成等待预算分段观察，每次等待不超过 60 秒。若预算为 180 秒，不能仅观察几秒后宣告失败或立刻点击备用入口。文件仍增长或存在 `.crdownload` 时记录 `download_in_progress`，继续观察同一次下载；预算耗尽则保留检查点，下一轮先检查延迟落盘，不重新下载。
+- 按来源协议的完成等待预算分段观察，每次等待不超过 60 秒。若预算为 180 秒，不能仅观察几秒后宣告失败或立刻点击另一入口。文件仍增长或存在 `.crdownload` 时记录 `download_in_progress`，继续观察同一次下载；预算耗尽则保留检查点，下一轮先检查延迟落盘，不重新下载。
 - 只有新文件完整、连续两次观察大小稳定、且时间能关联该次动作，才进入媒体验收。多份新文件时先核实时间、来源画面和媒体属性，不能按最新文件名任取。事件缺失不否定明确的本地完成证据；目录无增量也不能被一个预览 Tab 代替。
 - 本地文件仍须通过来源协议的视频/音频轨、编解码器、时长、可播放性、画面关联、授权、去重和哈希检查。写入 canonical 资产后才允许 ready admission。
 
-## 普通技术失败的备用入口
+## 备用控件与恢复
 
-仅在正常完成观察已结束、无仍进行中的下载、且未触发安全拒绝时，按来源协议进行刷新/重新解析与备用恢复。
+`alternative_only` 的首次下载直接执行下面的菜单定位与取证，不刷新重解析。只有已有下载明确技术失败、无进行中的下载、且未触发安全拒绝时，才按来源协议预算刷新/重新解析同一候选并恢复；结果不明时先检查同次动作的延迟文件。`source_protocol` 模式下的主备切换还须符合来源协议。
 
-1. 在同一解析 Tab 刷新并重新解析同一原始来源 URL，读取新页面状态。
+1. 读取同一解析 Tab 中当前候选的最新页面状态；仅在满足上述恢复条件时刷新并重新解析同一原始来源 URL。
 2. 打开本条视频下载卡的可见“更多选项”/“More options”，再读取菜单。定位“备用下载地址”/“Alternative link”等明确标为备用的可见项。
 3. `360p (mp4)`、其他分辨率、音频链接和再次点击常规链接不能记作“备用下载地址”。菜单缺少真正备用项时记录 `alternate_download_control_missing`，不猜测链接或把另一控件冒充备用项。
 4. 备用入口也采用事件先注册、单次点击、分段观察与目录差异验收。任何一次出现合格文件立即停止恢复，不能重复下载。
@@ -29,6 +38,6 @@
 
 ## 结果写回
 
-每次结果包含 `downloadEvent`、`directoryDelta`、`downloadObservationElapsed`、`normalAttempts`、`alternativeAttempts`、`alternateControlLabel`、`mediaAcceptance` 和恢复条件。备用路径被拒绝不能单独证明常规下载失败。
+每次结果包含 `downloadPathPolicy`、`selectedDownloadPath`、`downloadEvent`、`directoryDelta`、`downloadObservationElapsed`、`normalAttempts`、`alternativeAttempts`、`alternateControlLabel`、`mediaAcceptance` 和恢复条件。常规入口未尝试时 `normalAttempts=0`，不得记作失败；备用路径被拒绝不能单独证明常规下载失败。
 
 只读对账历史作品时，以本次页面的标题、完整文案、时长、发布时间和状态回写 registry、content/platform queue、两侧 published 和 state。保留原提交证据，追加本次对账证据；页面已发布时不要继续沿用旧 `published_pending_review`。历史对账的新发布副作用为 0，当前未完成候选仍独立保留。

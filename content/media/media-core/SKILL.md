@@ -48,6 +48,8 @@ description: 媒体内容生产与核心资产层：接收来源流水线或 med
 
 仅当 `sourcePipelines.<pipeline-id>.mediaAcquisition.enabled` 为真，且每条候选均已通过来源、授权和去重门禁时，producer 才能采集媒体。配置声明资源根目录、通用验收要求及 `sourceProtocolRef`；来源协议单独定义该来源的发现顺序、允许的交互方式、重试与备选路径、完成判定及游标语义。
 
+`mediaAcquisition.downloadPathPolicy` 选择下载入口：`source_protocol`（缺省）按来源协议执行；`alternative_only` 在解析成功后直接使用可见的真正备用地址，不先尝试常规入口，也不在备用地址缺失或失败时切回常规入口。来源服务、菜单标签和恢复预算仍由 `sourceProtocolRef` 定义；配置不改变下载完成、媒体验收或安全阻断门禁。
+
 浏览器可见下载或其恢复先读取 [visible-download-recovery.md](references/visible-download-recovery.md)。此契约要求下载事件、目录差异、实际备用控件和安全阻断分别取证；分辨率链接或新媒体 Tab 不等于备用下载成功。
 
 - 来源协议不得要求导出、读取或保存 Cookie、密码、令牌或会话数据，也不得绕过来源或下载服务的访问控制。
