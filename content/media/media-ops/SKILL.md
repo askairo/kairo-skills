@@ -46,6 +46,8 @@ description: 跨平台媒体发布执行总控：按外部触发器扫描内容�
 - `switchMethod: chrome-mcp` 表示 Chrome MCP 识别并接管既有 Tab；`switchMethod: playwright-mcp` 表示用户授权既有 Tab 后由 Playwright MCP Bridge 接管；`current-session` 只表示沿用当前已确认的单账号 Tab，不能用于同平台多账号无人值守路由。
 - 在提供 Unified Computer Use/`cua_repl` 的新版运行时中，`chrome-mcp` 对应 `cua.getState()` 返回的 `family: chrome`、`type: extension` 浏览器及其 `cua.getTab(...)` Tab API。使用该 Chrome extension Tab 的页面读取、输入、上传和导航仍属于 Chrome MCP 通道，不是 Computer Use 回退；不得改用 `cua.getApp("Google Chrome")`、桌面坐标或原生窗口点击。小红书封闭发布组件的受限页内点击也必须留在此 Tab API 内；旧版独立工具名不存在本身不能判定 `profile_route_missing`。
 
+接管新版 Chrome extension 后，按 [chrome-extension-runtime.md](references/chrome-extension-runtime.md) 取得完整浏览器/Tab 绑定。`cua` 外层方法、完整 `agent.browsers` API 和 optional capabilities 是不同层；不能用外层缺方法或 optional 列表为空推断上传能力不存在。
+
 ### Resolve the execution transport
 
 - `operation.transport` 标识平台适配器；`interactiveSkill` / `scheduledSkill` 标识交给哪个平台子技能；`interactiveTransport` / `scheduledTransport` 标识该次运行实际使用的执行通道。
