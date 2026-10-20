@@ -13,6 +13,10 @@
 
 先读所选浏览器提供的 `file-uploads` 文档；新版接口用 `agent.documentation.get("file-uploads")`（仅当当前文档声明），不猜 `cua.getDocumentation`、`setInputFiles` 或原生接口。通过所选 extension browser 的文档取得同一 Tab 的 `playwright` 绑定；不会因为 wrapper 没有该属性就报路由缺失。
 
+### 新版外层与完整绑定的具体恢复
+
+所选 browser 文档已经声明 `agent.browsers.*` / `agent.documentation.get("file-uploads")` 时，应直接按该文档调用；不能把 `cua.getTab(...)` 返回的外层方法清单当成完整能力清单。通过 `agent.browsers.get(本轮browserId)` 取得同一个 extension browser，读取其 `user.openTabs()`，按本轮 exact Tab ID `user.claimTab(...)`，再用返回对象的 `playwright`。`tabs.get(...)` 报 `Existing tabs: none` 时，先恢复 user Tab claim，而不是报告没有登录 Tab。optional `capabilities.list()` 未列 filechooser 也不否定核心 API。此过程不切换浏览器通道、不创建新账号会话、不读取凭证。绑定恢复后本轮继续既有资产上传，不能再终止为“等待上传支持恢复”。
+
 ### 能力缺失的证据门禁
 
 基础 AX/wrapper 方法清单只是入口，不是完整能力表。接管 Tab 后完整读取所选 browser 文档，记录 `browserId/extensionInstanceId`、`documentationRefs`、Tab 绑定入口与 filechooser/setFiles 签名；按文档目录读取上传专题。文档截断、尚未读取专题或尚未取到正确绑定时，是待完成的能力核验，不能写 API unavailable。仅在当前文档声明时调用 `agent.documentation.get("file-uploads")` 等接口；不通过反射、猜方法或其他通道探测。
