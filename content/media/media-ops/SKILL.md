@@ -54,6 +54,7 @@ description: 跨平台媒体发布执行总控：按外部触发器扫描内容�
 - `switchMethod: chrome-mcp` 或 `playwright-mcp` 与 `interactiveTransport` / `scheduledTransport` 必须分别写入运行快照，但都不得指向其他浏览器执行器。
 - 运行时预检先发现当前可用工具：若有 Unified Computer Use，则读取 browser inventory，选择 `family=chrome` 且 `type=extension` 的实例，再按目标站点 URL 取得既有 Tab；只有没有 Chrome extension browser/目标 Tab，或页面实读账号与配置不一致时，才返回 `profile_route_missing` / `account_mismatch`。不得仅检查旧工具名称后提前失败。
 - Chrome extension inventory 不暴露 `profileName` 时，只有一个 extension browser、其中存在目标站点 Tab、配置 Profile 已验证且页面实读 handle 匹配，才能记录本轮 browserId / extensionInstanceId 并继续；多个 extension browser 无法映射到配置 Profile 时停止，不猜测。
+- Chrome extension 的 CUA 基础 AX 方法清单不是完整能力表。完整读取接管返回的 browser/Tab 文档；文档声明的 `tab.playwright`、`waitForEvent("filechooser")` 和 chooser `setFiles()` 仍属同一 Chrome extension Tab，使用它们不构成切换到独立 `playwright-mcp` 传输。文档截断或绑定未取得时，在同轮补读/恢复一次；只有完整文档确无接口或正确绑定返回明确 unsupported，才记录 API unavailable，附文档来源、原始错误及恢复次数。不能从 AX 概览、旧工具名或超时推断能力缺失。
 - 缺少、拼写错误或当前平台不支持的传输不得静默回退；返回 `scheduled_transport_missing` 或 `scheduled_transport_unsupported`，不打开发布页、不上传、不点击发布。
 - 运行记录必须写入 `activeTransport`、`interactiveTransport` / `scheduledTransport` 和 `browserProfileRef`，便于区分配置门禁、浏览器连接问题和平台发布问题。
 
@@ -86,6 +87,8 @@ description: 跨平台媒体发布执行总控：按外部触发器扫描内容�
 每个跳过、失败和待确认结果都必须写出 `reasonCode`、`nextAction` 和 `resumeCondition`。不要用“本轮没有内容”掩盖配置错误、适配积压、账号暂停、数据不足或运行时故障。
 
 小红书运行在来源生产前先完成所选 extension browser 的完整文档与上传能力预检，记录能力来源和绑定，避免生成资产后才误报接口缺失；已有目标先只读判断副作用，禁止为预检触发 chooser/选文件。缺失专题或绑定可在同轮恢复一次；只有完整能力证据或明确 unsupported 才能记 API unavailable。配置 Profile 的 verified 不等于当前连接或文件权限已验证。
+
+抖音上传/恢复先读取 `douyin/references/upload-recovery.md`（按已安装技能位置解析），完成同一 Tab 的文档、事件监听、文件选择回执及预览验收。已有 ready 目标从上传阶段恢复；用户已上传时复用编辑器，不为能力探测再选文件。AX 没有时长或播放字段时，使用已声明的同一 Tab DOM 读取能力，不把 AX 缺字段当作平台缺能力。
 
 小红书上传异常先交给 `xiaohongshu` 的 `references/upload-recovery.md`（按该已安装技能的位置解析），在同一目标、同一 Tab、既有资产上完成文件选择器和平台媒体状态检查。不能仅凭 AX 点击无变化或隐藏 input 等待超时判定能力缺失、设备锁屏或权限未开；检查点记录 chooser 是否出现、setFiles 是否尝试及平台验收证据。只有该流程的有界恢复已耗尽且无未知副作用，才记具体上传阻断；可能已上传/已提交则只读对账，不换候选、不重新生产、不重试发布。此路由不改变 X 或抖音的上传规则。
 
@@ -239,6 +242,7 @@ description: 跨平台媒体发布执行总控：按外部触发器扫描内容�
 任务收尾必须按“结果确认 → 外部系统回写 → 浏览器清理”的顺序执行：
 
 - 先确认发布成功、审核中、明确跳过或明确失败的最终状态，再写入 `docsRoot` 下的运行记录、队列/已发布清单和本地机器状态；回写失败时不得关闭仍需要核对或恢复的页面。
+- 结果明确后先持久化不可重试的提交回执（目标、账号、标题/正文/时长、平台时间/状态及点击次数）。多文件回写先读取全部当前记录，在内存准备变更、校验替换匹配数及 JSON/YAML，再逐文件原子替换；不要边断言边改权威文件。检查点记录逐文件进度，全部复读一致后才标记 writeback complete 并释放匹配锁。中途失败只恢复本地对账，不重置 ready、不重传或重发。
 - 运行开始时记录本次创建的浏览器 Tab；成功回写后关闭本次运行创建的来源页、搜索页、下载页、编辑器页和结果页等临时页面，避免历史任务不断累积。
 - 不关闭用户在任务开始前已经打开的页面，不关闭未完成草稿、上传/下载中页面、验证码/登录交接页或用户明确要求保留的交付页面。结果不明确时保留必要的结果页并标记为 `handoff`，不要靠关页掩盖不确定状态。
 - 使用浏览器连接支持的 Tab 清理/finalize 能力时，将清理作为本轮最后一次浏览器操作；清理完成后不再继续点击、读取或导航。若只支持电脑操作，按同一保留规则关闭明确属于本次运行的临时窗口或 Tab。
