@@ -1,6 +1,6 @@
 # Branch Preparation
 
-Use this flow when task metadata implies a branch such as `task-1234`.
+Use this flow after [task-intake](task-intake.md) resolves a branch such as `feat-2468`.
 
 ## Goals
 
@@ -17,8 +17,10 @@ Use this flow when task metadata implies a branch such as `task-1234`.
    - Do not switch branches when unrelated dirty changes would be put at risk.
 
 2. Determine the task branch.
-   - Prefer `task-<task_id>` when a numeric task ID is available.
    - Use the user's explicit branch name if they provide one.
+   - Otherwise use `<prefix>-<branch_id>` from task intake: keep the source-based prefix (`feat`, `fix`, or `perf`), and prefer the requirement ID at the start of the task title over the source URL's task ID.
+   - When the title provides no extractable requirement ID, fall back to the URL's task ID. Do not default all tasks to the `task-` prefix.
+   - Multiple tasks under the same requirement may reuse a branch; keep their task IDs, source links, and task docs separate.
 
 3. If the task branch exists locally, switch to it.
    - Do not recreate it from baseline.
@@ -56,10 +58,10 @@ Use repo-native Git commands. Typical shape:
 git fetch origin
 git switch master
 git pull --ff-only origin master
-git switch -c task-1234
+git switch -c feat-2468
 ```
 
-Adjust `origin`, `master`, and `task-1234` to the actual repo and task context.
+Adjust `origin`, `master`, and `feat-2468` to the actual repo and resolved branch context.
 
 If the repo uses `main` or `dev` as the baseline, replace `master` accordingly.
 

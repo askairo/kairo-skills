@@ -47,12 +47,11 @@ When this task was handed off by `p-loop`, follow its external-document recovery
 
 1. Gather task information.
    - Support task links, issue numbers, screenshots, prototypes, and natural language descriptions.
-   - Extract stable facts: title, ID, source link, product area, repository, target branch.
-   - If task numbers conflict, follow the user's explicit instruction.
-   - Normalize prefixes based on the source:
-     - `task-view-1336` -> `feat-1336`
-     - `bug-view-6076` -> `fix-6076`
-     - performance or optimization items -> `perf-<id>`
+   - Extract stable facts: title, task ID, requirement ID (when present at the start of the title), source link, product area, repository, target branch.
+   - Keep the source task ID separate from the requirement ID; they identify different objects, not conflicting numbers.
+   - Normalize prefixes based on the source: task/story -> `feat`, bug -> `fix`, performance or optimization -> `perf`.
+   - For the branch's numeric suffix, prefer the requirement ID at the start of the task title; only when it cannot be extracted, fall back to the task ID from the source URL. An explicit user-supplied branch name takes precedence.
+   - Read [task-intake](references/task-intake.md) for extraction examples and metadata boundaries.
 
 2. Check the requirement source.
    - If the requirement is already open in Chrome and the user asked to use the browser, read that page directly.
@@ -67,6 +66,7 @@ When this task was handed off by `p-loop`, follow its external-document recovery
    - If the project has project-level docs, read `00-overview`, `10-roadmap`, `20-*.md`, `30-decisions`, `31-open-questions`, and `32-risk-log` first, then the relevant `plans/` and `tasks/`.
 
 4. Create or select a task branch.
+   - Follow [branch-prep](references/branch-prep.md) using the prefix and numeric suffix resolved during intake.
    - Check the current branch and workspace state first.
    - Avoid polluting unrelated changes.
    - If the branch does not exist, create it from the repository baseline branch.
@@ -83,7 +83,7 @@ When this task was handed off by `p-loop`, follow its external-document recovery
    - Break the requirement into a short checklist first.
    - Task cards should be outcome-oriented, for example API, persistence, mapping, logging, validation, and tests.
    - Follow `references/task-template.md` when writing task docs.
-   - Task doc names are fixed as `<prefix>-<id>.md`, usually with `feat`, `fix`, or `perf` prefixes.
+   - Task doc names remain `<prefix>-<task_id>.md`, usually with `feat`, `fix`, or `perf` prefixes; changing the branch suffix to a requirement ID does not rename or merge task docs.
    - Prefer writing docs into `<docs.root>/<repo-name>/tasks/`; put project-level planning in `plans/`.
    - If the project uses `p-loop` hierarchy constraints, keep the 20-layer focus docs in sync, along with `30-decisions`, `31-open-questions`, and `32-risk-log`.
    - Keep `source`, `branch`, `baseline`, and `commit` in the docs aligned with the real state.

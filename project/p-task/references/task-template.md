@@ -5,15 +5,17 @@ Use this structure when the user asks for a `task.md`, task card, or implementat
 ## Template
 
 ````markdown
-# <workitem-prefix>-<id> <workitem-title>
+# <workitem-prefix>-<task_id> <workitem-title>
 
 - source: [<workitem-title>](<workitem-url>)
-- branch: `<feat|fix>-<id>`
+- task_id: <original-source-task-id>
+- requirement_id: <title-leading-requirement-id-or-none>
+- branch: `<actual-branch-name>`
 - baseline: `<master|main|dev|repo-specific>`
 - commit:
 
 ```text
-<type>(<scope>): [<workitem-title>](<workitem-url>) (<feat|fix>-<id>)
+<type>(<scope>): [<workitem-title>](<workitem-url>) (<actual-branch-name>)
 ```
 
 ## Background
@@ -94,7 +96,7 @@ Always create a requirement task doc artifact using the configured docs root and
 
 If `docs.root` is not configured and the user has not provided it, ask for the docs root before creating the artifact and then save it to the local path config.
 
-Keep the metadata and the `commit` code block consistent with the main task card.
+Here `<id>` remains the original task ID, not the requirement-based branch suffix. Keep separate task docs when several tasks share a requirement branch; do not rename existing docs just to match a new branch suffix. Record the actual branch name in metadata and the commit suffix, while preserving the original source task link. Keep the branch-level commit text unchanged if that branch already has one.
 
 ## Clarification Records
 

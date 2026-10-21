@@ -12,10 +12,12 @@ Extract these fields when available:
 
 - `title`: human task title.
 - `task_id`: stable issue or task number.
-- `source_url`: original requirement URL.
+- `requirement_id`: requirement number extracted from the start of the task title, when available.
+- `branch_id`: `requirement_id` when extractable, otherwise `task_id` from the source URL.
+- `source_url`: original task or requirement URL; keep it unchanged.
 - `platform`: source system if obvious, such as ZenTao, Jira, GitHub, Axhub, or internal docs.
 - `repo`: target repository when stated by the user or implied by cwd.
-- `branch`: prefer `<prefix>-<task_id>` when a numeric ID exists, where `<prefix>` is `feat` for task/story and `fix` for bug.
+- `branch`: `<prefix>-<branch_id>`, where `<prefix>` is `feat` for task/story, `fix` for bug, and `perf` for performance/optimization. An explicit user-supplied branch name overrides this derivation.
 - `task_doc_path`: resolved doc location, using the skill-defined shape `<docs.root>/<repo-name>/tasks/<prefix>-<task_id>.md` when the new layout is used.
 
 For ZenTao-style URLs such as:
@@ -39,7 +41,27 @@ If the link text is Markdown:
 
 infer the title from the link label and keep the original Markdown link for commit messages.
 
-If multiple sources disagree on the task ID, such as pasted text saying `1359` while the URL says `1355`, pause and resolve the canonical ID before creating the branch, task doc path, or commit suffix. Once resolved, keep all three aligned to that same final ID.
+### Branch Suffix Selection
+
+Read the task title before deriving the branch name. Prefer a clearly identifiable requirement number at its start, for example `2468 采购计划调整`, `【2468】采购计划调整`, `[需求2468] 采购计划调整`, or `需求#2468：采购计划调整`. Each yields `requirement_id: 2468`. Do not treat dates, versions, quantities, or unrelated numbers elsewhere in the title as requirement IDs. If the leading number's meaning or multiple requirement numbers are ambiguous, ask rather than guess.
+
+For title `1138【采购催交】新功能模块采购催交 设计` and URL `task-view-1680.html`, resolve:
+
+```text
+task_id: 1680
+requirement_id: 1138
+branch_id: 1138
+branch: feat-1138
+task_doc_path: <docs.root>/<repo-name>/tasks/feat-1680.md
+```
+
+Read `1138` from the title itself, not the task system's separate `1680` badge. No whitespace is required between the leading requirement number and the following title text.
+
+When no requirement number can be extracted from the title, fall back to the URL's task number: title `采购计划调整 后端` plus `task-view-1336.html` yields `feat-1336`. Apply the same suffix selection to `fix` and `perf`; do not change their prefix rules. If neither source provides a usable ID, ask before naming a new branch.
+
+A requirement ID differing from the URL's task ID is expected. Only resolve genuine disagreements about the same source task ID (for example an explicitly stated task ID `1359` versus URL task ID `1355`). Keep the original task ID and link for traceability; task doc filenames remain task-based, while the commit's branch suffix uses the actual branch name.
+
+Several tasks may share one requirement branch. Preserve separate task docs and original source links, reuse an existing branch without resetting it, and do not overwrite an existing branch-level commit message merely because another task shares the requirement ID.
 
 If the user explicitly says to follow their pasted analysis, screenshots, or description instead of the linked page, use the link only for metadata such as `source_url` and `task_id`. Do not spend time browsing the page unless the user later asks to inspect it.
 
