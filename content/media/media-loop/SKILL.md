@@ -96,6 +96,10 @@ feedbackRefs[], stopConditions[]
 - 适配完成后必须重新执行 ready admission；适配成功本身不等于发布成功。
 - 不以固定资产次数阻断适配；按最早未完成目标持续推进，直到适配完成、没有可恢复目标或触发 stopConditions。适配积压存在时，来源生产任务仍返回 `adaptation_backlog_present`，保持源游标，不用新资产掩盖旧积压。
 
+### Ordered inventory and skip routing
+
+顺序流水线的备货与队首阻断按 [media-core ordered inventory](../media-core/references/ordered-inventory.md) 诊断。`strict_source_fifo` 队首失败/未ready/结果未知不能通过换候选或发布后项恢复；仅返回队首的修复动作。用户明确要求提前准备多条时，可按有界请求补足已核验来源顺序的库存，采集进度不推进发布基线。用户指定“跳过某条/移出待发布队列”时路由 core：唯一识别该项、核对无在途副作用，写 skipped_by_user 审计并退出活动队列；不得要求用户为了常规跳过再次确认，也不得将含糊的项目指代猜成具体视频。自然语言入口与状态字段见该契约。
+
 ### Unchanged backlog suppression
 
 `adaptation_backlog_present` 只表示“当前仍有积压”，不代表每次触发都需要重新检查来源。对配置启用 `suppression` 的来源，先计算稳定的队列指纹，至少包含 eligible 内容 ID、目标发布状态和选择状态：
