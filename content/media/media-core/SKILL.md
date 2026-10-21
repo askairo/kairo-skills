@@ -56,7 +56,13 @@ description: 媒体内容生产与核心资产层：接收来源流水线或 med
 - 采集结果必须具有本轮来源证据、作者与原始链接、稳定媒体指纹和协议要求的可用性验收；旧文件、临时文件或无法关联至本轮候选的资源一律不算。
 - 验收合格后，将文件以稳定名称移入 `resourceRoot`，记录大小、时长、轨道信息（如适用）、内容哈希、作者和原始 URL。下载成功本身不得推进源顺序游标；只有来源协议定义的已核验下游结果回写后才推进。
 
+### Ordered inventory and explicit user skip
+
+顺序流水线需要提前准备多条资源时，使用 [ordered-inventory.md](references/ordered-inventory.md)。`selectionPolicy.queuePolicy.mode: strict_source_fifo` 优先于通用 eligible/计划时间排序：来源顺序决定队首，采集进度与发布游标分离；队首阻塞就等待，不自动跳到后项。用户明确要求“跳过某条/从待发布队列移除某条”是本契约的人工入口，由 core 唯一写回为 `skipped_by_user`，从活动队列剔除并保留审计与去重，不删除资源、不伪造已发布。未配置此模式的流水线沿用原规则。
+
 ### Sequential source cursor
+
+启用 `strict_source_fifo` 时，以下单候选规则中的采集起点/完成后才继续采集由 ordered-inventory 契约替代；发布基线仍只由已核验发布结果推进。其他顺序流水线不变。
 
 当 pipeline 声明顺序消费时，`media-core` 是唯一选材游标所有者；平台技能和平台发布记录只回传结果，不计算下一候选。配置至少声明 `order`、`cursorStateFile`、`candidateStart`、`advanceCondition` 和空游标恢复策略。
 
@@ -169,6 +175,8 @@ publishState
 3. 解析 `strategyRef`，应用平台/账号身份、事实、版权、媒体、去重、运行锁、单轮批量保护和失败状态；不应用最小间隔、每日上限或媒体获取次数。
 4. 读取 `media-loop` 健康状态；平台真实限流、标签、账号不匹配或不确定发布状态优先阻断目标。
 5. 按到期时间、策略优先级和 Profile 分组排序，再交给 `media-ops`；每个目标独立记账和回写。
+
+启用 `strict_source_fifo` 的流水线先按 ordered-inventory 选择唯一来源队首，以下通用排序不得跨过队首，也不得以其他同流水线目标补位。
 
 同一 `platformAccountRef` 存在多个未完成目标时，必须按目标队列选择“最早计划、仍未完成且当前 eligible”的目标，而不是按来源最新、内容热度或最近创建时间抢占。排序键依次为 `plannedAt`、`targetCreatedAt`、`sourceObservedAt`、`targetId`；`targetSelection.neverPreferLatest` 默认必须为 true。目标自己的内容未 ready 或目标级适配/版权门禁失败时，保留该目标并记录原因，同时可以继续处理下一条 eligible 目标；账号级限流、标签、不确定发布状态或账号不匹配则暂停该账号的后续目标。这样同一内容在小红书已发布而抖音未发布时，抖音会优先补发最早一条未完成的抖音目标，不会被后来新增且已在小红书发布的内容抢走。
 
