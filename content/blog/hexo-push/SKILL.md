@@ -5,6 +5,8 @@ description: 将 Clippings 或 Agent 加工稿发布为 Hexo 文章，按用户�
 
 # Hexo Clipping 发布工具
 
+本技能属于 `content/blog`（与 `content/media` 平级的站点/长文内容线），配置域仍是 `local-config/blog/`，**不要**写入 media 的 contentRoot 或平台 queue。
+
 自动将 Clippings 目录中的最新文章转换为 Hexo 博客格式并发布。
 
 ## 职责边界
