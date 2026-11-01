@@ -150,7 +150,7 @@ python core\skills-loop\scripts\sync.py install --repo <owner>/<repo> --skill he
 也可以使用显式包路径：
 
 ```powershell
-python core\skills-loop\scripts\sync.py install --repo <owner>/<repo> --path blog/hexo-push
+python core\skills-loop\scripts\sync.py install --repo <owner>/<repo> --path content/blog/hexo-push
 ```
 
 ### 3. 更新已安装的 GitHub skill
