@@ -5,6 +5,8 @@ description: 将 AI 对话记录提炼、脱敏并重构为结构化的 Hexo 博
 
 # Dialogue Refine - AI 对话文章提炼工具
 
+本技能属于 `content/blog`（与 `content/media` 平级的站点/长文内容线），配置域仍是 `local-config/blog/`，**不要**写入 media 的 contentRoot 或平台 queue。
+
 将发散的 AI 对话记录转换为结构清晰、主题集中、格式规范的 Hexo 博客文章。
 
 ## 功能
