@@ -74,10 +74,10 @@ kairo-skills/
 │   ├── p-loop/
 │   ├── p-task/
 │   └── release-flow/
-├── blog/
-│   ├── dialogue-refine/
-│   └── hexo-push/
 ├── content/
+│   ├── blog/
+│   │   ├── dialogue-refine/
+│   │   └── hexo-push/
 │   ├── media/
 │   │   ├── media-core/
 │   │   ├── media-ops/
@@ -95,7 +95,7 @@ kairo-skills/
     └── win-clean/
 ```
 
-`skills-loop` discovers skills recursively by reading each `SKILL.md`, so commands can use either a skill name such as `hexo-push` or an explicit package path such as `blog/hexo-push`.
+`skills-loop` discovers skills recursively by reading each `SKILL.md`, so commands can use either a skill name such as `hexo-push` or an explicit package path such as `content/blog/hexo-push`.
 
 ## Config and Storage
 
@@ -193,10 +193,10 @@ kairo-skills/
 │   ├── p-loop/
 │   ├── p-task/
 │   └── release-flow/
-├── blog/
-│   ├── dialogue-refine/
-│   └── hexo-push/
 ├── content/
+│   ├── blog/
+│   │   ├── dialogue-refine/
+│   │   └── hexo-push/
 │   ├── media/
 │   │   ├── media-core/
 │   │   ├── media-ops/
@@ -214,7 +214,7 @@ kairo-skills/
     └── win-clean/
 ```
 
-`skills-loop` 会递归读取各目录下的 `SKILL.md`，因此命令既可以使用 `hexo-push` 这样的 skill 名称，也可以使用 `blog/hexo-push` 这样的显式包路径。
+`skills-loop` 会递归读取各目录下的 `SKILL.md`，因此命令既可以使用 `hexo-push` 这样的 skill 名称，也可以使用 `content/blog/hexo-push` 这样的显式包路径。
 
 ## 配置与存储
 
