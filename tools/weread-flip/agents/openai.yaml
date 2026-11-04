@@ -1,0 +1,4 @@
+interface:
+  display_name: "WeRead Flip"
+  short_description: "微信读书网页阅读、章节续读与有效时长核验。"
+  default_prompt: "Use $weread-flip to run a Chrome WeRead web slow-flip session with chapter/restart handling and one effective-time retry."
