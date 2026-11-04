@@ -1,4 +1,0 @@
-interface:
-  display_name: "WeRead Web Flip"
-  short_description: "Chrome weread.qq.com slow flip for effective reading time."
-  default_prompt: "Use $weread-web-flip to run a Chrome WeRead web slow-flip session with chapter/restart handling and one effective-time retry."
