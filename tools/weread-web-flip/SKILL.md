@@ -92,7 +92,7 @@ Poll `<weread-help-dir>/flip-web-status.txt` and `flip-web.log`. See [references
 
 ## After each session: effective-time check + one retry
 
-1. Wait until status is terminal (`DONE_WEB` / `STOPPED_NEED_LOGIN`) or the process exits.
+1. Wait until status is terminal (`DONE_WEB` / `STOPPED_NEED_LOGIN`) or the process exits. A `DONE_WEB` status only means the timer elapsed; it does **not** prove WeRead credited reading time.
 2. Query today's effective reading seconds via WeRead gateway:
 
 ```bash
@@ -105,7 +105,9 @@ curl -sS -X POST "https://i.weread.qq.com/api/agent/gateway" \
 3. In `readTimes`, find **today's** bucket (key = day-start unix timestamp in the user timezone). Value is **seconds**.
 4. If today's seconds **< 1800** (30 minutes) **and** this was the first session of the run → start **exactly one** more ~30 minute flip session from current progress.
 5. Cap at one retry. Never loop forever even if still under 1800s.
-6. If `STOPPED_NEED_LOGIN`, do not retry; ask the user to open Chrome weread and scan QR / log in.
+6. If the actual daily reading time is still far below the session wall-clock duration (especially only a few minutes), treat the session as **not successful**, even if the process says `DONE_WEB`. Inspect `flip-web.log`, `flip-web-stdout.txt`, current Chrome active-tab URL/title, and whether the reader advanced chapters; do not claim completion based on elapsed time or flip count.
+7. A zero `nextChapter` / `bookRestarts` counter is not itself proof of failure, but if Chrome is at a chapter/book ending, explicitly activate the visible `下一章` / `下一回` control. At the whole-book ending, activate `再读一遍` / `从头开始` and verify that the title returns to an opening chapter before continuing. Do not leave the reader parked at the end.
+8. If `STOPPED_NEED_LOGIN` occurs with an empty or non-reader tab string, classify it as **reader restore failure**, not confirmed logout. Check the logged-in Chrome reader tab before asking the user to log in. Only ask for QR/login if the reader itself visibly presents a login wall.
 
 Follow `weread-skills` / `readdata.md` for field units and version reporting. Do not invent minute/hour units.
 
@@ -115,9 +117,10 @@ Tell the calling agent/user:
 
 - Session outcome token(s): `DONE_WEB` / `STOPPED_NEED_LOGIN` / whether a retry ran
 - `flips`, `nextChapter` clicks, `bookRestarts` when present in the status line
-- Approximate chapter/title from the final tab string
+- Approximate chapter/title from the final tab string, and whether chapter/end transitions were observed
 - Today's effective reading: seconds and "x 小时 y 分钟" (from `/readdata/detail`, not wall-clock dwell)
 - Whether a second session was triggered because today < 1800s
+- Explicitly distinguish timer completion from successful credited reading; if the post-session stats do not meet target, report failure and diagnose before stopping
 
 ## Chrome JS permission
 
