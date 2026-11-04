@@ -50,10 +50,22 @@ If absent, the calling agent/routine must supply book identity, machine, and pat
 
 ## Prerequisites
 
-1. Target a macOS machine with Google Chrome and Accessibility / Automation permissions for the controlling agent.
-2. User is logged into weread.qq.com in Chrome (reader opens without QR).
-3. Compiled flip binary, or `swiftc` available to build `scripts/weread_flip_web.swift`.
-4. For effective-time checks: `WEREAD_API_KEY` in the environment, and `weread-skills` docs for `/readdata/detail` (units are **seconds**).
+1. At startup, verify `~/.agents/skills/weread-skills/SKILL.md` exists and has a valid `name: weread-skills` frontmatter. If missing, install the official Tencent skill before any WeRead API or reading-stat operation, using the skills-loop installer with source `Tencent/WeChatReading`, path `skills`, name `weread-skills`. Never copy or recreate the official skill manually; never modify its files. If installation fails, stop API-dependent work and tell the user.
+2. Read the relevant official `weread-skills` docs before API use. Follow its current version and upgrade instructions (including any `upgrade_info`) before continuing. Reading stats must be queried through this official skill/API workflow, not guessed or replaced with local timers.
+3. Target a macOS machine with Google Chrome and Accessibility / Automation permissions for the controlling agent.
+4. User is logged into weread.qq.com in Chrome (reader opens without QR).
+5. Compiled flip binary, or `swiftc` available to build `scripts/weread_flip_web.swift`.
+6. For effective-time checks: `WEREAD_API_KEY` in the environment; never print or persist it.
+
+## Weekly gift-book activity (maximum two books per week)
+
+Use this workflow when the user gives a book title for the weekly reading-to-receive activity:
+
+1. Check the current week's activity page in the logged-in WeRead Chrome session. Read the activity's own eligible-book list, remaining quota, and status; the weekly limit is at most two books. Do not infer the list, week, quota, or completion from memory. Use documented official `weread-skills` APIs where available; otherwise use the visible official activity UI. Do not invent API endpoints or automate undocumented reward calls.
+2. Match the user's requested title against the current activity list. If it is not eligible, the list/quota is unavailable, or two weekly rewards have already been used, stop and explain; do not silently substitute another title.
+3. Open the matched book in the Chrome reader and assist the user with a **real reading session lasting more than five minutes**. Do not simulate unattended reading, fake engagement, or click/scroll solely to misrepresent that the user read the book. The user must actually read; offer a timer/reminder or keep the book open if needed.
+4. Afterward, use the official `weread-skills` reading-progress/stat workflow and the activity UI to verify the required reading duration and reward status. The book is expected to be added automatically; verify it through the official shelf workflow. Do not claim completion merely because five minutes elapsed or the book appears in search.
+5. Use the activity UI as the source of truth for weekly quota and reward completion. Keep the two-book maximum; never attempt to bypass eligibility, quota, or activity controls.
 
 ## Build / launch the flip binary
 
@@ -93,7 +105,7 @@ Poll `<weread-help-dir>/flip-web-status.txt` and `flip-web.log`. See [references
 ## After each session: effective-time check + one retry
 
 1. Wait until status is terminal (`DONE_WEB` / `STOPPED_NEED_LOGIN`) or the process exits. A `DONE_WEB` status only means the timer elapsed; it does **not** prove WeRead credited reading time.
-2. Query today's effective reading seconds via WeRead gateway:
+2. Query today's effective reading seconds through the installed official `weread-skills` workflow. Read its `readdata.md` first, use its current `skill_version`, and obey any returned upgrade instruction. Values are seconds. Example request shape (use only as specified by the official skill):
 
 ```bash
 curl -sS -X POST "https://i.weread.qq.com/api/agent/gateway" \
