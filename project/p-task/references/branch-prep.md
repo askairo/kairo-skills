@@ -18,8 +18,8 @@ Use this flow after [task-intake](task-intake.md) resolves a branch such as `fea
 
 2. Determine the task branch.
    - Use the user's explicit branch name if they provide one.
-   - Otherwise use `<prefix>-<branch_id>` from task intake: keep the source-based prefix (`feat`, `fix`, or `perf`), and prefer the requirement ID at the start of the task title over the source URL's task ID.
-   - When the title provides no extractable requirement ID, fall back to the URL's task ID. Do not default all tasks to the `task-` prefix.
+   - Otherwise resolve the identifier first: requirement-based feature branches use `feat-<requirement_id>`; source-task-number branches use `task-<task_id>`. Bug-number branches remain `fix-<bug_id>`; performance prefixes apply to requirement-based branches.
+   - When the title provides no extractable requirement ID, fall back to `task-<task_id>`. Also use this form when the user requests a separate task branch under a requirement whose design/shared branch already exists; for example, task 1715 under requirement 1160 becomes `task-1715`, based on the user-selected current branch.
    - Multiple tasks under the same requirement may reuse a branch; keep their task IDs, source links, and task docs separate.
 
 3. If the task branch exists locally, switch to it.
@@ -36,7 +36,7 @@ Use this flow after [task-intake](task-intake.md) resolves a branch such as `fea
    - If no instruction exists, infer from existing project practice.
    - Common baselines are `master`, `main`, and `dev`; do not assume one without checking what exists.
 
-6. Before creating from baseline, update the baseline when safe.
+6. Before creating from baseline, update the baseline when safe. If the user explicitly selects the current branch or a specific commit as baseline, create from that exact state; do not silently switch to or refresh another baseline.
    - Fetch the remote.
    - Switch to the baseline branch.
    - Pull with a fast-forward-only strategy when possible.

@@ -49,8 +49,8 @@ When this task was handed off by `p-loop`, follow its external-document recovery
    - Support task links, issue numbers, screenshots, prototypes, and natural language descriptions.
    - Extract stable facts: title, task ID, requirement ID (when present at the start of the title), source link, product area, repository, target branch.
    - Keep the source task ID separate from the requirement ID; they identify different objects, not conflicting numbers.
-   - Normalize prefixes based on the source: task/story -> `feat`, bug -> `fix`, performance or optimization -> `perf`.
-   - For the branch's numeric suffix, prefer the requirement ID at the start of the task title; only when it cannot be extracted, fall back to the task ID from the source URL. An explicit user-supplied branch name takes precedence.
+   - Keep commit type separate from branch prefix. Requirement-based feature branches use `feat-<requirement_id>`; branches using a source task number use `task-<task_id>`. Bug-number branches remain `fix-<bug_id>`; requirement-based performance branches may use `perf-<requirement_id>`.
+   - Prefer the requirement ID at the start of the task title for a shared requirement branch. If no requirement ID is available, or the user requests a separate task branch under an existing requirement, use `task-<task_id>`, not `feat-<task_id>`. An explicit user-supplied branch name takes precedence.
    - Read [task-intake](references/task-intake.md) for extraction examples and metadata boundaries.
 
 2. Check the requirement source.

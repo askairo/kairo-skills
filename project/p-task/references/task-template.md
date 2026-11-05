@@ -74,14 +74,14 @@ Good:
 - commit:
 
 ```text
-feat(srm): [【采购计划】详情页改版 后端](https://chandao.bidaapp.club/zentao/task-view-1336.html) (feat-1336)
+feat(srm): [【采购计划】详情页改版 后端](https://chandao.bidaapp.club/zentao/task-view-1336.html) (task-1336)
 ```
 ````
 
 Avoid:
 
 ```markdown
-- commit: `feat(srm): [【采购计划】详情页改版 后端](https://chandao.bidaapp.club/zentao/task-view-1336.html) (feat-1336)`
+- commit: `feat(srm): [【采购计划】详情页改版 后端](https://chandao.bidaapp.club/zentao/task-view-1336.html) (task-1336)`
 ```
 
 The inline form is harder to copy cleanly from rendered Markdown.
