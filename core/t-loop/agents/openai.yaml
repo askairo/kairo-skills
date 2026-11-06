@@ -1,0 +1,4 @@
+interface:
+  display_name: "T Loop"
+  short_description: "按需调度临时子 Agent，按版本串联实现、评审、冒烟与验收并集中写回状态"
+  default_prompt: "使用 $t-loop 按任务卡组织临时团队，推进实现、独立验证、返工与状态写回。"
