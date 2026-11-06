@@ -19,6 +19,7 @@ https://github.com/askairo/kairo-skills
 - `p-bootstrap` starts a new project.
 - `p-loop` normalizes project structure and docs.
 - `p-task` executes concrete tasks.
+- `t-loop` coordinates temporary agents for personal project delivery.
 
 ## `skills-loop`
 
@@ -73,6 +74,7 @@ kairo-skills/
 │   ├── p-bootstrap/
 │   ├── p-loop/
 │   ├── p-task/
+│   ├── t-loop/
 │   └── release-flow/
 ├── content/
 │   ├── blog/
@@ -116,6 +118,7 @@ kairo-skills/
 - [`project/p-bootstrap/SKILL.md`](project/p-bootstrap/SKILL.md)
 - [`project/p-loop/SKILL.md`](project/p-loop/SKILL.md)
 - [`project/p-task/SKILL.md`](project/p-task/SKILL.md)
+- [`project/t-loop/SKILL.md`](project/t-loop/SKILL.md)
 
 ---
 
@@ -138,6 +141,7 @@ https://github.com/askairo/kairo-skills
 - `p-bootstrap` 负责新项目启动。
 - `p-loop` 负责项目结构和文档秩序。
 - `p-task` 负责具体任务执行。
+- `t-loop` 负责个人项目的临时 Agent 协同交付。
 
 ## `skills-loop`
 
@@ -192,6 +196,7 @@ kairo-skills/
 │   ├── p-bootstrap/
 │   ├── p-loop/
 │   ├── p-task/
+│   ├── t-loop/
 │   └── release-flow/
 ├── content/
 │   ├── blog/
@@ -235,3 +240,4 @@ kairo-skills/
 - [`project/p-bootstrap/SKILL.md`](project/p-bootstrap/SKILL.md)
 - [`project/p-loop/SKILL.md`](project/p-loop/SKILL.md)
 - [`project/p-task/SKILL.md`](project/p-task/SKILL.md)
+- [`project/t-loop/SKILL.md`](project/t-loop/SKILL.md)

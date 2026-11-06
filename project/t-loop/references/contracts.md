@@ -6,12 +6,11 @@
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "roleAliases": {
     "coordinator": "Coordinator",
     "researcher": "Researcher",
-    "small_implementer": ["Implementer A", "Implementer B"],
-    "complex_implementer": "Implementation worker",
+    "implementer": "Implementer",
     "code_reviewer": "Code reviewer",
     "smoke_tester": "Smoke tester",
     "acceptance_reviewer": "Acceptance reviewer"
@@ -22,8 +21,8 @@
 }
 ```
 
-- `version`：当前为 1；未知版本先报告，不猜测迁移。
-- `roleAliases`：仅允许上面的职责 ID；值为非空字符串，小改实现者也可使用非空字符串数组。别名不改变职责。
+- `version`：当前为 2；不匹配的版本先报告，配置更新走 `skills-loop`，不猜测字段或读取旧职责键。
+- `roleAliases`：仅允许上面的职责 ID；值为非空字符串，实现者也可使用非空字符串数组，为不同卡的实例提供可选别名，不要求启动对应数量的实例。别名不改变职责。
 - `maxWorkers`：可选正整数，仅限制并行子实例，实际值还受宿主剩余容量约束；默认按剩余容量和任务需要选择，不为凑数量启动角色。
 - `machines`：可选字典，键为用户设备标识，值可含 `label`、`platform`、`connectionRef`；只保存现有连接引用，不保存密码或 token，不证明连接在线。
 - `projects`：可选字典，键为项目 ID，值可含绝对路径 `docsRoot`、`evidenceRoot` 及 `defaultMachine`。显式用户路径和项目已有真源优先；这里记录私人绑定，不创造项目硬规则。
