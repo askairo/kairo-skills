@@ -20,6 +20,7 @@ https://github.com/askairo/kairo-skills
 - `p-loop` normalizes project structure and docs.
 - `p-task` executes concrete tasks.
 - `t-loop` coordinates temporary subagents from one main session for personal project delivery; Grok Bot, Hermes, and other bot-team hosts default to their own orchestration.
+- `t-design` designs, provisions, and maintains subagent workflows or native Bot teams in the dr eggbot role.
 
 ## `skills-loop`
 
@@ -75,6 +76,7 @@ kairo-skills/
 │   ├── p-loop/
 │   ├── p-task/
 │   ├── t-loop/
+│   ├── t-design/
 │   └── release-flow/
 ├── content/
 │   ├── blog/
@@ -119,6 +121,7 @@ kairo-skills/
 - [`project/p-loop/SKILL.md`](project/p-loop/SKILL.md)
 - [`project/p-task/SKILL.md`](project/p-task/SKILL.md)
 - [`project/t-loop/SKILL.md`](project/t-loop/SKILL.md)
+- [`project/t-design/SKILL.md`](project/t-design/SKILL.md)
 
 ---
 
@@ -142,6 +145,7 @@ https://github.com/askairo/kairo-skills
 - `p-loop` 负责项目结构和文档秩序。
 - `p-task` 负责具体任务执行。
 - `t-loop` 由单个主会话调度临时子 Agent 协同个人项目；Grok Bot、Hermes 等 Bot 体系默认使用自身编排。
+- `t-design` 以 dr eggbot 职责设计、搭建和维护子 Agent 协作或原生 Bot 编队。
 
 ## `skills-loop`
 
@@ -197,6 +201,7 @@ kairo-skills/
 │   ├── p-loop/
 │   ├── p-task/
 │   ├── t-loop/
+│   ├── t-design/
 │   └── release-flow/
 ├── content/
 │   ├── blog/
@@ -241,3 +246,4 @@ kairo-skills/
 - [`project/p-loop/SKILL.md`](project/p-loop/SKILL.md)
 - [`project/p-task/SKILL.md`](project/p-task/SKILL.md)
 - [`project/t-loop/SKILL.md`](project/t-loop/SKILL.md)
+- [`project/t-design/SKILL.md`](project/t-design/SKILL.md)

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Team Design"
+  short_description: "设计、搭建与维护子 Agent 或原生 Bot 团队，按证据改进协作与共享技能"
+  default_prompt: "使用 $t-design，以 dr eggbot 的职责设计或维护当前协作体系，先核对宿主、现状与授权，再生成、配置和验证。"
