@@ -19,7 +19,7 @@ https://github.com/askairo/kairo-skills
 - `p-bootstrap` starts a new project.
 - `p-loop` normalizes project structure and docs.
 - `p-task` executes concrete tasks.
-- `t-loop` coordinates temporary agents for personal project delivery.
+- `t-loop` coordinates temporary subagents from one main session for personal project delivery; Grok Bot, Hermes, and other bot-team hosts default to their own orchestration.
 
 ## `skills-loop`
 
@@ -141,7 +141,7 @@ https://github.com/askairo/kairo-skills
 - `p-bootstrap` 负责新项目启动。
 - `p-loop` 负责项目结构和文档秩序。
 - `p-task` 负责具体任务执行。
-- `t-loop` 负责个人项目的临时 Agent 协同交付。
+- `t-loop` 由单个主会话调度临时子 Agent 协同个人项目；Grok Bot、Hermes 等 Bot 体系默认使用自身编排。
 
 ## `skills-loop`
 

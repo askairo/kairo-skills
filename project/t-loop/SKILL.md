@@ -1,14 +1,16 @@
 ---
 name: t-loop
-description: Coordinate personal engineering work through task cards, temporary subagents, version-bound review and smoke evidence, independent acceptance, and a single coordinator's state writeback. Use when the user requests a team workflow or coordinated project delivery; keep company and media workflows with their own owners.
+description: Coordinate personal engineering from one main agent session using temporary subagents, task cards, version-bound evidence, and independent acceptance. Use for subagent-based project delivery. In Grok Bot, Hermes, or other bot-team hosts, default to their own bot orchestration and do not auto-select t-loop unless the user explicitly requests it. Requires working subagent tools; otherwise first enable them or install an official subagent extension following the host's official documentation. Keep company and media workflows with their own owners.
 ---
 
 # T Loop
 
-以任务卡为入口，以证据为交接依据，由当前主 Agent 担任唯一协调者，按需创建临时角色，推进实现、验证、返工与状态写回。角色持续存在于规则中，实例只在需要时启动；跨会话连续性保存在外部项目文档。
+本技能采用“一个主 Agent 会话＋按需创建的临时子 Agent 会话”。用户只跟主会话沟通；主 Agent 以任务卡派工、接收子 Agent 结果、核对证据并推进实现、验证、返工与状态写回。角色持续存在于规则中，实例只在需要时启动；跨会话连续性保存在外部项目文档。
 
 ## 适用边界
 
+- 先判断当前宿主架构。Grok Bot、Hermes 等已有 Bot 体系的环境，默认使用自身的 Bot 派工、通信与状态流程，不自动启用本技能，也不因为任务提到“协同”或“团队”就切换到 t-loop；用户无需逐次声明“不使用 t-loop”。仅在用户明确要求本次使用 t-loop 时覆盖此默认，且仍须具备真实子 Agent 能力。
+- 非 Bot 体系中，需要临时子 Agent 协同的任务才进入本技能。缺少子 Agent 能力时，先按宿主官方文档启用能力或安装官方提供、官方文档给出的子 Agent 扩展，并验证派工与结果返回；没有可用官方途径时说明阻塞，不把同一会话扮演多个角色当作替代。具体检查见 [runtime.md](references/runtime.md)。
 - 负责个人工程的协同，不取代业务技能。项目规划交给 `p-loop`，具体开发复用 `p-task`，技能生命周期复用 `skills-loop`；只读取当前任务所需的技能。
 - 公司工程、媒体运营、生活事务继续由各自入口负责，不因为此处存在人手就纳入工程派工。
 - 常规单人问答无需启动团队。用户要求协同或任务确实需要职责分离时，选择必要岗位，不固定开满所有角色。
@@ -16,6 +18,7 @@ description: Coordinate personal engineering work through task cards, temporary 
 
 ## 首次进入或恢复
 
+0. 先执行上述宿主适用性判断，再核对子 Agent 工具是否可用；Bot 体系默认返回其原生流程，不为启用 t-loop 额外安装扩展。
 1. 读取项目总览、路线图、相关设计/决策/风险、阶段计划及当前任务卡，按业务技能要求恢复最后一个有证据的阶段。
 2. 读取同一卡已有协同记录、PR、提交及证据。识别当前协调者、唯一实现负责人、未完成操作和用户暂停；发现另一个协调实例仍在执行时，先协调归属，不同时派工。
 3. 核对实际工具、目标电脑、仓库和环境可达性。角色名称不证明工具或设备已就绪。临时子 Agent 运行在当前宿主可访问的环境，不能假设拥有原体系的独立桌面或远端电脑。
