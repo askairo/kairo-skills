@@ -1,27 +1,49 @@
 import Cocoa
 import Foundation
 
-// Config via env (skill-friendly). Defaults suit one common book but callers should set them.
-let readerURL = ProcessInfo.processInfo.environment["WEREAD_READER_URL"]
-  ?? "https://weread.qq.com/web/reader/75032be054d4be750f9f834"
-let bookTitle = ProcessInfo.processInfo.environment["WEREAD_BOOK_TITLE"] ?? "红楼梦"
-let bookId = ProcessInfo.processInfo.environment["WEREAD_BOOK_ID"] ?? "316606"
-let helpDir = ProcessInfo.processInfo.environment["WEREAD_HELP_DIR"]
-  ?? (NSHomeDirectory() + "/Desktop/weread-help")
+// Machine- and book-specific values must come from the caller's local config.
+guard let readerURL = ProcessInfo.processInfo.environment["WEREAD_READER_URL"],
+      let bookTitle = ProcessInfo.processInfo.environment["WEREAD_BOOK_TITLE"],
+      let bookId = ProcessInfo.processInfo.environment["WEREAD_BOOK_ID"],
+      let helpDir = ProcessInfo.processInfo.environment["WEREAD_HELP_DIR"],
+      !readerURL.isEmpty, !bookTitle.isEmpty, !bookId.isEmpty, !helpDir.isEmpty else {
+  fputs("Missing required WEREAD_READER_URL, WEREAD_BOOK_TITLE, WEREAD_BOOK_ID, or WEREAD_HELP_DIR environment value.\n", stderr)
+  exit(2)
+}
 let durationMinutes = Double(ProcessInfo.processInfo.environment["WEREAD_DURATION_MIN"] ?? "30") ?? 30.0
 let dwellMin = Double(ProcessInfo.processInfo.environment["WEREAD_DWELL_MIN"] ?? "15") ?? 15.0
 let dwellMax = Double(ProcessInfo.processInfo.environment["WEREAD_DWELL_MAX"] ?? "40") ?? 40.0
 
 func runOSA(_ source: String, capture: Bool = true) -> (Int32, String) {
   let p = Process()
-  p.launchPath = "/usr/bin/osascript"
+  p.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
   p.arguments = ["-e", source]
-  let out = Pipe(); let err = Pipe()
-  if capture { p.standardOutput = out }
+  let out = Pipe()
+  let err = Pipe()
+  p.standardOutput = out
   p.standardError = err
-  p.launch(); p.waitUntilExit()
-  let s = String(data: out.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
-    .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+  do { try p.run() } catch { return (1, "") }
+  // Parent must drop its write ends. Otherwise read-to-EOF blocks forever
+  // after the child exits, and a full stderr pipe deadlocks waitUntilExit.
+  try? out.fileHandleForWriting.close()
+  try? err.fileHandleForWriting.close()
+  let group = DispatchGroup()
+  var outData = Data()
+  group.enter()
+  DispatchQueue.global(qos: .userInitiated).async {
+    outData = out.fileHandleForReading.readDataToEndOfFile()
+    group.leave()
+  }
+  group.enter()
+  DispatchQueue.global(qos: .userInitiated).async {
+    _ = err.fileHandleForReading.readDataToEndOfFile()
+    group.leave()
+  }
+  group.wait()
+  p.waitUntilExit()
+  let s = capture
+    ? (String(data: outData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "")
+    : ""
   return (p.terminationStatus, s)
 }
 
@@ -174,15 +196,21 @@ func scrollAt(_ x: Double, _ y: Double, _ dy: Int32) {
 }
 
 func bounds() -> (Double, Double, Double, Double)? {
+  // Chrome's own bounds are left,top,right,bottom and do not need Accessibility.
+  // System Events position/size is blocked while osascript lacks assistive access.
   let (_, s) = runOSA("""
-  tell application "System Events" to tell process "Google Chrome" to tell window 1
-    set {x,y} to position
-    set {w,h} to size
+  tell application "Google Chrome"
+    if (count of windows) = 0 then return ""
+    set b to bounds of front window
+    set x to item 1 of b
+    set y to item 2 of b
+    set w to (item 3 of b) - x
+    set h to (item 4 of b) - y
     return (x as text)&","&(y as text)&","&(w as text)&","&(h as text)
   end tell
   """)
-  let parts = s.split(separator: ",").compactMap { Double($0) }
-  guard parts.count == 4 else { return nil }
+  let parts = s.split(separator: ",").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+  guard parts.count == 4, parts[2] > 50, parts[3] > 50 else { return nil }
   return (parts[0], parts[1], parts[2], parts[3])
 }
 

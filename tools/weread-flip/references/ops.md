@@ -2,7 +2,7 @@
 
 ## Status / log files
 
-Under `<weread-help-dir>` (default often `~/Desktop/weread-help`):
+Under `<runtime-dir> = <docs.root>/weread-flip` (where `docs.root` comes from `~/.agents/local-config/weread-flip/weread-flip.json` and points to the user's Obsidian docs root):
 
 | File | Role |
 |------|------|
@@ -12,7 +12,9 @@ Under `<weread-help-dir>` (default often `~/Desktop/weread-help`):
 | `flip-web.pid` | Background PID |
 | `flip-web-stdout.txt` | Optional nohup stdout/stderr |
 | `bin/weread_flip_web` | Compiled binary |
-| `scripts/weread_flip_web.swift` | Durable source |
+| `history/YYYY-MM-DD.md` | Human-readable session and effective-time record |
+
+Swift source stays under the installed skill/source repository; do not copy it into the Obsidian runtime directory.
 
 ## Status tokens
 

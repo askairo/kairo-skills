@@ -22,36 +22,35 @@ Chrome **网页版**微信读书（`weread.qq.com`）慢速翻页，用来刷**�
 - Do not commit or print API keys. `WEREAD_API_KEY` stays in the environment or a secret store.
 - Do not modify third-party `weread-skills`; call its gateway docs for `/readdata/detail` only.
 
-## Optional local config
+## Local config and external records
+
+The machine-specific config lives only at:
 
 ```text
 ~/.agents/local-config/weread-flip/weread-flip.json
 ```
 
-Schema (all optional; no secrets):
+Schema:
 
 ```json
 {
-  "machineId": "<mac-machine-id>",
+  "docs": { "root": "<absolute-obsidian-docs-root>" },
   "bookTitle": "<book-title>",
   "bookId": "<book-id>",
   "readerUrl": "<reader-url>",
-  "helpDir": "<weread-help-dir>",
   "durationMin": 30,
   "dwellMin": 15,
   "dwellMax": 40,
-  "effectiveRetryThresholdSec": 1800,
-  "binPath": "<path-to-compiled-weread_flip_web>",
-  "swiftSource": "<path-to-weread_flip_web.swift>"
+  "effectiveRetryThresholdSec": 1800
 }
 ```
 
-If absent, the calling agent/routine must supply book identity, machine, and paths explicitly.
+Derive the runtime directory as `<docs.root>/weread-flip`. Keep logs, status, compiled binary, and dated session records there. Keep Swift source in the installed skill and its source repository. Never use a Desktop fallback or create a second local config. `docs.root` is the user’s external Obsidian documentation root; the `weread-flip` subdirectory is defined by this skill.
 
 ## Prerequisites
 
 1. At startup, verify `~/.agents/skills/weread-skills/SKILL.md` exists and has a valid `name: weread-skills` frontmatter. If missing, install the official Tencent skill before any WeRead API or reading-stat operation, using the skills-loop installer with source `Tencent/WeChatReading`, path `skills`, name `weread-skills`. Never copy or recreate the official skill manually; never modify its files. If installation fails, stop API-dependent work and tell the user.
-2. Read the relevant official `weread-skills` docs before API use. Follow its current version and upgrade instructions (including any `upgrade_info`) before continuing. Reading stats must be queried through this official skill/API workflow, not guessed or replaced with local timers.
+2. Read the relevant official `weread-skills` docs before API use. Follow its current version and upgrade instructions (including any `upgrade_info`) before continuing. Reading stats must be queried through this official skill/API workflow, not guessed or replaced by local timers.
 3. Target a macOS machine with Google Chrome and Accessibility / Automation permissions for the controlling agent.
 4. User is logged into weread.qq.com in Chrome (reader opens without QR).
 5. Compiled flip binary, or `swiftc` available to build `scripts/weread_flip_web.swift`.
@@ -59,25 +58,26 @@ If absent, the calling agent/routine must supply book identity, machine, and pat
 
 ## Build / launch the flip binary
 
-Prefer an existing binary from config `binPath` or `<weread-help-dir>/bin/weread_flip_web`. Otherwise compile:
+Derive `<runtime-dir>` from `docs.root/weread-flip`. Prefer `<runtime-dir>/bin/weread_flip_web`; otherwise compile:
 
 ```bash
-swiftc -O -o <weread-help-dir>/bin/weread_flip_web \
-  <skill-or-help>/scripts/weread_flip_web.swift
+mkdir -p "<runtime-dir>/bin"
+swiftc -O -o "<runtime-dir>/bin/weread_flip_web" \
+  "<skill-dir>/scripts/weread_flip_web.swift"
 ```
 
-Launch on the Mac (background; do not block the agent for 30 minutes without a status poll plan):
+Read book and timing values from the local config, then pass them explicitly:
 
 ```bash
 export WEREAD_READER_URL="<reader-url>"
 export WEREAD_BOOK_TITLE="<book-title>"
 export WEREAD_BOOK_ID="<book-id>"
-export WEREAD_HELP_DIR="<weread-help-dir>"
+export WEREAD_HELP_DIR="<runtime-dir>"
 export WEREAD_DURATION_MIN="30"
 export WEREAD_DWELL_MIN="15"
 export WEREAD_DWELL_MAX="40"
-nohup <binPath> >> "<weread-help-dir>/flip-web-stdout.txt" 2>&1 &
-echo $! > "<weread-help-dir>/flip-web.pid"
+nohup "<runtime-dir>/bin/weread_flip_web" >> "<runtime-dir>/flip-web-stdout.txt" 2>&1 &
+echo $! > "<runtime-dir>/flip-web.pid"
 ```
 
 Behavior baked into the script:
@@ -90,11 +90,11 @@ Behavior baked into the script:
    - If Apple Events JS is disabled → log `JS_UNAVAILABLE` once and fall back to click+scroll.
 4. End with `DONE_WEB` (or `STOPPED_NEED_LOGIN` on real login wall / exhausted restore).
 
-Poll `<weread-help-dir>/flip-web-status.txt` and `flip-web.log`. See [references/ops.md](references/ops.md).
+Poll `<runtime-dir>/flip-web-status.txt` and `flip-web.log`. See [references/ops.md](references/ops.md).
 
 ## After each session: effective-time check + one retry
 
-1. Wait until status is terminal (`DONE_WEB` / `STOPPED_NEED_LOGIN`) or the process exits. A `DONE_WEB` status only means the timer elapsed; it does **not** prove WeRead credited reading time.
+1. Wait until status is terminal (`DONE_WEB` / `STOPPED_NEED_LOGIN`) or the process exits. `DONE_WEB` means the timer elapsed; it does **not** prove WeRead credited reading time.
 2. Query today's effective reading seconds through the installed official `weread-skills` workflow. Read its `readdata.md` first, use its current `skill_version`, and obey any returned upgrade instruction. Values are seconds. Example request shape (use only as specified by the official skill):
 
 ```bash
@@ -105,15 +105,17 @@ curl -sS -X POST "https://i.weread.qq.com/api/agent/gateway" \
 ```
 
 3. In `readTimes`, find **today's** bucket (key = day-start unix timestamp in the user timezone). Value is **seconds**.
-4. If today's seconds **< 1800** (30 minutes) **and** this was the first session of the run → start **exactly one** more ~30 minute flip session from current progress.
-5. Cap at one retry. Never loop forever even if still under 1800s.
-6. If the actual daily reading time is still far below the session wall-clock duration (especially only a few minutes), treat the session as **not successful**, even if the process says `DONE_WEB`. Inspect `flip-web.log`, `flip-web-stdout.txt`, current Chrome active-tab URL/title, and whether the reader advanced chapters; do not claim completion based on elapsed time or flip count.
+4. If today's seconds are below `effectiveRetryThresholdSec` (default 1800) and this was the first session of the run, start **exactly one** more ~30 minute flip session from current progress.
+5. Cap at one retry. Never loop forever even if still under the threshold.
+6. If actual daily reading time is far below session wall-clock duration (especially only a few minutes), treat the session as **not successful**, even if the process says `DONE_WEB`. Inspect the run log, stdout, current Chrome active-tab URL/title, and whether the reader advanced chapters; do not claim completion based on elapsed time or flip count.
 7. A zero `nextChapter` / `bookRestarts` counter is not itself proof of failure, but if Chrome is at a chapter/book ending, explicitly activate the visible `下一章` / `下一回` control. At the whole-book ending, activate `再读一遍` / `从头开始` and verify that the title returns to an opening chapter before continuing. Do not leave the reader parked at the end.
-8. If `STOPPED_NEED_LOGIN` occurs with an empty or non-reader tab string, classify it as **reader restore failure**, not confirmed logout. Check the logged-in Chrome reader tab before asking the user to log in. Only ask for QR/login if the reader itself visibly presents a login wall.
+8. If `STOPPED_NEED_LOGIN` occurs with an empty or non-reader tab string, classify it as reader restore failure, not confirmed logout. Check the logged-in Chrome reader tab before asking the user to log in. Only ask for QR/login if the reader itself visibly presents a login wall.
 
 Follow `weread-skills` / `readdata.md` for field units and version reporting. Do not invent minute/hour units.
 
-## Result reporting
+## Result reporting and history
+
+Append a record to `<runtime-dir>/history/YYYY-MM-DD.md` after each completed run, including session tokens, flips/transitions, final reader title, official effective seconds, whether retry ran, and a diagnosis when timer and credited time diverge. Never record API keys, cookies, or tokens. Preserve append-only run logs and history across sessions; keep the binary and transient status files alongside them under `<runtime-dir>`.
 
 Tell the calling agent/user:
 
@@ -121,8 +123,8 @@ Tell the calling agent/user:
 - `flips`, `nextChapter` clicks, `bookRestarts` when present in the status line
 - Approximate chapter/title from the final tab string, and whether chapter/end transitions were observed
 - Today's effective reading: seconds and "x 小时 y 分钟" (from `/readdata/detail`, not wall-clock dwell)
-- Whether a second session was triggered because today < 1800s
-- Explicitly distinguish timer completion from successful credited reading; if the post-session stats do not meet target, report failure and diagnose before stopping
+- Whether a second session was triggered because today was below threshold
+- Explicitly distinguish timer completion from successful credited reading; if post-session stats remain below threshold, report failure and diagnosis
 
 ## Chrome JS permission
 
@@ -131,3 +133,8 @@ If logs show `JS_UNAVAILABLE`, chapter-end clicks will not work until the user e
 **Google Chrome → View → Developer → Allow JavaScript from Apple Events**
 
 Flip continues with click+scroll fallback either way.
+
+## AppleScript runtime
+
+- `runOSA` must close parent pipe write ends and drain stdout and stderr on two threads before `waitUntilExit`. Leaving a write end open makes `readDataToEndOfFile` block forever after `osascript` exits, so the log stays at `START_WEB` and never reaches `READER_OK`.
+- Do not read window bounds from System Events. `osascript` has no assistive access here, so that call returns `NO_BOUNDS` and the loop never flips. Use Chrome `bounds of front window` (`left, top, right, bottom`) and convert to `x, y, width, height`.
