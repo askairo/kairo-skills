@@ -50,6 +50,13 @@ Use this flow after [task-intake](task-intake.md) resolves a branch such as `fea
    - If the user says the baseline is wrong, pause code changes and fix branch baseline first.
    - If privileged git commands time out on approval review, retry once, then request explicit user go-ahead and continue with the same command.
 
+9. Rename the current session to the branch.
+   - Do this after the branch is selected or created and its name is final, including when an existing branch is reused.
+   - Call `paseo_rename_workspace` with `title` set to the exact branch name, such as `feat-1166`. Omit `workspaceId` so the current workspace is renamed.
+   - Do not use the user's first sentence, the task title, or a task id that differs from the branch.
+   - If this request already gave the workspace a different explicit title, keep that title.
+   - If the rename tool is unavailable, skip it. Do not fail branch preparation.
+
 ## Command Shape
 
 Use repo-native Git commands. Typical shape:

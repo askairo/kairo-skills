@@ -71,6 +71,7 @@ When this task was handed off by `p-loop`, follow its external-document recovery
    - Avoid polluting unrelated changes.
    - If the branch does not exist, create it from the repository baseline branch.
    - Default baseline order for the Znder ERP repo: `master` -> `main` -> repo-specific baseline from the rules.
+   - After the branch name is final, rename the current Paseo workspace to that exact branch name. A new workspace otherwise keeps the opening sentence as its title.
 
 5. Clarify before implementation.
    - Before implementation, separate confirmed facts from assumptions and questions.
