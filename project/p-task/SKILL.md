@@ -71,7 +71,8 @@ When this task was handed off by `p-loop`, follow its external-document recovery
    - Avoid polluting unrelated changes.
    - If the branch does not exist, create it from the repository baseline branch.
    - Default baseline order for the Znder ERP repo: `master` -> `main` -> repo-specific baseline from the rules.
-   - After the branch name is final, rename the current Paseo workspace to that exact branch name. A new workspace otherwise keeps the opening sentence as its title.
+   - After the branch name is final, rename the current conversation/session title to that exact branch name so it can be traced alongside Git history. Also rename the current Paseo workspace to the exact branch name when applicable; a new workspace otherwise keeps the opening sentence as its title.
+   - When creating or switching branches later in the workflow, keep the conversation/session title and Paseo workspace name synchronized with the active branch. If the current Agent does not expose a rename capability, tell the user to rename it manually rather than silently skipping the step.
 
 5. Clarify before implementation.
    - Before implementation, separate confirmed facts from assumptions and questions.
