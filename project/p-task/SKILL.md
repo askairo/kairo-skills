@@ -71,8 +71,8 @@ When this task was handed off by `p-loop`, follow its external-document recovery
    - Avoid polluting unrelated changes.
    - If the branch does not exist, create it from the repository baseline branch.
    - Default baseline order for the Znder ERP repo: `master` -> `main` -> repo-specific baseline from the rules.
-   - After the branch name is final, rename the current conversation/session title to that exact branch name, regardless of which Agent application or host is being used. Treat this as an Agent-agnostic requirement, not a Paseo-only step.
-   - When creating or switching branches later in the workflow, keep the conversation/session title synchronized with the active branch. In Paseo, also rename the workspace to the same exact branch name.
+   - After the branch name is final, rename the current conversation/session title to `<project-name>-<branch-name>`, regardless of which Agent application or host is being used. Determine the project name from the repository/project metadata; if unavailable, use the repository directory name. Treat this as an Agent-agnostic requirement, not a Paseo-only step.
+   - When creating or switching branches later in the workflow, keep the conversation/session title synchronized with the active project and branch. In Paseo, also rename the workspace to the same `<project-name>-<branch-name>` value.
    - If the current Agent does not expose a capability to rename the conversation/session, tell the user to rename it manually rather than silently skipping the step.
 
 5. Clarify before implementation.
