@@ -25,8 +25,10 @@
 - `roleAliases`：仅允许上面的职责 ID；值为非空字符串，实现者也可使用非空字符串数组，为不同卡的实例提供可选别名，不要求启动对应数量的实例。别名不改变职责。
 - `maxWorkers`：可选正整数，仅限制并行子实例，实际值还受宿主剩余容量约束；默认按剩余容量和任务需要选择，不为凑数量启动角色。
 - `machines`：可选字典，键为用户设备标识，值可含 `label`、`platform`、`connectionRef`；只保存现有连接引用，不保存密码或 token，不证明连接在线。
-- `projects`：可选字典，键为项目 ID，值可含绝对路径 `docsRoot`、`evidenceRoot` 及 `defaultMachine`。显式用户路径和项目已有真源优先；这里记录私人绑定，不创造项目硬规则。
-- 不增加关闭独立验收、跳过 Must、扩大权限或自动恢复暂停的开关。未识别的配置项不得默默改变行为。
+- `projects`：可选字典，键为项目 ID，值可含绝对路径 `docsRoot`、`evidenceRoot`、`defaultMachine`，以及下面的 `roleFit`、`roleNotes`。显式用户路径和项目已有真源优先；这里记录私人绑定，不创造项目硬规则。
+- `roleFit`：建队后由用户评估写入。键只能是五个执行岗位 ID，值只能是 `available`、`unavailable` 或 `limited`。一旦出现，五个键必须齐全。协调者不在其中。
+- `roleNotes`：键只能是 `unavailable` 或 `limited` 的岗位。值是非空字符串，写明原因、允许的证据，以及必须放进任务卡和派工提示的原话。`available` 不写备注。
+- `roleFit` 只记录该项目实际做不到或只能部分做到的岗位。它不能把缺证据写成通过，不能关闭独立验收、跳过 Must、扩大权限或自动恢复暂停。未识别的配置项不得默默改变行为。
 
 ## 任务卡与派工头
 
@@ -36,6 +38,7 @@
 card / taskPath / projectDocs / scopeRevision
 role / assignee / implementationOwner / implementationSource
 goal / includedScope / excludedScope / Must / projectConstraints
+roleFit limits: unavailable or limited roles and their roleNotes, copied into the card and the dispatch prompt
 repos: repository identity + baseline full SHA + target full SHA (when known)
 machine / workspace / deploymentTarget / resources
 allowedWrites / allowedDataOperations / approvalBoundary

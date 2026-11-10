@@ -1,6 +1,6 @@
 ---
 name: t-loop
-description: Coordinate personal engineering from one main agent session using temporary subagents, task cards, version-bound evidence, and independent acceptance. Use for subagent-based project delivery. In Grok Bot, Hermes, or other bot-team hosts, default to their own bot orchestration and do not auto-select t-loop unless the user explicitly requests it. Requires working subagent tools; otherwise first enable them or install an official subagent extension following the host's official documentation. Keep company and media workflows with their own owners.
+description: Coordinate personal engineering from one main agent session using temporary subagents, task cards, version-bound evidence, and independent acceptance. Use for subagent-based project delivery. After the team exists, have the user assess which roles the target project can actually use, record limits, and include them in task-card prompts. In Grok Bot, Hermes, or other bot-team hosts, default to their own bot orchestration and do not auto-select t-loop unless the user explicitly requests it. Requires working subagent tools; otherwise first enable them or install an official subagent extension following the host's official documentation. Keep company and media workflows with their own owners.
 ---
 
 # T Loop
@@ -23,6 +23,16 @@ description: Coordinate personal engineering from one main agent session using t
 2. 读取同一卡已有协同记录、PR、提交及证据。识别当前协调者、唯一实现负责人、未完成操作和用户暂停；发现另一个协调实例仍在执行时，先协调归属，不同时派工。
 3. 核对实际工具、目标电脑、仓库和环境可达性。角色名称不证明工具或设备已就绪。临时子 Agent 运行在当前宿主可访问的环境，不能假设拥有原体系的独立桌面或远端电脑。
 4. 用 [roles.md](references/roles.md) 选职责，用 [contracts.md](references/contracts.md) 建立交接和证据记录；创建/恢复实例时再读 [runtime.md](references/runtime.md)。
+
+## 建队后的项目适配
+
+团队会话或角色模板就绪后，先请用户评估准备接入的项目，不要直接派工。
+
+逐项确认五个执行岗位能否在该项目真实执行：`researcher`、`implementer`、`code_reviewer`、`smoke_tester`、`acceptance_reviewer`。协调者始终保留。评估完成前，不假设全部可用，也不假设全部不可用。
+
+可用岗位仍按需启动。不可用或只能部分执行的，把结论写入 `projects.<id>.roleFit` 和对应 `roleNotes`，字段见 [contracts.md](references/contracts.md)。项目已有文档根时，同时写入该项目的决策与风险记录；没有文档根时只写本地配置，并说明还没有项目真源。
+
+此后每张任务卡和每条派工提示都带上这些限制。`unavailable` 的岗位不派去执行它的常规闸门，派工前在卡里写明不适用及原因。`limited` 的岗位只按备注边界派工。需要该岗位才能证明的 Must，没有证据仍然不能通过，也不能等失败后再改成不适用。这份配置不能关闭独立验收、跳过 Must 或扩大授权。
 
 ## 编排循环
 
@@ -47,7 +57,7 @@ description: Coordinate personal engineering from one main agent session using t
 - 代码评审只读检查指定基线到指定 tip 的 diff、项目硬规则和有证据的风险；不改产品、不部署、不替代行为验证。
 - 冒烟在明确的电脑/环境运行指定版本，按卡构建、部署和执行关键行为，复用匹配的验证技能；不擅自切最新分支，不自行修产品代码。
 - 写入测试数据、重置、wipe、生产变更等依照明确授权和目标数据边界执行。没有授权时该步骤阻塞，不能把冒烟任务当作授权。
-- 对纯文档等无需运行验证的任务，在派工前把不适用项及原因写入卡；不能在验证失败后把必要步骤改为可选。
+- 对纯文档、或 `roleFit` 已标为不可用的闸门，在派工前把不适用项及原因写入卡；不能在验证失败后把必要步骤改为可选。派工提示原样带上对应 `roleNotes`。
 
 ### 4. 独立验收与返工
 
