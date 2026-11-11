@@ -41,6 +41,16 @@ docs:
 - If the project already has an older flat structure, keep it compatible; new projects should prefer `tasks/`.
 - If nothing is configured and the user has not given a docs root, ask first, then write the local config.
 
+## Execution Mode Before Implementation
+
+`p-task` defines the task lifecycle; it does not decide who implements it. Before changing code, recover the applicable user instructions, repository rules, current project decisions and collaboration records.
+
+- If the user or applicable project instructions already select coordinated delivery, use that established workflow. In a non-Bot host with an applicable `t-loop` mandate, read `t-loop` and retain the coordinator/implementer separation. In a Bot-team host, retain its native orchestration unless the user explicitly selected t-loop.
+- A concrete ticket, small change, or complete task card does not cancel an established team workflow. The coordinator prepares the task and dispatches implementation rather than writing the business code itself.
+- Mere historical role names, an installed skill, or a local alias mapping do not alone establish a delivery mandate. Check whether the instruction is current and covers this repository/task. Do not launch subagents without user or applicable project authorization.
+- If no coordinated workflow is selected, execute through `p-task` in the current session. Missing required team capabilities are a blocker to that workflow, not permission for the coordinator to silently take over implementation.
+- Record the selected mode, its instruction source, implementer, verification limits, workspace and baseline in the task doc. Reuse existing authorization and role assessments; ask only about material unresolved conflicts.
+
 ## Workflow
 
 When this task was handed off by `p-loop`, follow its external-document recovery and return contract in [p-loop execution-loop](../p-loop/references/execution-loop.md). Do not rely on the handoff conversation as the only task context.

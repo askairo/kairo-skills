@@ -3,9 +3,9 @@ name: p-loop
 description: Maintain a project's architecture-planning loop through ordered external docs. Use when Codex needs to clarify project goals, boundaries, roadmap, focus docs, decisions, open questions, risks, plans, and task readiness before `p-task`, or when implementation/user feedback should update project state and guide the next planning cycle.
 ---
 
-# P Ordered
+# P Loop
 
-Use this before task development to turn a project from scattered into actionable.
+Use this when project direction or task readiness needs planning; recover existing project docs before deciding whether a new planning cycle is needed.
 
 ## Goal
 
@@ -33,6 +33,8 @@ Its responsibility is to keep the project ready for development by maintaining:
 - You need to clarify the project main line before task breakdown and implementation.
 - You need to decide what should happen next before entering `p-task`.
 - User or implementation feedback changes product direction, architecture constraints, UX rules, risk, or task priority.
+
+For a concrete task in a project whose docs are current, recover the relevant context and go directly to `p-task`; do not repeat a full planning cycle. Return to `p-loop` when task feedback changes project-level state.
 
 ## Docs Root
 
@@ -257,7 +259,8 @@ If yes, write back to the appropriate project docs before moving to the next pla
 
 - `p-loop` is responsible for turning a project from scattered into actionable.
 - `p-task` is responsible for turning a concrete task from "to do" into "verified".
-- Use `p-loop` first to establish the main line and focus areas, then enter `p-task` to claim specific task docs.
+- Establish the main line and focus areas before issuing tasks. If these are already current, recover them and proceed to `p-task` without rebuilding the project plan.
+- Execution ownership is selected by the applicable user/project workflow: `p-task` may run directly or inside `t-loop`/native team coordination. Planning readiness does not override that ownership.
 - If the key focus areas in the 20 layer are still unclear, stop at `p-loop` and do not issue task cards too early.
 
 ## Notes

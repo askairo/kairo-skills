@@ -9,6 +9,12 @@ Use this flow after [task-intake](task-intake.md) resolves a branch such as `fea
 - Create new task branches from the freshest safe baseline branch.
 - Preserve unrelated working-tree changes.
 
+## Workspace Choice
+
+Preserve an explicit user choice of repository directory and baseline. When the working tree is clean, a different currently checked-out task branch can be left intact by switching branches in the same directory; it does not by itself require a new directory. Do not infer the baseline from the branch that happened to be open.
+
+Use a separate checkout/worktree only when requested or required by actual concurrent writers or an applicable isolation rule. If the user requires one directory, serialize writers and branch switches there; do not satisfy the request by merely renaming an extra worktree. If live work makes switching unsafe, report the specific conflict before changing workspace strategy.
+
 ## Flow
 
 1. Inspect the current repository.
