@@ -1,4 +1,0 @@
-interface:
-  display_name: "WX Reading"
-  short_description: "微信读书网页阅读、章节续读与有效时长核验。"
-  default_prompt: "Use $wx-reading to run a WeChat Reading session, continue across chapters, restart at book end, and verify credited reading time."
