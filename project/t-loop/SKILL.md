@@ -1,11 +1,11 @@
 ---
 name: t-loop
-description: Coordinate personal engineering from one main agent session using temporary subagents, task cards, version-bound evidence, and independent acceptance. Use for subagent-based project delivery. After the team exists, have the user assess which roles the target project can actually use, record limits, and include them in task-card prompts. In Grok Bot, Hermes, or other bot-team hosts, default to their own bot orchestration and do not auto-select t-loop unless the user explicitly requests it. Requires working subagent tools; otherwise first enable them or install an official subagent extension following the host's official documentation. Keep company and media workflows with their own owners.
+description: Coordinate personal engineering from one main agent session using temporary subagents, task cards, version-bound evidence, and independent acceptance. Use for subagent-based project delivery. After the team exists, have the user assess which roles the target project can actually use, record limits, and include them in task-card prompts. In Grok Bot, Hermes, or other bot-team hosts, default to their own bot orchestration and do not auto-select t-loop unless the user explicitly requests it. Requires working subagent tools; otherwise first enable them or install an official subagent extension following the host's official documentation. Keep company and media workflows with their own owners. Implementers self-verify before handoff; independent CR uses a session other than the implementer's; do not skip required review, smoke, acceptance, or coordinator writeback to go faster.
 ---
 
 # T Loop
 
-本技能采用“一个主 Agent 会话＋按需创建的临时子 Agent 会话”。用户只跟主会话沟通；主 Agent 以任务卡派工、接收子 Agent 结果、核对证据并推进实现、验证、返工与状态写回。角色持续存在于规则中，实例只在需要时启动；跨会话连续性保存在外部项目文档。
+本技能采用“一个主 Agent 会话＋按需创建的临时子 Agent 会话”。用户只跟主会话沟通；主 Agent 以任务卡派工、接收子 Agent 结果、核对证据并推进实现、验证、返工与状态写回。角色持续存在于规则中，实例只在需要时启动；跨会话连续性保存在外部项目文档。本技能把同一套协同闸门写成可移植规则：已有 Bot 编队的宿主默认走其原生派工；没有 Bot、只用临时子 Agent 的宿主按本技能编排。两种宿主共用职责、证据和写回约束，不按宿主拆成两套岗位。
 
 ## 适用边界
 
@@ -32,6 +32,8 @@ If team delivery is selected but capabilities are unavailable, prepare the hando
 3. 核对实际工具、目标电脑、仓库和环境可达性。角色名称不证明工具或设备已就绪。临时子 Agent 运行在当前宿主可访问的环境，不能假设拥有原体系的独立桌面或远端电脑。
 4. 用 [roles.md](references/roles.md) 选职责，用 [contracts.md](references/contracts.md) 建立交接和证据记录；创建/恢复实例时再读 [runtime.md](references/runtime.md)。
 
+个人项目文档中的协同记录和证据，是重启会话和换环境续跑的依据，不必因为写到个人文档而做泛化脱敏；密码、令牌、Cookie 等密钥仍不得写入证据、文档或对话。换环境后续跑以文档和任务卡为准；依赖特定电脑或运行环境的冒烟与运行证据，环境变化后必须重新核对或补测，不能把旧环境的通过结论直接当成新环境已验证。
+
 ## 建队后的项目适配
 
 首次适配、且还没有当前项目的有效评估时，团队会话或角色模板就绪后先请用户评估项目，再派工。已有配置与项目文档中的 `roleFit` / `roleNotes` 经用户确认且仍适用时直接复用，不要求每个任务重新评估；范围或环境变化时只核对受影响岗位。
@@ -53,8 +55,10 @@ If team delivery is selected but capabilities are unavailable, prepare the hando
 ### 2. 唯一实现者
 
 - 所有编码任务统一交给实现者 `implementer`，默认由临时实现子 Agent 执行；不按小改、复杂实现或旁路划分岗位。
+- 实现执行面可以是宿主临时会话（例如 Cursor 临时会话）、本机 CLI 或其他已授权工具；这只记入 `implementationSource`，不新增岗位。用户为节省宿主额度而指定某执行面时，先核实可用性与授权，再优先使用；不可用就报告具体阻塞，不偷偷替换并假装已按指定执行。
 - 任务规模影响拆卡、依赖和检查安排，不改变实现者职责。不同卡可按资源与依赖并行，同一卡始终只有一个活动实现负责人。
 - 用户明确指定工具时，先核实其实际可用性和授权；工具选择不新增岗位，也不把子 Agent 冒充实际未启动的 CLI。不可用就报告具体阻塞，不偷偷替换。
+- 交还前完成卡上或仓库已有的必要自验证：匹配的验证技能、静态检查，以及可执行的行为检查。命令、结果和产物路径写入交还。自验证不能替代独立 CR、冒烟或验收。
 - 每卡只允许一个活动实现负责人。交接或替换前先停止原执行、核对未提交修改/进程/远端副作用，再记录新归属。
 - 提交、推送、PR、部署各按本次实际授权执行；授权不足时交还本地改动和检查结果，不伪造 SHA/PR 或强迫提前发布。需要 PR 的交付仍未完成时保持待交付状态。
 
@@ -62,14 +66,15 @@ If team delivery is selected but capabilities are unavailable, prepare the hando
 
 协调者核实交还中的真实工作区、FE/BE 或其他仓库完整 SHA、远端状态、PR 和已部署状态。冻结本轮验证目标后，可并行派独立代码评审和冒烟；共享工作树、部署、端口、数据库有冲突时串行或隔离。
 
-- 代码评审只读检查指定基线到指定 tip 的 diff、项目硬规则和有证据的风险；不改产品、不部署、不替代行为验证。
-- 冒烟在明确的电脑/环境运行指定版本，按卡构建、部署和执行关键行为，复用匹配的验证技能；不擅自切最新分支，不自行修产品代码。
+- 代码评审必须由与本轮实现者不同的新会话或实例执行；禁止实现会话自审，也不能把实现者的自验证报告当作独立 CR。若派工时已附上符合闸门、来自独立会话的有效 CR 报告，不必再派一次代码评审；报告无效或缺场才补派。
+- 代码评审只读检查指定基线到指定 tip 的 diff、项目硬规则和有证据的风险；mustFix 只针对范围、硬规则或有依据的可复现风险。不改产品、不部署、不替代行为验证。优先把约束做进类型、边界和可运行检查；人审只补充这些高杠杆问题，不以风格偏好阻断。
+- 冒烟在明确的电脑/环境运行指定版本，按卡构建、部署和执行关键行为，复用匹配的验证技能；不擅自切最新分支，不自行修产品代码。实现所用的执行面（包括宿主临时会话）不能代替本冒烟。
 - 写入测试数据、重置、wipe、生产变更等依照明确授权和目标数据边界执行。没有授权时该步骤阻塞，不能把冒烟任务当作授权。
 - 对纯文档、或 `roleFit` 已标为不可用的闸门，在派工前把不适用项及原因写入卡；不能在验证失败后把必要步骤改为可选。派工提示原样带上对应 `roleNotes`。
 
 ### 4. 独立验收与返工
 
-CR 无阻断、必要冒烟通过后，派一个未承担本轮实现的独立验收者，核对任务卡、决策、Must、版本、环境和证据。验收者只读检查完成情况，不靠上一阶段的“通过”替代逐项核对，不为补证据写业务数据。
+CR 无阻断、必要冒烟通过后，派一个未承担本轮实现的独立验收者，核对任务卡、决策、Must、版本、环境和证据。验收者只读检查完成情况，不靠上一阶段的“通过”替代逐项核对，不为补证据写业务数据。实现者会话和独立 CR 会话都不能代替本验收。
 
 任一阶段失败，由协调者分类交回：产品缺陷交原实现者，证据缺项交对应验证者，环境问题交环境负责人，范围/关键决策问题交用户。验证者不偷偷修代码。
 
@@ -86,6 +91,12 @@ CR 无阻断、必要冒烟通过后，派一个未承担本轮实现的独立�
 - 真实记录修改、检查、推送、部署、PR、合并、发布状态，不互相代换。
 
 写回卡、证据索引和受影响的项目主线，再检查下一张已获授权且 ready 的卡；满足条件就继续，不要求用户反复确认常规派工。缺少关键决策或实际授权时，报告具体待决项。`verified` 只证明所述版本和覆盖范围，不自动授权 merge、tag、release 或生产部署。
+
+### 6. 先改善闭环再加速
+
+先把实现、自验证、独立评审、冒烟和验收做成可信闭环，再考虑把后续步骤自动连起来。不要在实现者还不能稳定自验证时，把交付做成无人值守工厂；也不要为提速或省额度跳过必要的独立 CR、冒烟、独立验收或协调者写回。
+
+提速靠实现者自验证，以及无冲突的并行（不同卡的实现、只读 CR 与无冲突冒烟）。形式化验证或其他额外分析闸门，仅在任务卡明确要求时启用。
 
 ## 并发、暂停和低噪声
 
