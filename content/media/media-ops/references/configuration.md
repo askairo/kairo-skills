@@ -42,7 +42,7 @@ execution.adaptationBacklog.suppression
 browserProfiles.<profile>
 ├── browser: chrome
 ├── profileName                         # Chrome 中显示的 Profile 名称
-├── switchMethod: chrome-mcp | playwright-mcp | current-session
+├── switchMethod: browse-mcp | chrome-mcp | playwright-mcp | current-session
 └── status: verified | needs-verification
 accounts.<account>
 ├── vertical / audience / positioning / contentPillars  # 账号共性
@@ -305,13 +305,13 @@ strategies:
 - 抖音可以声明 `operation.allowDownload`，布尔值默认是 `false`；`false` 表示发布前关闭“允许下载”（等价于“不允许下载”）。该配置只是期望状态，平台子技能仍必须在最终发布前重新读取页面控件；状态不明或仍允许下载时停止。
 - `operation.sourceGroupRefs`、`operation.exclusions` 和 `operation.rightsPolicy` 用于收窄来源与安全边界；缺少 `goal` 或 `contentMode` 且会改变选材结论时，应请求补充。
 - `operation.editorialFrameworkRef` 是相对于 `docsRoot` 的外部内容文档路径，必须指向 `media-core` 内容目录中的主题框架；`operation.coverSpecRef` 是相对于 `docsRoot` 的平台/账号视觉规范路径。两者都不保存凭证。
-- 平台可以声明 `operation.transport`、`operation.interactiveSkill`、`operation.scheduledSkill`、`operation.interactiveTransport`、`operation.scheduledTransport` 和 `operation.browserAutomation`；浏览器平台的两个 transport 必须显式选择 `chrome-mcp` 或 `playwright-mcp`，API 平台必须选择已接入的 `official-api`。X 的无人值守策略若选择 `x`，不得被默认改写为 `x-api`。
-- `chrome-mcp` 通过旧运行时的 `openTabs` / `claimTab`，或新版 Unified Computer Use 中 `cua.getState()` 暴露的 `family: chrome`、`type: extension` browser 与 `cua.getTab(...)`，接管目标 Profile 的既有 Tab。后者操作的是 Chrome Plugin extension Tab，不是 `cua.getApp("Google Chrome")` 的 Computer Use 桌面回退；禁止使用原生窗口、桌面坐标或截图点击。`playwright-mcp` 通过 Playwright MCP Bridge 接管用户在目标 Profile 中授权的既有 Tab。任一通道都必须独立完成页面读取、输入、上传、编辑、发布控件、结果核验和 Tab 清理；禁止在两者之间或向 Computer Use、controlled-browser-session、CDP 及其他 Chrome 控制接口回退。`official-api` 不打开 Chrome。两种 `switchMethod` 都不负责猜测或切换 Profile；没有可确认的目标 Tab 时停止。旧版独立工具名不存在但 Chrome extension browser 和目标 Tab 可见时，不得返回 `profile_route_missing`。
+- 平台可以声明 `operation.transport`、`operation.interactiveSkill`、`operation.scheduledSkill`、`operation.interactiveTransport`、`operation.scheduledTransport` 和 `operation.browserAutomation`；浏览器平台的 transport 必须显式选择已配置且当前可用的 `browse-mcp`、`chrome-mcp` 或 `playwright-mcp`，API 平台必须选择已接入的 `official-api`。X 的无人值守策略若选择 `x`，不得被默认改写为 `x-api`。
+- `browse-mcp` 通过 Browse 配对浏览器操作用户授权或本会话创建的标签页；运行时须将配对浏览器唯一映射到已验证的 `browserProfileRef`，并核对页面公开账号身份。不能唯一映射时停止，不得把默认配对 Profile 推定为目标 Profile。`chrome-mcp` 通过旧运行时的 `openTabs` / `claimTab`，或新版 Unified Computer Use 中 `cua.getState()` 暴露的 `family: chrome`、`type: extension` browser 与 `cua.getTab(...)`，接管目标 Profile 的既有 Tab。后者操作的是 Chrome Plugin extension Tab，不是 `cua.getApp("Google Chrome")` 的 Computer Use 桌面回退；禁止使用原生窗口、桌面坐标或截图点击。`playwright-mcp` 通过 Playwright MCP Bridge 接管用户在目标 Profile 中授权的既有 Tab。所选通道必须独立完成页面读取、输入、上传、编辑、发布控件、结果核验和 Tab 清理；禁止在通道之间或向 Computer Use、controlled-browser-session、CDP 及其他 Chrome 控制接口回退。上传等操作必须先核实该通道明确支持所需能力。`official-api` 不打开 Chrome。所有 `switchMethod` 都不负责猜测或切换 Profile；没有可确认的目标 Tab 时停止。旧版独立工具名不存在但 Chrome extension browser 和目标 Tab 可见时，不得返回 `profile_route_missing`。
 - 当策略是有效 `publishingMode: unattended` 时，传输字段只决定如何执行，不会关闭事实、版权、账号、重复、结果核验或运行时安全策略；缺少、拼写错误或平台不支持的 `scheduledTransport` 必须返回 `scheduled_transport_missing` 或 `scheduled_transport_unsupported`，不得静默回退。
 - `platforms.<platform>.strategyRef` 可覆盖账号默认策略；合并顺序为“请求覆盖 → 平台配置 → 账号默认 → Skill 默认”。
 - `baseStyleRef`、`sourceGroupRefs` 和 `strategyRef` 必须指向已定义且启用的对象。
 - 浏览器平台的 `platformAccounts.<accountRef>.browserProfileRef` 必须指向已定义的 `browserProfiles.<profile>`；同一平台的不同账号不得引用同一个 Profile。`switchMethod: current-session` 只适合单账号当前会话，不能授权同平台多账号无人值守切换。
-- `switchMethod: chrome-mcp` 表示先从 Chrome MCP 可见 Tab 中确认目标 browser，再用平台页面核对 handle；运行时暴露 `profileName` 时必须与配置一致。若新版 Chrome extension inventory 不提供 `profileName`，只有在恰好一个 extension browser 可见、其中存在目标站点 Tab、配置 Profile 状态为 `verified` 且页面实读 handle 一致时，才可把本轮 browserId / extensionInstanceId 绑定到 `browserProfileRef`；存在多个无法区分的 extension browser 时必须返回 `profile_route_missing`，不得猜测。`switchMethod: playwright-mcp` 表示用户先在 `profileName` 对应 Chrome Profile 中授权已登录 Tab，再由 Bridge 接管并核对 handle。没有可接管的目标 Tab、配置 Profile 未验证或 handle 不一致时，执行器必须返回 `profile_route_missing` 或 `account_mismatch` 并停止。页面发布必须由已声明的同一通道执行。
+- `switchMethod: browse-mcp` 表示从 Browse 配对浏览器中确认与目标 Profile 的映射，只使用用户授权或本会话创建的目标 Tab，再核对页面 handle；没有可确认的映射或目标 Tab 时返回 `profile_route_missing`。`switchMethod: chrome-mcp` 表示先从 Chrome MCP 可见 Tab 中确认目标 browser，再用平台页面核对 handle；运行时暴露 `profileName` 时必须与配置一致。若新版 Chrome extension inventory 不提供 `profileName`，只有在恰好一个 extension browser 可见、其中存在目标站点 Tab、配置 Profile 状态为 `verified` 且页面实读 handle 一致时，才可把本轮 browserId / extensionInstanceId 绑定到 `browserProfileRef`；存在多个无法区分的 extension browser 时必须返回 `profile_route_missing`，不得猜测。`switchMethod: playwright-mcp` 表示用户先在 `profileName` 对应 Chrome Profile 中授权已登录 Tab，再由 Bridge 接管并核对 handle。没有可接管的目标 Tab、配置 Profile 未验证或 handle 不一致时，执行器必须返回 `profile_route_missing` 或 `account_mismatch` 并停止。页面发布必须由已声明的同一通道执行。
 - 同一 `accounts.<account>` 下的所有平台必须通过定位、受众和内容支柱一致性检查；不一致时拆分逻辑账号，不得混合基线和反馈。
 
 ### platformAccounts

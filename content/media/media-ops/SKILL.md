@@ -40,10 +40,10 @@ description: 跨平台媒体发布执行总控：按外部触发器扫描内容�
 ### Route the browser Profile
 
 - 浏览器平台的执行对象由 `platformAccountRef → browserProfileRef → platform handle` 唯一确定；同一平台的不同账号不得共用一个 Profile 路由。
-- Chrome 浏览器操作只能使用配置的 `chrome-mcp`（Chrome MCP/browser-client）或 `playwright-mcp`（Playwright MCP Bridge）。`chrome-mcp` 先从 `openTabs` 定位目标 `profileName` 的已登录 Tab 并 `claimTab`；`playwright-mcp` 则要求用户先在目标 Profile 中启用 Bridge 并授权已登录 Tab。不得猜测或切换 Profile，也不得使用桌面点击、Computer Use、CDP 或其他浏览器控制接口；页内坐标点击默认禁止，唯一的小红书封闭发布组件例外由 `xiaohongshu` 子技能限定，且不能改变传输通道。
+- Chrome 浏览器操作只能使用配置的 `browse-mcp`（Browse MCP）、`chrome-mcp`（Chrome MCP/browser-client）或 `playwright-mcp`（Playwright MCP Bridge）。`browse-mcp` 只能使用 Browse 已配对的浏览器以及用户授权或本会话创建的标签页；必须依据运行时可见的浏览器标识核对 `browserProfileRef`，并在页面中核对平台公开账号身份。不得猜测或切换 Profile，也不得使用桌面点击、Computer Use、CDP 或其他浏览器控制接口；页内坐标点击默认禁止，唯一的小红书封闭发布组件例外由 `xiaohongshu` 子技能限定，且不能改变传输通道。
 - 接管后重新打开平台入口，读取当前登录 handle、账号名和平台身份。任何一项与配置不一致、页面仍在旧账号或目标 Tab 不可确认时，立即停止，不创建草稿、不上传媒体、不发布。
-- 两种通道均要求目标 Profile 的已登录 Tab 可确认；`chrome-mcp` 无可 `claimTab` 的 Tab 或 `playwright-mcp` 无 Bridge 授权 Tab 时，返回 `profile_route_missing`，不得创建未核验会话或在两种通道间静默回退。
-- `switchMethod: chrome-mcp` 表示 Chrome MCP 识别并接管既有 Tab；`switchMethod: playwright-mcp` 表示用户授权既有 Tab 后由 Playwright MCP Bridge 接管；`current-session` 只表示沿用当前已确认的单账号 Tab，不能用于同平台多账号无人值守路由。
+- 三种通道均要求目标 Profile 和已登录 Tab 可确认；Browse 无法把配对浏览器唯一映射到已验证的目标 Profile、无用户授权/本会话创建的目标 Tab，或页面身份不符时，返回 `profile_route_missing` / `account_mismatch`。不得创建未核验会话或在通道间静默回退。
+- `switchMethod: browse-mcp` 表示由 Browse MCP 使用已配对浏览器中的用户授权或本会话标签页，并逐次核对 Profile 与平台身份；`switchMethod: chrome-mcp` 表示 Chrome MCP 识别并接管既有 Tab；`switchMethod: playwright-mcp` 表示用户授权既有 Tab 后由 Playwright MCP Bridge 接管；`current-session` 只表示沿用当前已确认的单账号 Tab，不能用于同平台多账号无人值守路由。
 - 在提供 Unified Computer Use/`cua_repl` 的新版运行时中，`chrome-mcp` 对应 `cua.getState()` 返回的 `family: chrome`、`type: extension` 浏览器及其 `cua.getTab(...)` Tab API。使用该 Chrome extension Tab 的页面读取、输入、上传和导航仍属于 Chrome MCP 通道，不是 Computer Use 回退；不得改用 `cua.getApp("Google Chrome")`、桌面坐标或原生窗口点击。小红书封闭发布组件的受限页内点击也必须留在此 Tab API 内；旧版独立工具名不存在本身不能判定 `profile_route_missing`。
 
 接管新版 Chrome extension 后，按 [chrome-extension-runtime.md](references/chrome-extension-runtime.md) 取得完整浏览器/Tab 绑定。`cua` 外层方法、完整 `agent.browsers` API 和 optional capabilities 是不同层；不能用外层缺方法或 optional 列表为空推断上传能力不存在。
@@ -51,10 +51,10 @@ description: 跨平台媒体发布执行总控：按外部触发器扫描内容�
 ### Resolve the execution transport
 
 - `operation.transport` 标识平台适配器；`interactiveSkill` / `scheduledSkill` 标识交给哪个平台子技能；`interactiveTransport` / `scheduledTransport` 标识该次运行实际使用的执行通道。
-- `scheduledTransport` 对所有需要写入外部平台的定时任务都是必填。浏览器平台只允许显式的 `chrome-mcp` 或 `playwright-mcp`；API 平台必须选择已接入的 `official-api`。平台子技能可以进一步限制可用值。
-- `chrome-mcp` 或 `playwright-mcp` 表示 Profile 路由、页面读取、输入、上传、编辑、发布控件、结果核验和 Tab 清理全部由同一已声明通道完成；不得在两者之间静默转换，也不得转换为 Computer Use、controlled-browser-session、CDP 或其他 Chrome 控制接口。默认不得使用坐标点击；小红书封闭发布组件的受限例外只由其平台子技能定义并在原 Chrome extension Tab 内执行。`official-api` 不打开 Chrome，必须由对应 API 子技能完成身份和结果核验。
-- `switchMethod: chrome-mcp` 或 `playwright-mcp` 与 `interactiveTransport` / `scheduledTransport` 必须分别写入运行快照，但都不得指向其他浏览器执行器。
-- 运行时预检先发现当前可用工具：若有 Unified Computer Use，则读取 browser inventory，选择 `family=chrome` 且 `type=extension` 的实例，再按目标站点 URL 取得既有 Tab；只有没有 Chrome extension browser/目标 Tab，或页面实读账号与配置不一致时，才返回 `profile_route_missing` / `account_mismatch`。不得仅检查旧工具名称后提前失败。
+- `scheduledTransport` 对所有需要写入外部平台的定时任务都是必填。浏览器平台只允许显式选择已配置且当前可用的 `browse-mcp`、`chrome-mcp` 或 `playwright-mcp`；API 平台必须选择已接入的 `official-api`。平台子技能可以进一步限制可用值。
+- `browse-mcp`、`chrome-mcp` 或 `playwright-mcp` 表示 Profile 路由、页面读取、输入、上传、编辑、发布控件、结果核验和 Tab 清理全部由同一已声明通道完成；不得在通道之间静默转换，也不得转换为 Computer Use、controlled-browser-session、CDP 或其他 Chrome 控制接口。Browse 若不能明确提供当前操作所需能力（包括上传或结果核验），必须停止并记录具体缺口，不得从基础导航/点击工具推断能力存在。默认不得使用坐标点击；小红书封闭发布组件的受限例外只由其平台子技能定义并在原 Chrome extension Tab 内执行。`official-api` 不打开 Chrome，必须由对应 API 子技能完成身份和结果核验。
+- `switchMethod` 与 `interactiveTransport` / `scheduledTransport` 必须分别写入运行快照；`browse-mcp`、`chrome-mcp`、`playwright-mcp` 只能用于其已声明的浏览器通道，不得指向其他浏览器执行器。
+- 运行时预检先发现当前可用工具：若选择 `browse-mcp`，读取 Browse 配对浏览器/会话信息并确认目标标签页来自用户授权或本会话；若选择 Chrome extension 通道，再读取 browser inventory 并按目标站点取得既有 Tab。只有所选通道没有可映射到目标 Profile 的浏览器/标签页，或页面实读账号与配置不一致时，才返回 `profile_route_missing` / `account_mismatch`。不得仅检查旧工具名称后提前失败，也不得跨通道回退。
 - Chrome extension inventory 不暴露 `profileName` 时，只有一个 extension browser、其中存在目标站点 Tab、配置 Profile 已验证且页面实读 handle 匹配，才能记录本轮 browserId / extensionInstanceId 并继续；多个 extension browser 无法映射到配置 Profile 时停止，不猜测。
 - Chrome extension 的 CUA 基础 AX 方法清单不是完整能力表。完整读取接管返回的 browser/Tab 文档；文档声明的 `tab.playwright`、`waitForEvent("filechooser")` 和 chooser `setFiles()` 仍属同一 Chrome extension Tab，使用它们不构成切换到独立 `playwright-mcp` 传输。文档截断或绑定未取得时，在同轮补读/恢复一次；只有完整文档确无接口或正确绑定返回明确 unsupported，才记录 API unavailable，附文档来源、原始错误及恢复次数。不能从 AX 概览、旧工具名或超时推断能力缺失。
 - 缺少、拼写错误或当前平台不支持的传输不得静默回退；返回 `scheduled_transport_missing` 或 `scheduled_transport_unsupported`，不打开发布页、不上传、不点击发布。
