@@ -41,7 +41,8 @@ description: 跨平台媒体发布执行总控：按外部触发器扫描内容�
 
 - 浏览器平台的执行对象由 `platformAccountRef → browserProfileRef → platform handle` 唯一确定；同一平台的不同账号不得共用一个 Profile 路由。
 - Chrome 浏览器操作只能使用配置的 `browse-mcp`（Browse MCP）、`chrome-mcp`（Chrome MCP/browser-client）或 `playwright-mcp`（Playwright MCP Bridge）。`browse-mcp` 只能使用 Browse 已配对的浏览器以及用户授权或本会话创建的标签页；必须依据运行时可见的浏览器标识核对 `browserProfileRef`，并在页面中核对平台公开账号身份。不得猜测或切换 Profile，也不得使用桌面点击、Computer Use、CDP 或其他浏览器控制接口；页内坐标点击默认禁止，唯一的小红书封闭发布组件例外由 `xiaohongshu` 子技能限定，且不能改变传输通道。
-- 接管后重新打开平台入口，读取当前登录 handle、账号名和平台身份。任何一项与配置不一致、页面仍在旧账号或目标 Tab 不可确认时，立即停止，不创建草稿、不上传媒体、不发布。
+- `playwright-mcp` 先列出已授权标签，优先复用既有目标页。只有 `Welcome` / `connect` 时检查 MCP 实际启动配置和本次连接的授权状态。用户指定保留的目标标签尚未绑定时，在同一通道恢复原标签，必要时请用户在本次连接的选择页对该标签点 **Allow & select**。未指定保留标签且已确认目标 Profile 时，可以在同一已授权的 Bridge 上下文打开配置入口一次。
+- 复用或接管后通过可见页面读取当前账号、handle 和平台身份。以 `profile_route_missing` 记录缺少有效授权的路由，以 `account_mismatch` 记录身份不符。已授权但页面读取超时或失败时，记录实际运行时错误，并按检查点做一次有界恢复。读到匹配的身份后才开始平台写操作。
 - 三种通道均要求目标 Profile 和已登录 Tab 可确认；Browse 无法把配对浏览器唯一映射到已验证的目标 Profile、无用户授权/本会话创建的目标 Tab，或页面身份不符时，返回 `profile_route_missing` / `account_mismatch`。不得创建未核验会话或在通道间静默回退。
 - `switchMethod: browse-mcp` 表示由 Browse MCP 使用已配对浏览器中的用户授权或本会话标签页，并逐次核对 Profile 与平台身份；`switchMethod: chrome-mcp` 表示 Chrome MCP 识别并接管既有 Tab；`switchMethod: playwright-mcp` 表示用户授权既有 Tab 后由 Playwright MCP Bridge 接管；`current-session` 只表示沿用当前已确认的单账号 Tab，不能用于同平台多账号无人值守路由。
 - 在提供 Unified Computer Use/`cua_repl` 的新版运行时中，`chrome-mcp` 对应 `cua.getState()` 返回的 `family: chrome`、`type: extension` 浏览器及其 `cua.getTab(...)` Tab API。使用该 Chrome extension Tab 的页面读取、输入、上传和导航仍属于 Chrome MCP 通道，不是 Computer Use 回退；不得改用 `cua.getApp("Google Chrome")`、桌面坐标或原生窗口点击。小红书封闭发布组件的受限页内点击也必须留在此 Tab API 内；旧版独立工具名不存在本身不能判定 `profile_route_missing`。
@@ -54,7 +55,7 @@ description: 跨平台媒体发布执行总控：按外部触发器扫描内容�
 - `scheduledTransport` 对所有需要写入外部平台的定时任务都是必填。浏览器平台只允许显式选择已配置且当前可用的 `browse-mcp`、`chrome-mcp` 或 `playwright-mcp`；API 平台必须选择已接入的 `official-api`。平台子技能可以进一步限制可用值。
 - `browse-mcp`、`chrome-mcp` 或 `playwright-mcp` 表示 Profile 路由、页面读取、输入、上传、编辑、发布控件、结果核验和 Tab 清理全部由同一已声明通道完成；不得在通道之间静默转换，也不得转换为 Computer Use、controlled-browser-session、CDP 或其他 Chrome 控制接口。Browse 若不能明确提供当前操作所需能力（包括上传或结果核验），必须停止并记录具体缺口，不得从基础导航/点击工具推断能力存在。默认不得使用坐标点击；小红书封闭发布组件的受限例外只由其平台子技能定义并在原 Chrome extension Tab 内执行。`official-api` 不打开 Chrome，必须由对应 API 子技能完成身份和结果核验。
 - `switchMethod` 与 `interactiveTransport` / `scheduledTransport` 必须分别写入运行快照；`browse-mcp`、`chrome-mcp`、`playwright-mcp` 只能用于其已声明的浏览器通道，不得指向其他浏览器执行器。
-- 运行时预检先发现当前可用工具：若选择 `browse-mcp`，读取 Browse 配对浏览器/会话信息并确认目标标签页来自用户授权或本会话；若选择 Chrome extension 通道，再读取 browser inventory 并按目标站点取得既有 Tab。只有所选通道没有可映射到目标 Profile 的浏览器/标签页，或页面实读账号与配置不一致时，才返回 `profile_route_missing` / `account_mismatch`。不得仅检查旧工具名称后提前失败，也不得跨通道回退。
+- 运行时预检按生效的 transport 查找可用工具和既有目标 Tab。`browse-mcp` 核对配对浏览器和标签授权，`chrome-mcp` 读取 browser inventory，`playwright-mcp` 读取 Bridge 标签列表。路由判断以当前通道的浏览器、目标 Tab 和页面实读账号为准。
 - Chrome extension inventory 不暴露 `profileName` 时，只有一个 extension browser、其中存在目标站点 Tab、配置 Profile 已验证且页面实读 handle 匹配，才能记录本轮 browserId / extensionInstanceId 并继续；多个 extension browser 无法映射到配置 Profile 时停止，不猜测。
 - Chrome extension 的 CUA 基础 AX 方法清单不是完整能力表。完整读取接管返回的 browser/Tab 文档；文档声明的 `tab.playwright`、`waitForEvent("filechooser")` 和 chooser `setFiles()` 仍属同一 Chrome extension Tab，使用它们不构成切换到独立 `playwright-mcp` 传输。文档截断或绑定未取得时，在同轮补读/恢复一次；只有完整文档确无接口或正确绑定返回明确 unsupported，才记录 API unavailable，附文档来源、原始错误及恢复次数。不能从 AX 概览、旧工具名或超时推断能力缺失。
 - 缺少、拼写错误或当前平台不支持的传输不得静默回退；返回 `scheduled_transport_missing` 或 `scheduled_transport_unsupported`，不打开发布页、不上传、不点击发布。
@@ -247,7 +248,7 @@ description: 跨平台媒体发布执行总控：按外部触发器扫描内容�
 - 先确认发布成功、审核中、明确跳过或明确失败的最终状态，再写入 `docsRoot` 下的运行记录、队列/已发布清单和本地机器状态；回写失败时不得关闭仍需要核对或恢复的页面。
 - 结果明确后先持久化不可重试的提交回执（目标、账号、标题/正文/时长、平台时间/状态及点击次数）。多文件回写先读取全部当前记录，在内存准备变更、校验替换匹配数及 JSON/YAML，再逐文件原子替换；不要边断言边改权威文件。检查点记录逐文件进度，全部复读一致后才标记 writeback complete 并释放匹配锁。中途失败只恢复本地对账，不重置 ready、不重传或重发。
 - 运行开始时记录本次创建的浏览器 Tab；成功回写后关闭本次运行创建的来源页、搜索页、下载页、编辑器页和结果页等临时页面，避免历史任务不断累积。
-- 不关闭用户在任务开始前已经打开的页面，不关闭未完成草稿、上传/下载中页面、验证码/登录交接页或用户明确要求保留的交付页面。结果不明确时保留必要的结果页并标记为 `handoff`，不要靠关页掩盖不确定状态。
+- 任务收尾、页面重建、路由恢复和连接清理均须保留用户在任务开始前已经打开或明确要求保留的标签页。保留未完成草稿、上传/下载中页面和验证码/登录交接页。结果不明确时保留必要的结果页并标记为 `handoff`。
 - 使用浏览器连接支持的 Tab 清理/finalize 能力时，将清理作为本轮最后一次浏览器操作；清理完成后不再继续点击、读取或导航。若只支持电脑操作，按同一保留规则关闭明确属于本次运行的临时窗口或 Tab。
 - 在运行记录中写入清理结果：已关闭的运行 Tab 数量、保留的交接/交付页面及未能关闭的原因。不得为了“清空浏览器”而批量关闭无法确认归属的现有页面。
 

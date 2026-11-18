@@ -41,20 +41,21 @@ description: 抖音平台策略与发布子技能：对已核验内容资产完�
 - 只接受 `media-core` 已验收、可追溯的媒体资产进入上传；上传前确认文件可播放、时长与资产记录一致、视频轨存在；音乐视频还必须确认音频轨存在且预览能听到声音。只看到“下载完成”或“上传成功”不能替代音视频验收。
 - 供给恢复后必须重新读取 canonical asset 与 distribution target：只有 `lifecycleState: ready`、目标未完成且账号、事实、版权、媒体与幂等门禁通过时才进入上传；`plannedAt` / `preferredWindow` 只作排序与审计，不阻断已触发的运行。`productionRequest`、候选记录、下载完成事件或资源目录中孤立文件都不是上传依据。
 - 若上传后的预览无声、时长异常、黑屏或画面与候选不符，立即停止发布；重新取得媒体后，通过“替换视频”重新上传，并等待新的上传成功状态和预览刷新后再次验收。不得用静音版本试发。
-- 首次上传、上传异常或用户已上传后的续接，先读取 [同一 Tab 上传与预览恢复](references/upload-recovery.md)。使用当前文档声明的同一 Chrome extension Tab Playwright/filechooser 能力，不从基础 AX wrapper 缺方法推断 API unavailable，不转原生文件选择器。选择回执与平台处理/预览验收分别记账，已有正确预览直接复用。
+- 首次上传、上传异常或用户已上传后的续接，先读取 [同一 Tab 上传与预览恢复](references/upload-recovery.md)，按当前配置通道选用同一 Tab 的文件选择器。分别记录文件选择回执与平台预览验收，复用已有的正确预览。
 - 来源 URL、授权范围、下载记录和作者署名由内容资产及其来源协议保留。公开字段如何呈现署名、来源或商业披露，由目标账号的本机策略决定；不得暗示与作者或原平台官方存在未获确认的合作关系。
 - 对商业合作、产品体验、股票或高影响主题，补齐必要披露，并把事实、推断和建议分开；不提供投资、医疗或法律结论。
 - 发布后记录播放、完播/平均观看、互动、收藏、分享、关注转化和负向反馈，并按内容支柱、时长、首句、媒体形态和互动入口复盘。单条爆款不能单独证明某种模板稳定有效。
 
 ## Publish
 
-- 新版运行时若通过 Unified Computer Use 暴露 `family: chrome`、`type: extension` browser，先用 `cua.getState()` 找到该 browser，再用 `cua.getTab(...)` 接管抖音创作者中心 Tab；这属于 Chrome MCP 通道，不是 Computer Use 回退。不得改用 `cua.getApp("Google Chrome")`、原生窗口、桌面坐标或截图点击。旧版独立工具名不存在但 Chrome extension browser 和抖音 Tab 可见时，不得返回 `profile_route_missing`。
+- 使用 `chrome-mcp` 且运行时通过 Unified Computer Use 暴露 `family: chrome`、`type: extension` browser 时，先用 `cua.getState()` 找到该 browser，再用 `cua.getTab(...)` 接管抖音创作者中心 Tab。旧版工具名缺失时，以当前 Chrome extension browser 和抖音 Tab 是否可见为准。
+- 使用 `playwright-mcp` 时，先用 Bridge 的 `tabs list` 复用已授权的创作者中心 Tab，再实读账号。若用户指定保留的创作者 Tab 尚未出现在列表，按 `media-ops` 恢复该 Tab 的绑定。授权仍需用户操作时，请在本次连接打开的选择页对原 Tab 点 **Allow & select**。
 - 通过受控登录会话发布时，先核对当前抖音账号与配置中的公开身份一致，再创建草稿。
 - 若 `media-ops` 传入 `browserProfileRef`，先确认当前 Chrome Profile 已完成路由；Profile 路由缺失、切换失败或抖音公开身份不一致时停止，不创建草稿。
 - 使用已声明的 `chrome-mcp` 或 `playwright-mcp` 操作 Chrome 时，进入抖音发布页、作品管理页和发布结果核验前，先通过该通道重新读取当前 Tab 的 DOM/可访问页面状态；不得依赖桌面布局、窗口坐标或旧快照判断控件存在。
 - 作品管理页的核验必须显式确认“全部作品”/作品标签组、作品总数或搜索作品控件可见。若这些控件缺失、被折叠到溢出菜单、只显示导航壳或页面布局异常，先等待页面重排并重新读取当前浏览器 MCP state，再定位控件；不要直接把旧作品列表或导航壳当作刷新结果。
 - 发布后核验优先在当前浏览器 MCP 读取的作品管理页使用可见的“全部作品”或“搜索作品”控件检索本条标题，再同时匹配标题、正文和时长；最多进行配置允许的刷新次数。没有看到“全部作品”按钮不构成发布失败证据，也不允许因此随机导航或再次点击发布。
-- 若内容管理可读、但 `creator-micro/content/upload` 只剩浏览器外壳或持续空白，先判定为页面运行时故障而不是账号、素材或发布失败：只关闭本轮失效的抖音 Tab，从 `https://creator.douyin.com/` 新建干净 Tab 并重新进入发布入口。若 Chrome 明确显示“网站无法正常运行”且建议允许第三方 Cookie，可在已授权的当前 Profile 中仅为 `creator.douyin.com` 打开站点级第三方 Cookie、让页面自动重载，再重新核对账号和上传控件；不得修改全局 Cookie 策略。若仍空白或当前浏览器 MCP 无法取得页面状态，保留 ready 目标、媒体和游标，记录具体阻塞，不把它写成 `publish_failed`，也不重复下载或重选。
+- 若内容管理可读但 `creator-micro/content/upload` 持续空白，按页面运行时故障处理。保留用户已打开或指定保留的创作者 Tab。确认当前没有待核验的上传、编辑或发布副作用后，优先在同一 Tab 重新读取状态并从创作者入口恢复一次。需要换页时，只关闭本轮创建、失效且可安全清理的临时 Tab。若 Chrome 明确显示“网站无法正常运行”且建议允许第三方 Cookie，可在已授权的当前 Profile 中仅为 `creator.douyin.com` 打开站点级第三方 Cookie、让页面自动重载，再重新核对账号和上传控件。超出恢复预算时保留 ready 目标、媒体和游标，记录具体运行时阻塞。
 - 创建草稿前完成近期文案去重并在运行记录中保存 `recentCopyRefs`、本条采用的表达角度和被避开的重复骨架。若不能读取近期至少 5 条成稿，或无法确认本条不是仅替换歌名的重复文案，停止自动发布并记录 `recent_copy_window_unverifiable`。
 - 读取 `media-ops` 当前账号 `styleRef` 对应的 `copyContract`，先生成机器可校验的 `copyPlan`：`title`、`caption`、`selectedAngle`、`recentCopyRefs`、`avoidedPatterns`。合同缺失或字段不完整时记录 `copy_contract_missing` 并停止，不自行发明另一套格式。
 - 对 Frank 系列按账号当前 copyContract 版本校验；v2 标题保留艺人/曲名且不超30字，演绎角度可选，优先完整曲名；正文清楚保留演唱者和曲名，不要求固定句序、中性动词或额外画面/声音事实。可选事实必须有证据；若配置仍要求 supportedFact 等旧硬门禁，先按用户已授权的配置变更同步版本，不静默绕过。

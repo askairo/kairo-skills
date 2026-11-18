@@ -1,12 +1,14 @@
-# 抖音：同一 Chrome extension Tab 上传与预览恢复
+# 抖音：同一 Tab 上传与预览恢复
 
 沿用配置通道、已核验账号、`contentId + targetId` 锁、canonical 媒体及顺序游标。此流程不发现来源、不下载素材、不切换浏览器通道。
 
 ## 能力预检：完整文档优先
 
-通过 `cua.getState()` 选择配置匹配的 `family=chrome,type=extension` browser，再用 `cua.getTab(...)` 接管既有 creator Tab。保留绑定，完整读取接管返回的 browser/Tab 文档。基础 CUA AX 接口只是入口：文档列出的 `tab.playwright`、`waitForEvent("filechooser")` 和 chooser `setFiles()` 都属于原 Chrome extension Tab；接口名称不表示切换到独立的 `playwright-mcp` 传输。
+`playwright-mcp` 通过 Bridge 列出并选中已授权的创作者 Tab，复读页面和公开身份。使用当前版本已声明的同一 Tab 快照、DOM 读取和文件上传工具。若上传工具要求活动的文件选择器，先从当前快照点击唯一可用的上传入口，确认选择器已打开，再调用已声明的上传工具并记录回执。用户原有或指定保留的标签按 `media-ops` 原位恢复。
 
-按当前文档声明的访问方式读取 `file-uploads` 专题。文档缺段、截断或绑定未取得时，同轮补读/恢复一次；可用已声明的 `tab.playwright.domSnapshot()` 无副作用确认页面绑定，不为能力验证打开 chooser 或上传文件。不猜方法、不反射枚举、不另建浏览器客户端。只有完整文档确无能力，或正确绑定明确返回 unsupported，且恢复已耗尽时，才记 `blocked / chrome_extension_filechooser_api_unavailable`，附 `documentationRefs`、`capabilityEvidence`、原始错误及 `documentationRecoveryCount`。超时、AX 点击无变化和缺旧工具名都不是能力缺失证据。
+`chrome-mcp` 通过 `cua.getState()` 选择配置匹配的 `family=chrome,type=extension` browser，再用 `cua.getTab(...)` 接管既有 creator Tab。保留绑定，完整读取接管返回的 browser/Tab 文档。基础 CUA AX 接口只是入口：文档列出的 `tab.playwright`、`waitForEvent("filechooser")` 和 chooser `setFiles()` 都属于原 Chrome extension Tab；接口名称不表示切换到独立的 `playwright-mcp` 传输。
+
+`chrome-mcp` 按当前文档声明的访问方式读取 `file-uploads` 专题。文档缺段、截断或绑定未取得时，同轮补读/恢复一次；可用已声明的 `tab.playwright.domSnapshot()` 无副作用确认页面绑定，不为能力验证打开 chooser 或上传文件。不猜方法、不反射枚举、不另建浏览器客户端。只有完整文档确无能力，或正确绑定明确返回 unsupported，且恢复已耗尽时，才记 `blocked / chrome_extension_filechooser_api_unavailable`，附 `documentationRefs`、`capabilityEvidence`、原始错误及 `documentationRecoveryCount`。超时、AX 点击无变化和缺旧工具名都不是能力缺失证据。
 
 ## 先判定已有副作用
 
@@ -17,7 +19,7 @@
 
 ## 事件先于触发，选择与验收分开
 
-根据本轮 DOM 定位唯一可用的上传按钮、可交互 file input 或关联 label；不固定序号、不强制点击隐藏 input、不走原生窗口/坐标。以下仅在当前文档声明这些签名时使用；`tab`、`trigger`、`canonicalPath` 必须来自本轮绑定和预检：
+根据本轮 DOM 定位唯一可用的上传按钮、可交互 file input 或关联 label；不固定序号、不强制点击隐藏 input、不走原生窗口/坐标。以下是 `chrome-mcp` 示例，仅在当前文档声明这些签名时使用；`tab`、`trigger`、`canonicalPath` 必须来自本轮绑定和预检：
 
 ```javascript
 const pending = tab.playwright.waitForEvent("filechooser", { timeoutMs: 10000 })
@@ -32,7 +34,7 @@ if (!triggerError && event.chooser) {
 }
 ```
 
-`setFiles` 成功只证明文件已交给页面控件。继续等待平台上传/处理完成，复读编辑器和预览。没有 chooser、未选文件且复读仍为空时，可在同一 Tab 重定位触发器一次；两次仍失败记 `blocked / file_upload_control_unavailable`。选择已尝试、处理中或选择结果未知时，不重传，保留 `unknown / upload_unconfirmed` 并只读恢复。只有工具明确报权限拒绝才按权限专题处理；不从超时猜权限或 OS 锁屏。
+文件选择工具的成功回执只证明文件已交给控件。继续等待平台上传/处理完成，复读编辑器和预览。没有 chooser、未选文件且复读仍为空时，可在同一 Tab 重定位触发器一次；两次仍失败记 `blocked / file_upload_control_unavailable`。选择已尝试、处理中或选择结果未知时，不重传，保留 `unknown / upload_unconfirmed` 并只读恢复。只有工具明确报权限拒绝才按权限专题处理；不从超时猜权限或 OS 锁屏。
 
 ## 预览不止看 AX
 
