@@ -11,6 +11,10 @@ Turn a concrete task into a local development flow that is executable, verifiabl
 
 If the project is still in an exploratory phase, the architecture is unstable, or project-level docs are not yet organized, use `p-loop` first to establish the project documentation and architecture order, then come back here for task breakdown and implementation.
 
+## Confirm Before Implementing
+
+Start by understanding the request and inspecting the relevant sources and repository. If an unresolved question could materially change the scope, business rules, API, data handling, or acceptance criteria, explain what needs deciding, ask the user, and wait for their answer before changing code or dispatching implementation. A request to execute the task does not settle open decisions. If the user explicitly asks to proceed under stated assumptions, record those assumptions and follow them. When the task is clear, proceed without a separate confirmation round.
+
 ## Local Configuration
 
 This skill uses private local configuration to store stable paths and authentication information. Do not write this configuration into the project repository.
@@ -85,12 +89,8 @@ When this task was handed off by `p-loop`, follow its external-document recovery
    - When creating or switching branches later in the workflow, keep the conversation/session title synchronized with the active project and branch. In Paseo, also rename the workspace to the same `<project-name>-<branch-name>` value.
    - If the current Agent does not expose a capability to rename the conversation/session, tell the user to rename it manually rather than silently skipping the step.
 
-5. Clarify before implementation.
-   - Before implementation, separate confirmed facts from assumptions and questions.
-   - Ask the user to confirm any key ambiguity that could change API shape, data source, branch, persistence, export behavior, sorting/filtering behavior, or verification scope.
-   - Do not start implementation while important questions remain unresolved, unless the user explicitly asks to proceed with stated assumptions.
-   - Record confirmed facts, open questions, and user decisions in the task doc before writing the implementation plan.
-   - Keep this step process-focused. Project-specific rules belong in the repository rules, project docs, or `AGENTS.md`, not in this skill.
+5. Apply the confirmation gate above.
+   - Separate confirmed facts, assumptions, and open questions. Record user decisions in the task doc before writing the implementation plan.
 
 6. Split the task card.
    - Break the requirement into a short checklist first.
